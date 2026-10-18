@@ -740,8 +740,9 @@ function advance(s, dt) {
     s.acc -= h; n++;
     const r = s.def.step(s, h);
     s.t += h;
-    if (r === 'stop') { s.ended = true; state.running = false; s.acc = 0; updatePlay(); renderLive(true); break; }
+    if (r === 'stop') { s.ended = true; s.endedAt = performance.now(); state.running = false; s.acc = 0; updatePlay(); renderLive(true); break; }
   }
+  if (n >= 4000) s.acc = 0;
 }
 let lastNow = 0;
 function loop(now) {
@@ -753,10 +754,28 @@ function loop(now) {
     if (state.running && !s.ended) advance(s, realDt * state.speed * (s.def.timeScale || 1));
     if (s.def.draw) s.def.draw(s, now / 1000);
     if (now - s.lastLive > 110) { s.lastLive = now; renderLive(); }
+    // 授業では、終わった実験を少し待ってからくり返す（説明を読んでいる間も動いて見える）
+    if (s.ended && state.mode === 'lesson' && state.lesson && !state.lesson.quiz && now - (s.endedAt || now) > 2500) {
+      loadSim(state.id, true); state.running = true; updatePlay();
+      if (state.lesson.tab === 'try') renderCard();
+    }
   }
   R.controls.update();
   R.renderer.render(R.scene, R.camera);
   layoutLabels();
+  adaptQuality(now);
+}
+// 動きが重い端末では、画面の細かさ（ピクセル比）を下げてなめらかにする
+const AQ = { t0: 0, n: 0, done: false };
+function adaptQuality(now) {
+  if (AQ.done || document.hidden) return;
+  if (!AQ.t0) { AQ.t0 = now; AQ.n = 0; return; }
+  AQ.n++;
+  if (now - AQ.t0 < 3000) return;
+  const fps = AQ.n * 1000 / (now - AQ.t0);
+  AQ.t0 = now; AQ.n = 0;
+  if (fps < 28 && R.renderer.getPixelRatio() > 1) { R.renderer.setPixelRatio(1); R.resize(); }
+  else if (fps >= 28) AQ.done = true;
 }
 function clockText(s) { return s.def.clock ? s.def.clock(s) : 't = ' + fmt(s.t, 2) + ' s'; }
 function updatePlay() {
@@ -930,7 +949,7 @@ sim({
     <p class="txt">ストロボの間かくを見ると、落ちるほど間が広がる。0.2 秒ごとに進む距離が、1 : 3 : 5 : 7 … とふえていく（自由落下のとき）。</p>
     <p class="txt">投げ上げでは、最高点で速度が 0 になる。そこまでの時間は <var>t</var> = <var>v</var><sub>0</sub>/<var>g</var>、高さは <var>v</var><sub>0</sub><sup>2</sup>/2<var>g</var>。上りと下りは同じ時間。</p>
     <p class="txt">「空気抵抗」を ON にすると、軽いピンポン球は空気に押されて速さが一定（終端速度 約 8 m/s）に近づく。鉄球はほとんど変わらない。</p>`,
-  points: [['o', 'v–t グラフの傾きは加速度、面積は移動距離（変位）'], ['o', '自由落下では、重い物も軽い物も同時に落ちる（空気がなければ）'], ['x', '最高点で「加速度も 0」はまちがい。加速度はずっと −g'], ['x', '投げ上げで下りのとき、速度の符号はマイナスになる']],
+  points: [['o', 'v–t グラフの傾きは加速度、面積は移動距離（変位）'], ['o', '自由落下では、重い物も軽い物も同時に落ちる（空気がなければ）'], ['x', '最高点で「加速度も 0」はまちがい。加速度はずっと −g'], ['x', '投げ上げで、下りのときも速度はプラスのまま、はまちがい（上向きを正とすると下りは v ＜ 0）']],
   exam: '最高点までの時間・高さ、地面に着く時刻（2次方程式）、v–t グラフの読み取りがよく出る。',
   view(s) { return [[0, s.H * 0.5, 0], s.H * 0.55 + 0.6, [1.1, 0.25, 1.6]]; },
 });
@@ -1231,7 +1250,7 @@ sim({
   html(s) {
     return `<div class="ctl">${ui.goal(s)}${ui.sliders(s, ['mA', 'mB', 'vA', 'vB', 'e'])}
       <div class="row"><button type="button" class="btn" data-preset="1">弾性衝突 e=1</button><button type="button" class="btn" data-preset="0">くっつく e=0</button><button type="button" class="btn" data-preset="swap">同じ質量で入れかわり</button></div>
-      ${ui.meter([['vA', 'A の速度'], ['vB', 'B の速度'], ['P', '運動量の和 kg·m/s'], ['K', '運動エネルギー'], ['e', 'e（測定）'], ['dK', 'エネルギーの変化']])}
+      ${ui.meter([['vA', 'A の速度'], ['vB', 'B の速度'], ['P', 'p の和 [kg·m/s]'], ['K', 'K の和'], ['e', 'e（測定）'], ['dK', 'K の変化']])}
       ${ui.bars([['p0', '運動量（前）', C.accent], ['p1', '運動量（今）', C.accent], ['k0', 'エネルギー（前）', C.ke], ['k1', 'エネルギー（今）', C.ke]])}
       ${ui.graph('v–t グラフ', [['A', C.accent], ['B', C.warm]])}</div>`;
   },
@@ -1397,7 +1416,7 @@ sim({
     const h = p.L * (1 - Math.cos(s.th)), E = p.m * p.g * p.L * (1 - Math.cos(p.th0 * DEG));
     const K = Math.max(E - p.m * p.g * h, 0), U = p.m * p.g * h;
     const o = { th: fmt(s.th / DEG, 1) + '°', v: fmt(Math.abs(s.om * p.L), 2) + ' m/s', T0: fmt(T0, 3) + ' s', Tm: s.Tm ? fmt(s.Tm, 3) + ' s' : '（測定中）', diff: s.Tm ? fmt((s.Tm / T0 - 1) * 100, 1) + ' %' : '—',
-      bars: { K: [K / E, fmt(K, 3) + ' J'], U: [U / E, fmt(U, 3) + ' J'] } };
+      bars: { K: [K / E, fmt(K, 3) + ' J'], U: [U / E, fmt(U, 3) + ' J'], E: [1, fmt(E, 3) + ' J'] } };
     const t1 = Math.max(s.t, 3 * T0), t0 = Math.max(0, t1 - 3 * T0);
     o.graph = plot({ x: [t0, t1], y: [-p.th0 * 1.2, p.th0 * 1.2], xl: 't [s]', yl: 'θ [°]', series: [{ pts: s.rec.col(1).filter(q => q[0] >= t0), c: C.accent }] });
     return o;
@@ -1407,7 +1426,7 @@ sim({
       ${ui.seg(s, 'g', '重力加速度 <var>g</var>', G_OPTS)}
       ${ui.chk(s, [['vec', '張力と重力'], ['trail', '軌跡']])}
       ${ui.meter([['th', '角度 θ'], ['v', '速さ'], ['T0', '周期（公式）'], ['Tm', '周期（測定）'], ['diff', '公式とのずれ']])}
-      ${ui.bars([['K', '運動エネルギー', C.ke], ['U', '位置エネルギー', C.pe]])}
+      ${ui.bars([['K', '運動エネルギー', C.ke], ['U', '位置エネルギー', C.pe], ['E', '力学的エネルギー', C.accent]])}
       ${ui.graph('θ–t グラフ')}</div>`;
   },
   goal: '地球の上で、<b>周期がちょうど 2.00 秒</b>になる振り子をつくろう（振れ角は 15° 以下で）。',
@@ -1944,7 +1963,7 @@ sim({
   how: `<p class="txt">2つの波が重なると、変位はたし合わされる（<b>重ね合わせの原理</b>）。山と山・谷と谷が重なる所は強め合い、山と谷が重なる所は弱め合って、ほとんどゆれない。</p>
     <div class="formula">同位相の波源のとき　強め合う：|<var>S</var><sub>1</sub><var>P</var> − <var>S</var><sub>2</sub><var>P</var>| = <var>mλ</var><br>弱め合う：|<var>S</var><sub>1</sub><var>P</var> − <var>S</var><sub>2</sub><var>P</var>| = (<var>m</var> + ½)<var>λ</var><small>m = 0, 1, 2, …　逆位相のときは条件が入れかわる</small></div>
     <p class="txt">弱め合う点をつないだ線を<b>節線</b>という。節線は、2つの波源を焦点とする<b>双曲線</b>になる。波源の間を広げるか、波長を短くすると、節線の数が増える。</p>`,
-  points: [['o', '経路差（距離の差）が波長の何倍かで、強め合い・弱め合いが決まる'], ['o', '節線の本数は、波源の間にある弱め合う点の数と同じ'], ['x', '節線の上では水面が全く動かない、は近似（振幅が少しちがうと少しゆれる）'], ['o', '光のヤングの実験も同じ考え方']],
+  points: [['o', '経路差（距離の差）が波長の何倍かで、強め合い・弱め合いが決まる'], ['o', '節線の本数は、波源の間にある弱め合う点の数と同じ'], ['x', '節線の上では水面が全く動かない、はまちがい（2つの波の振幅が少しちがうので、わずかにゆれる。ほとんど振動しない線）'], ['o', '光のヤングの実験も同じ考え方']],
   exam: '波源の間の線分上にできる節（定常波になる）の数、ある点が強め合うか弱め合うかの判定、節線の本数がよく出る。',
   view() { return [[0, 0.6, 0.4], 7.6, [0, 1.15, 1]]; },
 });
@@ -1954,7 +1973,7 @@ sim({
   id: 'standing', cat: '波', icon: '定', name: '定常波（弦と気柱）',
   lead: '行く波と返る波が重なって、動かない「節」と大きくゆれる「腹」ができる。',
   params: [
-    { k: 'n', label: '倍振動 <var>n</var>', min: 1, max: 6, step: 1, v: 2, d: 0, fmt: v => v + (v === 1 ? '（基本）' : ' 倍'), reset: true },
+    { k: 'n', label: '固有振動 <var>n</var>', min: 1, max: 6, step: 1, v: 2, d: 0, fmt: v => v + ' 番目', reset: true },
     { k: 'Lr', label: '長さ <var>L</var>', min: 0.3, max: 1.2, step: 0.05, v: 0.6, unit: 'm' },
     { k: 'vs', label: '波の速さ <var>V</var>', min: 100, max: 400, step: 5, v: 340, unit: 'm/s', d: 0 },
   ],
@@ -2664,17 +2683,17 @@ sim({
       ${ui.slider(s, 'N')}
       ${ui.seg(s, 'pole', 'コイルに向ける極', [['N', 'N極'], ['S', 'S極']])}
       ${ui.meter([['st', 'ようす'], ['phi', '磁束 Φ（相対）'], ['emf', '誘導起電力（相対）'], ['mx', '最近の最大']])}
-      ${ui.graph('磁束 Φ と誘導起電力 V（V は Φ のグラフの傾き）', [['Φ', C.accent], ['V', C.warm]])}
+      ${ui.graph('磁束 Φ と誘導起電力 V（V は Φ のグラフの傾き × (−1)）', [['Φ', C.accent], ['V', C.warm]])}
       <p class="note">黄色の粒は電流の向き。磁石を止めると電流は流れない。</p></div>`;
   },
   onParam(s, k) { if (k === 'auto' && !s.p.auto) s.p.x = Math.round(s.xm * 100) / 100; },
   goal: '動かす速さを <b>2 倍以上</b>にしよう。針のふれ（誘導起電力）はどうなる？',
   goalMsg: '速く動かすほど、磁束の変化が急になり、起電力が大きくなる。',
   check(s) { return s.p.auto && s.p.sp >= 2 && s.t > 3; },
-  how: `<p class="txt">コイルを貫く<b>磁束</b> <var>Φ</var>（磁場 × 面積）が変化すると、コイルに電圧（<b>誘導起電力</b>）が生じ、電流が流れる。これが<b>電磁誘導</b>。</p>
+  how: `<p class="txt">コイルを貫く<b>磁束</b> <var>Φ</var>（磁束密度 <var>B</var> × 面積 <var>S</var>）が変化すると、コイルに電圧（<b>誘導起電力</b>）が生じ、電流が流れる。これが<b>電磁誘導</b>。</p>
     <div class="formula"><var>V</var> = −<var>N</var> Δ<var>Φ</var>/Δ<var>t</var>（ファラデーの電磁誘導の法則）<small>N：巻き数。マイナスは「変化をさまたげる向き」を表す</small></div>
     <p class="txt"><b>レンツの法則</b>：誘導電流は、磁束の変化を打ち消す向きに流れる。N極を近づけると、コイルの近い側が N 極になって押し返す。遠ざけると S 極になって引きとめる。</p>
-    <p class="txt">グラフを見ると、起電力 <var>V</var> は磁束 <var>Φ</var> のグラフの<b>傾き</b>になっている。磁石が止まると（Φ が一定）、起電力は 0。発電機・IH 調理器・ IC カードは電磁誘導を使っている。</p>`,
+    <p class="txt">グラフを見ると、起電力 <var>V</var> は磁束 <var>Φ</var> のグラフの<b>傾きの符号を逆にしたもの</b>になっている（磁束が増えるとき起電力は負）。磁石が止まると（Φ が一定）、起電力は 0。発電機・IH 調理器・ IC カードは電磁誘導を使っている。</p>`,
   points: [['o', '磁石を速く動かす・巻き数を増やす・強い磁石にする → 起電力が大きい'], ['o', '近づけるときと遠ざけるときで、電流の向きは逆'], ['x', '磁石をコイルの中に入れたまま止めても電流が流れる、はまちがい'], ['o', '導体棒が磁場中を動くときの起電力 V = vBL']],
   exam: '導体棒が磁場中を動く問題（起電力 vBL、電流が受ける力、終端速度）、コイルの自己誘導、交流の発生がよく出る。',
   view() { return [[-1.2, 0.8, -0.7], 3.7, [0.15, 0.6, 1]]; },
@@ -2939,9 +2958,9 @@ const LESSON_PARTS = {
 };
 const LESSONS = [
   // ===================== 物理基礎 =====================
-  { id: 'k-vel', course: 'kiso', part: 0, chap: 0, no: '1-1', name: '速度と加速度', drills: ['d-incline'],
+  { id: 'k-vel', course: 'kiso', part: 0, chap: 0, no: '1-1', name: '速度と加速度', drills: ['d-fall'],
     steps: [
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1, vB: 0, e: 1 }, title: '速さと速度', text: '台車 A は、同じ時間に同じ距離だけ進んでいる。これが<b>等速直線運動</b>。速さに「向き」をつけたものを<b>速度</b>という。右向きを正とすると、左へ進む物体の速度はマイナスになる。', f: '<var>v</var> = <var>x</var>/<var>t</var>　　<var>x</var> = <var>vt</var>' },
+      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1, vB: 0, e: 1 }, title: '速さと速度', text: '台車 A は（B にぶつかる前は）、同じ時間に同じ距離だけ進んでいる。これが<b>等速直線運動</b>。速さに「向き」をつけたものを<b>速度</b>という。右向きを正とすると、左へ進む物体の速度はマイナスになる。', f: '<var>v</var> = <var>x</var>/<var>t</var>　　<var>x</var> = <var>vt</var>' },
       { sim: 'collide', set: { mA: 1, mB: 1, vA: 1.5, vB: -1, e: 1 }, title: '相対速度', text: 'A は右へ、B は左へ動いている。A から見た B の速度（相対速度）は「B の速度 − A の速度」。近づく速さは 1.5 + 1 = 2.5 m/s になる。', f: '<var>v</var><sub>AB</sub> = <var>v</var><sub>B</sub> − <var>v</var><sub>A</sub>' },
       { sim: 'incline', set: { th: 20, mu0: 0, mu: 0, m: 2, vec: false, dec: false }, title: '加速度', text: 'なめらかな斜面を下る物体は、だんだん速くなる。1 秒あたりの速度の変化を<b>加速度</b>という。「自分で試す」の v–t グラフが直線になっていることを確かめよう。', f: '<var>a</var> = (<var>v</var> − <var>v</var><sub>0</sub>)/<var>t</var>　［m/s²］' },
       { sim: 'incline', set: { th: 30, mu0: 0, mu: 0, m: 2, vec: false, dec: false }, title: '等加速度直線運動の式', text: '加速度が一定の運動では、次の3つの式が使える。v–t グラフの<b>傾きが加速度</b>、グラフと t 軸の間の<b>面積が移動距離</b>。', f: '<var>v</var> = <var>v</var><sub>0</sub> + <var>at</var><br><var>x</var> = <var>v</var><sub>0</sub><var>t</var> + ½<var>at</var><sup>2</sup><br><var>v</var><sup>2</sup> − <var>v</var><sub>0</sub><sup>2</sup> = 2<var>ax</var>' },
@@ -2999,7 +3018,7 @@ const LESSONS = [
   { id: 'k-energy', course: 'kiso', part: 0, chap: 2, no: '3-1', name: '力学的エネルギーの保存', drills: ['d-pend'],
     steps: [
       { sim: 'pend', set: { L: 1, th0: 40, m: 0.2, g: 9.8, vec: false, trail: true }, title: '運動エネルギーと位置エネルギー', text: '速さ <var>v</var> で動く物体は<b>運動エネルギー</b>をもつ。高さ <var>h</var> にある物体は重力による<b>位置エネルギー</b>をもつ。', f: '<var>K</var> = ½<var>mv</var><sup>2</sup>　<var>U</var> = <var>mgh</var>' },
-      { sim: 'pend', set: { L: 1, th0: 40, m: 0.2, g: 9.8, vec: false, trail: true }, title: '力学的エネルギー保存の法則', text: '振り子では、高い所で位置エネルギーが大きく、最下点で運動エネルギーが大きい。2つは入れかわるが、<b>和は一定</b>。「自分で試す」のバーの合計が変わらないことを見よう。', f: '½<var>mv</var><sup>2</sup> + <var>mgh</var> = 一定' },
+      { sim: 'pend', set: { L: 1, th0: 40, m: 0.2, g: 9.8, vec: false, trail: true }, title: '力学的エネルギー保存の法則', text: '振り子では、高い所で位置エネルギーが大きく、最下点で運動エネルギーが大きい。2つは入れかわるが、<b>和は一定</b>。「自分で試す」の力学的エネルギーのバーが変わらないことを見よう。', f: '½<var>mv</var><sup>2</sup> + <var>mgh</var> = 一定' },
       { sim: 'spring', set: { m: 0.5, k: 20, A: 0.3, circle: false, vec: true }, title: '弾性エネルギー', text: 'のびたり縮んだりしたばねも、エネルギーをもつ（<b>弾性エネルギー</b>）。ばね振り子でも、運動エネルギーと弾性エネルギーの和は一定。', f: '<var>U</var> = ½<var>kx</var><sup>2</sup>' },
       { sim: 'incline', set: { th: 35, mu0: 0.4, mu: 0.25, m: 2, vec: true, dec: false }, title: '保存しないとき', text: '摩擦力がはたらくと、力学的エネルギーの一部は<b>熱</b>になって減る。力学的エネルギーが保存されるのは、重力や弾性力だけが仕事をするとき。', f: '仕事 <var>W</var> = <var>Fx</var> cos<var>θ</var>' },
     ],
@@ -3040,8 +3059,8 @@ const LESSONS = [
     ] },
   { id: 'k-sound', course: 'kiso', part: 2, chap: 1, no: '6-1', name: '弦と気柱の振動', drills: ['d-pipe'],
     steps: [
-      { sim: 'standing', set: { mode: 'string', n: 1, Lr: 0.6, vs: 340, split: true }, title: '定常波', text: '両はしで反射した波と、もとの波が重なると、その場でゆれるだけの波（<b>定常波</b>）ができる。青と赤の2つの進行波をたすと、白い弦の形になる。' },
-      { sim: 'standing', set: { mode: 'string', n: 3, Lr: 0.6, vs: 340, split: false }, title: '弦の固有振動', text: '弦の両はしは固定されているので<b>節</b>になる。弦の長さに、半波長がちょうど <var>n</var> 個入る振動だけが続く。', f: '<var>L</var> = <var>n</var> · <var>λ</var>/2　→　<var>f</var> = <var>n</var><var>v</var>/2<var>L</var>' },
+      { sim: 'standing', set: { mode: 'string', n: 1, Lr: 0.6, vs: 340, split: true }, title: '定常波', text: '両はしで反射した波と、もとの波が重なると、その場でゆれるだけの波（<b>定常波</b>）ができる。青と赤の2つの進行波をたすと、金色の弦の形になる。' },
+      { sim: 'standing', set: { mode: 'string', n: 3, Lr: 0.6, vs: 340, split: false }, title: '弦の固有振動', text: '弦の両はしは固定されているので<b>節</b>になる。弦の長さに、半波長がちょうど <var>n</var> 個入る振動だけが続く。', f: '<var>L</var> = <var>n</var> · <var>λ</var>/2　→　<var>f</var> = <var>n</var><var>V</var>/2<var>L</var>' },
       { sim: 'standing', set: { mode: 'open', n: 1, Lr: 0.6, vs: 340, split: false }, title: '開管', text: '両はしが開いた管では、はしで空気が自由に動けるので<b>腹</b>になる。振動数の並び方は弦と同じ（1, 2, 3 … 倍）。', f: '<var>f</var> = <var>n</var><var>V</var>/2<var>L</var>' },
       { sim: 'standing', set: { mode: 'closed', n: 1, Lr: 0.6, vs: 340, split: false }, title: '閉管', text: '片方が閉じた管では、閉じたはしが節、開いたはしが腹。管の長さに 1/4 波長が奇数個入るので、<b>奇数倍</b>の振動だけが起こる。', f: '<var>L</var> = (2<var>n</var> − 1) · <var>λ</var>/4' },
     ],
@@ -3132,7 +3151,7 @@ const LESSONS = [
       { sim: 'spring', set: { m: 0.5, k: 20, A: 0.3, circle: false, vec: true }, title: '復元力', text: 'ばねの力は変位に比例し、いつも中心に向かう（<b>復元力</b>）。中心で速さ最大・力 0、両はしで速さ 0・力最大。', f: '<var>F</var> = −<var>kx</var>　<var>a</var> = −<var>ω</var><sup>2</sup><var>x</var>' },
       { sim: 'spring', set: { m: 2, k: 20, A: 0.3, circle: false, vec: true }, title: 'ばね振り子の周期', text: '質量を 4 倍（0.5 kg → 2 kg）にすると、周期は 2 倍になる。周期は振幅によらない。', f: '<var>T</var> = 2π√(<var>m</var>/<var>k</var>)' },
       { sim: 'pend', set: { L: 1, th0: 10, m: 0.2, g: 9.8, vec: true, trail: true }, title: '単振り子', text: '振れ角が小さいとき、単振り子も単振動とみなせる。周期は長さと <var>g</var> だけで決まり、おもりの質量によらない。', f: '<var>T</var> = 2π√(<var>L</var>/<var>g</var>)' },
-      { sim: 'pend', set: { L: 1, th0: 70, m: 0.2, g: 9.8, vec: false, trail: true }, title: '振れ角が大きいと', text: '振れ角を 70° にすると、測った周期が公式より 10 % 近く長くなる。公式は「振れが小さいとき」の近似。' },
+      { sim: 'pend', set: { L: 1, th0: 70, m: 0.2, g: 9.8, vec: false, trail: true }, title: '振れ角が大きいと', text: '振れ角を 70° にすると、測った周期が公式より約 10 % 長くなる。公式は「振れが小さいとき」の近似。' },
     ],
     exam: ['周期 T = 2π√(m/k)、最大の速さ Aω、最大の加速度 Aω²', '鉛直ばね振り子は、つり合いの位置を中心とした単振動', '単振り子の周期は振れ角が小さいとき'],
     quiz: [
@@ -3187,7 +3206,7 @@ const LESSONS = [
     steps: [
       { sim: 'doppler', set: { vs: 0, f0: 500 }, title: '止まった音源', text: '音源が止まっていると、波面は同心円。前でも後ろでも同じ振動数の音が聞こえる。' },
       { sim: 'doppler', set: { vs: 120, f0: 500 }, title: '音源が動くと', text: '音源が動くと、進む向きの前では波面がつまり（波長が短い）、後ろでは広がる。音の速さは同じなので、前では<b>高い音</b>、後ろでは<b>低い音</b>に聞こえる。', f: '<var>λ\'</var> = (<var>V</var> − <var>v<sub>s</sub></var>)/<var>f</var>　<var>f\'</var> = <var>V</var>/(<var>V</var> − <var>v<sub>s</sub></var>) · <var>f</var>' },
-      { sim: 'doppler', set: { vs: 120, f0: 500 }, title: '観測者が動くとき', text: '観測者が音源に向かって動くと、1秒間に出会う波の数が増え、高く聞こえる。まとめた式は次のとおり（「音源 → 観測者」の向きが正）。', f: '<var>f\'</var> = (<var>V</var> − <var>v<sub>o</sub></var>)/(<var>V</var> − <var>v<sub>s</sub></var>) · <var>f</var>' },
+      { sim: 'doppler', set: { vs: 120, f0: 500 }, title: '観測者が動くとき', text: '観測者が音源に向かって動くと、1秒間に出会う波の数が増え、高く聞こえる。まとめた式は次のとおり（「音源 → 観測者」の向きが正）。このシミュレーションでは観測者は止まっているので、式で考えよう。', f: '<var>f\'</var> = (<var>V</var> − <var>v<sub>o</sub></var>)/(<var>V</var> − <var>v<sub>s</sub></var>) · <var>f</var>' },
       { sim: 'doppler', set: { vs: 420, f0: 500 }, title: '衝撃波', text: '音源が音速より速いと、波面が重なり合って円すい形の<b>衝撃波</b>ができる。飛行機のソニックブーム。' },
     ],
     exam: ['音源の速度・観測者の速度の符号（音源 → 観測者を正）', '反射板があるときは「反射板が観測者 → 音源」と2段階で考える', '風があるときは音速を V ± w にする'],
@@ -3215,7 +3234,7 @@ const LESSONS = [
   { id: 'b-lens', course: 'butsuri', part: 2, chap: 2, no: '7-2', name: 'レンズ', drills: ['d-lens'],
     steps: [
       { sim: 'lens', set: { kind: 'convex', a: 6, f: 2, rays: true }, title: '凸レンズと焦点', text: '光軸に平行な光は、凸レンズを通ると<b>焦点</b> F\' に集まる。像の作図には3本の光線を使う。' },
-      { sim: 'lens', set: { kind: 'convex', a: 6, f: 2, rays: true }, title: '実像', text: '物体が焦点より外側にあると、光が1点に集まって<b>倒立の実像</b>ができる。スクリーンに映る。', f: '1/<var>a</var> + 1/<var>b</var> = 1/<var>f</var>　倍率 <var>m</var> = <var>b</var>/<var>a</var>' },
+      { sim: 'lens', set: { kind: 'convex', a: 6, f: 2, rays: true }, title: '実像', text: '物体が焦点より外側にあると、光が1点に集まって<b>倒立の実像</b>ができる。スクリーンに映る。', f: '1/<var>a</var> + 1/<var>b</var> = 1/<var>f</var>　倍率 <var>m</var> = |<var>b</var>/<var>a</var>|' },
       { sim: 'lens', set: { kind: 'convex', a: 4, f: 2, rays: true }, title: '同じ大きさの像', text: '物体を焦点距離の 2 倍の位置に置くと、反対側の 2<var>f</var> の位置に、同じ大きさの倒立実像ができる。' },
       { sim: 'lens', set: { kind: 'convex', a: 1.2, f: 2, rays: true }, title: '虚像（虫めがね）', text: '物体を焦点の内側に置くと、光は集まらない。光を逆にのばした所に、<b>正立で大きい虚像</b>が見える。式では <var>b</var> が負になる。' },
       { sim: 'lens', set: { kind: 'concave', a: 5, f: 2, rays: true }, title: '凹レンズ', text: '凹レンズは光を広げる。像はいつも<b>正立・縮小の虚像</b>。式では <var>f</var> を負にして使う。近視のめがね。' },
@@ -3258,7 +3277,7 @@ const LESSONS = [
     ] },
   { id: 'b-induct', course: 'butsuri', part: 3, chap: 2, no: '10-1', name: '電磁誘導の法則', drills: [],
     steps: [
-      { sim: 'induct', set: { auto: true, sp: 1, N: 15, pole: 'N' }, title: 'ファラデーの法則', text: 'コイルに生じる起電力は、磁束の変化の速さと巻き数に比例する。グラフの朱色（起電力）は、緑（磁束）のグラフの<b>傾き</b>になっている。', f: '<var>V</var> = −<var>N</var> Δ<var>Φ</var>/Δ<var>t</var>' },
+      { sim: 'induct', set: { auto: true, sp: 1, N: 15, pole: 'N' }, title: 'ファラデーの法則', text: 'コイルに生じる起電力は、磁束の変化の速さと巻き数に比例する。グラフの朱色（起電力）は、緑（磁束）のグラフの傾きの<b>符号を逆にしたもの</b>。磁束が増えるとき、起電力は負になる。', f: '<var>V</var> = −<var>N</var> Δ<var>Φ</var>/Δ<var>t</var>' },
       { sim: 'induct', set: { auto: true, sp: 1, N: 15, pole: 'S' }, title: 'レンツの法則', text: 'S極を近づけると、電流の向きは N極のときと逆。いつも磁束の変化をさまたげる向きに流れる。' },
       { sim: 'induct', set: { auto: true, sp: 2.5, N: 30, pole: 'N' }, title: '速さと巻き数', text: '速く動かすと Δ<var>t</var> が小さくなり、巻き数を増やすと <var>N</var> が大きくなる。どちらも起電力が大きくなる。' },
       { sim: 'induct', set: { auto: false, x: 0, sp: 1, N: 15, pole: 'N' }, title: '止まると', text: '磁石をコイルの中で止めると、磁束は大きくても変化しないので、起電力は 0。起電力を決めるのは「磁束」ではなく「磁束の変化」。' },
@@ -3275,8 +3294,8 @@ const LESSONS = [
       { sim: 'photo', set: { nm: 400, I: 0.5, U: 1, metal: 'Na' }, title: '光電効果', text: '金属に光を当てると、電子が飛び出すことがある（<b>光電効果</b>）。飛び出した電子（光電子）が陽極に届くと電流が流れる。' },
       { sim: 'photo', set: { nm: 650, I: 1, U: 1, metal: 'Na' }, title: '強い光でも出ない', text: '赤い光は、どれだけ強くしても電子が出ない。「波なら強ければいつか出る」はずなので、光を波と考えると説明できない。' },
       { sim: 'photo', set: { nm: 400, I: 0.5, U: 1, metal: 'Na' }, title: '光子', text: 'アインシュタインは、光はエネルギー <var>hν</var> の粒（<b>光子</b>）の集まりと考えた。電子1個は光子1個からエネルギーをもらう。それが仕事関数 <var>W</var> より大きいと飛び出す。', f: '<var>E</var> = <var>hν</var> = <var>hc</var>/<var>λ</var>　<var>K</var><sub>0</sub> = <var>hν</var> − <var>W</var>' },
-      { sim: 'photo', set: { nm: 300, I: 0.5, U: -1, metal: 'Na' }, title: '阻止電圧', text: '陽極の電圧をマイナスにすると、電子は押しもどされる。最も速い電子も届かなくなる電圧が<b>阻止電圧</b> <var>V</var><sub>0</sub>。', f: '<var>eV</var><sub>0</sub> = <var>K</var><sub>0</sub>' },
-      { sim: 'photo', set: { nm: 300, I: 1, U: 1, metal: 'Zn' }, title: '光の強さと振動数', text: '光を強くすると光子の数が増え、<b>電子の数（電流）</b>が増える。振動数を大きくすると光子1個のエネルギーが増え、<b>電子が速く</b>なる。' },
+      { sim: 'photo', set: { nm: 300, I: 0.5, U: -1, metal: 'Na' }, title: '阻止電圧', text: '陽極の電圧をマイナスにすると、電子は押しもどされる。−1 V ではまだ速い電子が届く。最も速い電子も届かなくなる電圧（ここでは約 −1.8 V）が<b>阻止電圧</b> <var>V</var><sub>0</sub>。「自分で試す」で電圧を下げて確かめよう。', f: '<var>eV</var><sub>0</sub> = <var>K</var><sub>0</sub>' },
+      { sim: 'photo', set: { nm: 250, I: 1, U: 1, metal: 'Zn' }, title: '光の強さと振動数', text: '光を強くすると光子の数が増え、<b>電子の数（電流）</b>が増える。振動数を大きくすると光子1個のエネルギーが増え、<b>電子が速く</b>なる。' },
     ],
     exam: ['K₀–ν グラフ：傾き h、横軸との交点が限界振動数 ν₀', '1 eV = 1.6×10⁻¹⁹ J', '光の粒子性（光子）と波動性の二重性'],
     quiz: [
@@ -3341,7 +3360,8 @@ function lessonMenuHTML() {
     <div class="ls-score"><span>${courseName(c)}の合格</span><b>${passN}</b><span>/ ${list.length}</span></div><div class="qprog"><i style="width:${passN / list.length * 100}%"></i></div>
     ${nx ? `<button type="button" class="btn main ls-go" data-lesson="${nx.id}">${list.some(l => lessonDone.has(l.id)) ? '続きから' : '最初から'}：${esc(nx.no)}　${esc(nx.name)} →</button>` : '<div class="verdict ok">全部の授業を見終わりました！</div>'}
     ${LESSON_PARTS[c].map((pt, pi) => `<h3 class="ls-part">${esc(pt.name)}</h3>` + pt.chaps.map((ch, ci) => { const ls = list.filter(l => l.part === pi && l.chap === ci); return ls.length ? `<h4 class="ls-chap">${esc(ch)}</h4>` + ls.map(l => `<div class="ls-row"><button type="button" class="item" data-lesson="${l.id}"><span class="ls-no">${esc(l.no)}</span><span>${esc(l.name)}</span>${lessonPass.has(l.id) ? '<i class="stamp s" title="合格">合格</i>' : lessonDone.has(l.id) ? '<span class="done">✓</span>' : ''}</button><button type="button" class="btn ls-t" data-lstest="${l.id}" title="確認テストだけをする">テスト</button></div>`).join('') : ''; }).join('')).join('')}
-    <p class="note">プロジェクターに映すときは、3D の右上のボタンで全画面に。キーボードの ← → でも進める。</p></div></div>`;
+    <p class="note">プロジェクターに映すときは、授業を始めてから 3D の右上のボタンで全画面に（説明もいっしょに大きく映る）。キーボードの ← → でも進める。</p>
+    ${state.confirmReset ? `<div class="verdict ng">これまでの学習の記録（授業の ✓・合格・実験のクリア・計算の正解・クイズの最高点）をすべて消します。<div class="row" style="margin-top:6px"><button type="button" class="btn main" data-a="resetyes">消す</button><button type="button" class="btn" data-a="resetno">やめる</button></div></div>` : '<button type="button" class="btn ghost" data-a="reset">学習の記録を消す</button>'}</div></div>`;
 }
 function lessonCardHTML() {
   const L = state.lesson, l = L.l;
@@ -3400,6 +3420,15 @@ function lessonClick(t) {
   const tb = t.closest('[data-ltab]');
   if (tb && state.lesson) { state.lesson.tab = tb.dataset.ltab; renderCard(); const b = $('card').querySelector('.body'); if (b) b.scrollTop = 0; return true; }
   const a = t.closest('[data-a]');
+  if (a && state.mode === 'lesson' && !state.lesson) {
+    const k = a.dataset.a;
+    if (k === 'reset' || k === 'resetno') { state.confirmReset = k === 'reset'; renderCard(); return true; }
+    if (k === 'resetyes') {
+      [done, lessonDone, lessonPass].forEach(x => x.clear());
+      try { [DONE_KEY, LS_DONE_KEY, LS_PASS_KEY, BEST_KEY].forEach(x => localStorage.removeItem(x)); } catch (e) { /* 無視 */ }
+      state.confirmReset = false; renderLib(); renderCard(); toast('学習の記録を消しました。', 'info'); return true;
+    }
+  }
   if (!a || !state.lesson) return false;
   const L = state.lesson, k = a.dataset.a;
   if (k === 'lsnext') { lessonMove(1); return true; }
@@ -3587,6 +3616,8 @@ function simCardHTML() {
       <div class="ls-exam"><h3>テスト・入試に出るポイント</h3>${esc(d.exam)}</div>`;
     const ds = DRILLS.filter(x => x.sim === d.id);
     if (ds.length) h += `<h3 class="sub">この単元の計算問題</h3><div class="row">${ds.map(x => `<button type="button" class="btn" data-drill="${x.id}">${esc(x.name)} →</button>`).join('')}</div>`;
+    const ls = LESSONS.filter(l => l.steps.some(st => st.sim === d.id));
+    if (ls.length) h += `<h3 class="sub">この実験を使う授業</h3><div class="row">${ls.map(l => `<button type="button" class="btn" data-lesson="${l.id}">${courseName(l.course)} ${esc(l.no)} ${esc(l.name)} →</button>`).join('')}</div>`;
   }
   return h + '</div>';
 }
@@ -3693,7 +3724,8 @@ $('btnStep').addEventListener('click', () => { const s = state.s; if (!s || s.en
 $('speed').addEventListener('click', ev => { const b = ev.target.closest('[data-sp]'); if (!b) return; state.speed = +b.dataset.sp; document.querySelectorAll('#speed [data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
 $('btnReset').addEventListener('click', () => { if (R && R.lastView) view(...R.lastView); });
 $('btnFull').addEventListener('click', () => {
-  const w = $('stageWrap');
+  // 授業モードでは説明パネルもいっしょに全画面にする（プロジェクター向け）
+  const w = state.mode === 'lesson' && state.lesson ? document.documentElement : $('stageWrap');
   if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
   if (w.requestFullscreen) w.requestFullscreen().catch(() => w.classList.toggle('is-max')); else w.classList.toggle('is-max');
 });
