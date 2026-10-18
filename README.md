@@ -4,6 +4,7 @@
 `index.html` 1ファイルだけで動きます（インストール不要）。
 
 **公開ページ（GitHub Pages を有効にした場合）**: https://nakatadaiki1012-design.github.io/physics-simulator/
+
 見た目と画面の構成は「分子ラボ3D（chemistry-simulator）」とそろえています。
 
 ## 使い方
