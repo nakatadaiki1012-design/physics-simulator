@@ -180,6 +180,17 @@ ol.sol { margin: 6px 0 0; padding-left: 22px; font-size: 14px; }
 ol.sol li { margin-bottom: 4px; }
 .stamp { display: inline-grid; place-items: center; font-family: var(--font-display); font-weight: 800; color: var(--stamp); border: 3px solid var(--stamp); border-radius: 50%; line-height: 1; transform: rotate(-12deg); width: 72px; height: 72px; font-size: 21px; margin: 4px 0 10px; box-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 4.5px var(--stamp); }
 .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+/* 3Dのそばの「いまの式」 */
+.eqbox { position: absolute; left: 0; top: 0; z-index: 3; max-width: min(360px, calc(100% - 16px)); background: var(--glass); border: 1px solid var(--ink); border-radius: 3px; padding: 6px 10px 7px; font-size: 13px; line-height: 1.55; box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 18%, transparent); pointer-events: none; transition: transform .12s linear; }
+.eqbox .eq-h { font-size: 10.5px; letter-spacing: .12em; color: var(--warm); font-weight: 700; }
+.eqbox b { display: block; font-family: var(--font-display); font-size: 13.5px; margin-bottom: 1px; }
+.eqbox div { white-space: normal; }
+.eqbox em { font-style: normal; font-family: var(--font-data); font-weight: 600; color: var(--accent); background: var(--chip); padding: 0 4px; border-radius: 2px; }
+.eqbox .sm { font-size: 12px; color: var(--muted); }
+body.present .eqbox { font-size: 14.5px; max-width: 420px; }
+.eqbtn { font-family: var(--font-display); font-weight: 800; font-size: 15px; }
+@media (max-width: 900px) { .eqbox { font-size: 11.5px; max-width: calc(100% - 16px); padding: 4px 8px; } .eqbox b { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .eqbox { transition: none; } }
 /* かみくだいた説明・計算のヒント */
 .easy { background: color-mix(in srgb, var(--ke) 12%, var(--panel)); border-left: 3px solid var(--ke); border-radius: 2px; padding: 8px 12px; margin: 8px 0; font-size: 15.5px; line-height: 1.8; }
 .easy > b:first-child { display: block; font-size: 12px; color: var(--ink); letter-spacing: .06em; font-family: var(--font-display); }
@@ -282,7 +293,9 @@ body.present .lib { display: none; }
     <div id="stage"></div>
     <div class="labels" id="labels"></div>
     <div class="ov ov-tl" id="ovTL"></div>
+    <div class="eqbox" id="eqbox" aria-live="off" hidden></div>
     <div class="ov ov-tr">
+      <button type="button" class="ibtn eqbtn" id="btnEq" aria-pressed="true" title="いま動いている式を3Dのそばに出す" aria-label="いまの式を表示">式</button>
       <button type="button" class="ibtn" id="btnReset" title="見る向きをもどす" aria-label="見る向きをもどす"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
       <button type="button" class="ibtn" id="btnFull" title="全画面（プロジェクター向け）" aria-label="全画面"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     </div>
@@ -591,7 +604,7 @@ function initThree() {
     controls.enableDamping = true; controls.dampingFactor = 0.09; controls.minDistance = 0.3; controls.maxDistance = 600;
     controls.enableZoom = false; controls.screenSpacePanning = true;
     const group = new THREE.Group(); scene.add(group);
-    R = { renderer, scene, camera, controls, group, floor, hemi, labels: [] };
+    R = { renderer, scene, camera, controls, group, floor, hemi, labels: [], chars: [] };
     setupZoomToPoint(renderer.domElement);
     const resize = () => {
       const w = stage.clientWidth, h = stage.clientHeight;
@@ -619,10 +632,10 @@ function clearScene() {
   const g = R.group;
   while (g.children.length) {
     const o = g.children.pop();
-    o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) { const ms = Array.isArray(x.material) ? x.material : [x.material]; ms.forEach(m => { if (m.map && !x.userData.keepMap) m.map.dispose(); m.dispose(); }); } });
+    o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) { const ms = Array.isArray(x.material) ? x.material : [x.material]; ms.forEach(m => { if (m.userData && m.userData.shared) return; if (m.map && !x.userData.keepMap) m.map.dispose(); m.dispose(); }); } });
   }
   $('labels').innerHTML = '';
-  R.labels = [];
+  R.labels = []; R.chars = [];
   R.camera.up.set(0, 1, 0);
   R.controls.maxPolarAngle = Math.PI * 0.49;
   R.controls.minPolarAngle = 0;
@@ -745,6 +758,8 @@ function loadSim(id, keep) {
   const s = { p: PARAMS[id], mem: MEM[id], t: 0, acc: 0, def, ended: false, lastLive: 0 };
   state.s = s;
   def.init(s);
+  if (typeof ACTORS !== 'undefined' && ACTORS[id]) ACTORS[id].init(s);
+  s.eqAt = null; $('eqbox').innerHTML = ''; $('eqbox').hidden = true;
   if (!keep) view(...def.view(s));
   state.running = def.autoplay !== false;
   updatePlay();
@@ -772,6 +787,7 @@ function loop(now) {
   if (s) {
     if (state.running && !s.ended) advance(s, realDt * state.speed * (s.def.timeScale || 1));
     if (s.def.draw) s.def.draw(s, now / 1000);
+    if (ACTORS[s.def.id]) ACTORS[s.def.id].draw(s, now / 1000);
     if (now - s.lastLive > 110) { s.lastLive = now; renderLive(); }
     // 授業では、終わった実験を少し待ってからくり返す（説明を読んでいる間も動いて見える）
     if (s.ended && state.mode === 'lesson' && state.lesson && !state.lesson.quiz && now - (s.endedAt || now) > 2500) {
@@ -779,9 +795,12 @@ function loop(now) {
       if (state.lesson.tab === 'try') renderCard();
     }
   }
+  const ad = realDt * (state.running && s && !s.ended ? state.speed : 1);
+  R.chars.forEach(c => c.update(ad, now / 1000));
   R.controls.update();
   R.renderer.render(R.scene, R.camera);
   layoutLabels();
+  placeEq();
   adaptQuality(now);
 }
 // 動きが重い端末では、画面の細かさ（ピクセル比）を下げてなめらかにする
@@ -812,6 +831,7 @@ function togglePlay() {
 function renderLive(force) {
   const s = state.s; if (!s) return;
   $('clock').textContent = clockText(s);
+  renderEq(s);
   const liveOK = state.mode === 'sim' ? state.tab === 'try' : state.mode === 'lesson' && state.lesson && !state.lesson.quiz && state.lesson.tab === 'try';
   if (!liveOK || !s.def.live) { checkGoal(s); return; }
   const card = $('card');
@@ -865,6 +885,36 @@ function renderLegend() {
   const s = state.s, el = $('ovTL');
   const lg = s && s.def.legend;
   el.innerHTML = lg && (state.mode === 'sim' || state.mode === 'lesson' && state.lesson) ? `<div class="legend">${lg.map(([c, n]) => `<span class="${c}"><i></i>${n}</span>`).join('')}</div>` : '';
+}
+
+// ===== 3Dのそばに「いまの式」を出す =====
+let showEq = true;
+try { showEq = localStorage.getItem('physics-3d:eq') !== '0'; } catch (e) { /* 無視 */ }
+function renderEq(s) {
+  const box = $('eqbox'), on = showEq && EQ[s.def.id] && (state.mode === 'sim' || state.mode === 'lesson' && state.lesson && !state.lesson.quiz);
+  $('btnEq').setAttribute('aria-pressed', String(showEq));
+  if (!on) { box.hidden = true; return; }
+  const o = EQ[s.def.id](s);
+  s.eqAt = o.at || null;
+  const h = '<div class="eq-h">いまの式</div>' + o.html;
+  if (box._v !== h) { box._v = h; box.innerHTML = h; }
+  box.hidden = false;
+}
+function placeEq() {
+  const box = $('eqbox'), s = state.s;
+  if (box.hidden || !s) return;
+  const st = $('stage'), W = st.clientWidth, H = st.clientHeight, bw = box.offsetWidth, bh = box.offsetHeight;
+  let x = 10, y = H - bh - 58;
+  if (s.eqAt) {
+    const v = s.eqAt.clone().project(R.camera);
+    const px = (v.x + 1) / 2 * W, py = (1 - v.y) / 2 * H;
+    if (v.z < 1 && px > -20 && px < W + 20 && py > -20 && py < H + 20) {
+      x = px + 26 + bw > W - 8 ? px - 26 - bw : px + 26;
+      y = py - bh / 2;
+      x = clamp(x, 8, W - bw - 8); y = clamp(y, 52, H - bh - 58);
+    }
+  }
+  box.style.transform = `translate(${x.toFixed(0)}px, ${y.toFixed(0)}px)`;
 }
 
 // ======================= 力学 =======================
@@ -994,16 +1044,11 @@ sim({
     setFloor(true, s.span > 25 ? 5 : 1, 0);
     // 台と発射台
     if (p.h0 > 0) { const t = roundBox(1.6, p.h0, 1.4, 0.06, solid(0xb39b78, { shininess: 10 })); t.position.set(-0.4, p.h0 / 2, 0); g.add(t); g.add(contactShadow(2.4, 2.2, 0.45)).position.x = -0.4; }
-    const base = new THREE.Group(); base.position.set(0, p.h0, 0); g.add(base);
+    // 発射はキャラクターのキック（ボールは足もと x = 0 から飛び出す）
     const k = s.span / 14;
-    const wheelM = solid(0x4a3a2c, { shininess: 20 });
-    [-0.3, 0.3].forEach(z => { const w = cyl(0.32 * k, 0.32 * k, 0.08 * k, wheelM, 24); w.rotation.x = Math.PI / 2; w.position.set(-0.15 * k, 0.32 * k, z * k); base.add(w); });
-    const barrel = new THREE.Group(); barrel.position.set(-0.15 * k, 0.42 * k, 0); base.add(barrel);
-    const tube = cyl(0.13 * k, 0.17 * k, 1.1 * k, metal(0x50565e, 0.35), 24); tube.rotation.z = -Math.PI / 2; tube.position.x = 0.35 * k; barrel.add(tube);
-    barrel.rotation.z = th; s.muzzle = V3(-0.15 * k + Math.cos(th) * 0.9 * k, p.h0 + 0.42 * k + Math.sin(th) * 0.9 * k, 0);
-    s.x0 = s.muzzle.x; s.y0 = s.muzzle.y - p.h0 > 0 ? p.h0 : p.h0;
+    s.x0 = 0;
     // 角度の弧
-    const arc = []; for (let i = 0; i <= 24; i++) { const a = th * i / 24; arc.push(V3(-0.15 * k + Math.cos(a) * 1.4 * k, p.h0 + 0.42 * k + Math.sin(a) * 1.4 * k, 0)); }
+    const arc = []; for (let i = 0; i <= 24; i++) { const a = th * i / 24; arc.push(V3(Math.cos(a) * 1.4 * k, p.h0 + 0.02 + Math.sin(a) * 1.4 * k, 0)); }
     g.add(makeLine(arc, COL.ink, 0, 0.6));
     // 後ろのかべ（たての動きの影）
     s.wallX = -1.5 - 0.2 * k;
@@ -2305,7 +2350,7 @@ sim({
     const arrow = (color, op) => { const gg = new THREE.Group(); const m = new THREE.MeshPhongMaterial({ color, transparent: op < 1, opacity: op, depthWrite: op >= 1 }); const sh2 = cyl(0.05, 0.05, 1, m, 12); sh2.position.y = 0.5; gg.add(sh2); const hd = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 16), m); hd.position.y = 1.0; gg.add(hd); g.add(gg); return gg; };
     s.obj = arrow(0xd08a1e, 1); s.img = arrow(0xb8502c, 0.55);
     s.flame = ball(0.08, new THREE.MeshBasicMaterial({ color: 0xffc040 })); g.add(s.flame);
-    s.screen = box(0.04, 2.6, 1.6, solid(0xf6f3ea, { shininess: 5 })); g.add(s.screen);
+    s.screen = box(0.04, 2.6, 1.6, new THREE.MeshPhongMaterial({ color: 0xf6f3ea, shininess: 5, transparent: true, opacity: 0.55, depthWrite: false })); s.screen.renderOrder = 4; g.add(s.screen);
     s.rayG = new THREE.Group(); g.add(s.rayG);
     s.rays = [0, 1, 2].map(() => makeLine([V3(), V3(), V3()], 0xe0a020, 0, 0.95));
     s.ext = [0, 1, 2].map(() => makeLine([V3(), V3()], 0xe0a020, 0.1, 0.6));
@@ -2956,6 +3001,627 @@ sim({
   exam: '光電方程式の計算、阻止電圧から仕事関数を求める問題、K₀–ν グラフの読み取り、光子の数の計算がよく出る。',
   view() { return [[-0.6, 1.6, 0.3], 3.6, [0.25, 0.4, 1]]; },
 });
+
+// ======================= キャラクター（ボディスーツの人） =======================
+// 関節ごとにばねのように追いかけて動く。体の加速度に合わせて上体が慣性でゆれる。
+// makeChar({ color, scale }) → { root, pose(名前|オブジェクト), look(点|null), reach('L'|'R', 点|null), update(dt) }
+const CH = { thigh: 0.44, shin: 0.43, hipH: 0.95, spine: 0.22, chest: 0.27, neck: 0.07, upper: 0.29, fore: 0.27 };
+let CH_MATS = null;
+function charMats(color, ghost) {
+  if (!CH_MATS) CH_MATS = {};
+  const key = color;
+  if (!ghost && CH_MATS[key]) return CH_MATS[key];
+  const m = {
+    suit: new THREE.MeshPhongMaterial({ color: 0x27303b, shininess: 70, specular: 0x5a6878, envMap: envMap(), combine: THREE.MixOperation, reflectivity: 0.08 }),
+    panel: new THREE.MeshPhongMaterial({ color: 0x3a4554, shininess: 90, specular: 0x8899aa }),
+    accent: new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.55, shininess: 60 }),
+    helmet: new THREE.MeshPhongMaterial({ color: 0xf2f0ea, shininess: 120, specular: 0xffffff, envMap: envMap(), combine: THREE.MixOperation, reflectivity: 0.18 }),
+    visor: new THREE.MeshPhongMaterial({ color: 0x0d1218, shininess: 200, specular: 0xffffff, envMap: envMap(), combine: THREE.MixOperation, reflectivity: 0.45 }),
+  };
+  if (ghost) { Object.values(m).forEach(x => { x.transparent = true; x.opacity = 0.62; x.depthWrite = false; x.side = THREE.DoubleSide; }); return m; }
+  Object.values(m).forEach(x => { x.userData = { shared: true }; });
+  CH_MATS[key] = m;
+  return m;
+}
+// 先細りのカプセル（長さ L、下向き）
+function limbGeo(r1, r2, L) {
+  const pts = [];
+  for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + i / 6 * Math.PI / 2; pts.push(V2(Math.cos(a) * r2, -L + Math.sin(a) * r2 * 0.9)); }
+  for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2; pts.push(V2(Math.cos(a) * r1, Math.sin(a) * r1 * 0.9)); }
+  return new THREE.LatheGeometry(pts.map(p => V2(Math.max(p.x, 1e-3), p.y)), 20);
+}
+const POSES = {
+  stand: {},
+  idle: { shL: [0, 0, 6], shR: [0, 0, -6], elL: [-8, 0, 0], elR: [-8, 0, 0] },
+  ready: { spine: [6, 0, 0], shL: [-20, 0, 12], shR: [-20, 0, -12], elL: [-60, 0, 0], elR: [-60, 0, 0], hipL: [-12, 0, 0], hipR: [-12, 0, 0], knL: [22, 0, 0], knR: [22, 0, 0], anL: [-10, 0, 0], anR: [-10, 0, 0] },
+  cheer: { shL: [-10, 0, 150], shR: [-10, 0, -150], elL: [-20, 0, 0], elR: [-20, 0, 0], head: [-12, 0, 0] },
+  point: { shR: [-80, 0, -10], elR: [-5, 0, 0], head: [0, -20, 0] },
+  watch: { shL: [0, 0, 6], shR: [-30, 0, -4], elR: [-110, 0, 0], head: [8, 0, 0], spine: [4, 0, 0] },
+  sit: { hipL: [-88, 0, 4], hipR: [-88, 0, -4], knL: [80, 0, 0], knR: [80, 0, 0], anL: [-6, 0, 0], anR: [-6, 0, 0], shL: [-30, 0, 8], shR: [-30, 0, -8], elL: [-50, 0, 0], elR: [-50, 0, 0] },
+  kneel: { hipL: [-70, 0, 6], hipR: [-10, 0, -6], knL: [80, 0, 0], knR: [100, 0, 0], anL: [-10, 0, 0], anR: [50, 0, 0], spine: [12, 0, 0], shL: [-30, 0, 10], shR: [-30, 0, -10], elL: [-40, 0, 0], elR: [-40, 0, 0] },
+  crouch: { hipL: [-75, 0, 8], hipR: [-75, 0, -8], knL: [120, 0, 0], knR: [120, 0, 0], anL: [-45, 0, 0], anR: [-45, 0, 0], spine: [28, 0, 0], chest: [10, 0, 0] },
+  push: { spine: [18, 0, 0], shL: [-80, 0, 6], shR: [-80, 0, -6], elL: [-25, 0, 0], elR: [-25, 0, 0], hipL: [-30, 0, 0], hipR: [20, 0, 0], knL: [30, 0, 0], knR: [10, 0, 0], anL: [-6, 0, 0], anR: [-20, 0, 0] },
+  pushDown: { spine: [20, 0, 0], shL: [-120, 0, 10], shR: [-120, 0, -10], elL: [-20, 0, 0], elR: [-20, 0, 0], hipL: [-20, 0, 0], hipR: [-20, 0, 0], knL: [35, 0, 0], knR: [35, 0, 0], anL: [-15, 0, 0], anR: [-15, 0, 0] },
+  windup: { spine: [-6, -25, 0], shR: [40, 0, -60], elR: [-80, 0, 0], shL: [-60, 0, 20], hipR: [8, 0, 0], hipL: [-25, 0, 0], knL: [15, 0, 0] },
+  release: { spine: [16, 20, 0], shR: [-140, 0, -10], elR: [-10, 0, 0], shL: [10, 0, 30], hipL: [-20, 0, 0], knL: [15, 0, 0], hipR: [15, 0, 0] },
+  kickBack: { spine: [-8, 0, 0], hipR: [40, 0, 0], knR: [70, 0, 0], shL: [-40, 0, 30], shR: [30, 0, -30], hipL: [-8, 0, 0], knL: [14, 0, 0] },
+  kick: { spine: [-14, 0, 0], hipR: [-85, 0, 0], knR: [8, 0, 0], anR: [20, 0, 0], shL: [20, 0, 40], shR: [-50, 0, -30], hipL: [-4, 0, 0], knL: [10, 0, 0] },
+  hot: { shR: [-150, 0, -30], elR: [-110, 0, 0], head: [-10, 0, 0], shL: [0, 0, 8] },
+  ear: { shR: [-20, 0, -60], elR: [-140, 0, 0], head: [0, 20, -10], shL: [0, 0, 6] },
+  shield: { shL: [-110, 0, 30], shR: [-110, 0, -30], elL: [-90, 0, 0], elR: [-90, 0, 0], head: [10, 0, 0], spine: [-10, 0, 0] },
+  float: { shL: [-20, 0, 70], shR: [-20, 0, -70], elL: [-30, 0, 0], elR: [-30, 0, 0], hipL: [-20, 0, 12], hipR: [-6, 0, -12], knL: [40, 0, 0], knR: [20, 0, 0] },
+  swing: { hipL: [-80, 0, 2], hipR: [-80, 0, -2], knL: [70, 0, 0], knR: [70, 0, 0], shL: [-160, 0, 6], shR: [-160, 0, -6], elL: [-10, 0, 0], elR: [-10, 0, 0] },
+  blow: { spine: [24, 0, 0], neck: [10, 0, 0], shL: [-60, 0, 20], shR: [-60, 0, -20], elL: [-80, 0, 0], elR: [-80, 0, 0] },
+  sled: { hipL: [-88, 0, 10], hipR: [-88, 0, -10], knL: [30, 0, 0], knR: [30, 0, 0], anL: [-30, 0, 0], anR: [-30, 0, 0], spine: [-10, 0, 0], shL: [-50, 0, 20], shR: [-50, 0, -20], elL: [-30, 0, 0], elR: [-30, 0, 0] },
+};
+// すわる・ひざをつくポーズでは腰を下げる（sit・sled・swing は root が座面）
+const DROP = { sit: 0.87, sled: 0.87, swing: 0.87, kneel: 0.45, crouch: 0.4, ready: 0.08, pushDown: 0.1, blow: 0.03 };
+const JOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'shL', 'elL', 'wrL', 'shR', 'elR', 'wrR', 'hipL', 'knL', 'anL', 'hipR', 'knR', 'anR'];
+function makeChar(opts) {
+  opts = opts || {};
+  const M = charMats(opts.color === undefined ? 0x3cc4a0 : opts.color, opts.ghost);
+  const root = new THREE.Group(); root.userData.noFit = !!opts.noFit;
+  const sc = opts.scale || 1; root.scale.setScalar(sc);
+  const J = {};
+  const mk = (name, parent, pos) => { const g = new THREE.Group(); g.position.set(...pos); parent.add(g); J[name] = g; return g; };
+  const add = (parent, geo, mat, pos, rot) => { const m = new THREE.Mesh(geo, mat); if (pos) m.position.set(...pos); if (rot) m.rotation.set(...rot); parent.add(m); return m; };
+  const ring = (parent, r, y, rotX) => { const m = add(parent, new THREE.TorusGeometry(r, r * 0.13, 6, 24), M.accent, [0, y || 0, 0], [rotX === undefined ? Math.PI / 2 : rotX, 0, 0]); return m; };
+  // 腰
+  const hips = mk('hips', root, [0, CH.hipH, 0]);
+  add(hips, new THREE.SphereGeometry(0.15, 20, 14), M.suit, [0, 0.02, 0]).scale.set(1.15, 0.8, 0.85);
+  add(hips, new THREE.TorusGeometry(0.152, 0.018, 8, 32), M.accent, [0, 0.07, 0], [Math.PI / 2, 0, 0]).scale.set(1.12, 0.84, 1);
+  // 背骨・胸・首・頭
+  const spine = mk('spine', hips, [0, 0.06, 0]);
+  add(spine, limbGeo(0.12, 0.13, CH.spine), M.suit, [0, CH.spine, 0]).scale.set(1.15, 1, 0.82);
+  const chest = mk('chest', spine, [0, CH.spine, 0]);
+  const torso = add(chest, limbGeo(0.12, 0.15, CH.chest), M.suit, [0, CH.chest, 0]); torso.scale.set(1.3, 1, 0.85);
+  add(chest, new THREE.BoxGeometry(0.2, 0.15, 0.03), M.panel, [0, 0.16, 0.125]).rotation.x = -0.12;
+  add(chest, new THREE.BoxGeometry(0.012, 0.22, 0.012), M.accent, [0.06, 0.14, 0.14]);
+  add(chest, new THREE.BoxGeometry(0.012, 0.22, 0.012), M.accent, [-0.06, 0.14, 0.14]);
+  add(chest, new THREE.CylinderGeometry(0.035, 0.035, 0.012, 16), M.accent, [0, 0.19, 0.142], [Math.PI / 2, 0, 0]);
+  const neck = mk('neck', chest, [0, CH.chest, 0]);
+  add(neck, new THREE.CylinderGeometry(0.045, 0.055, 0.1, 12), M.suit, [0, 0.04, 0]);
+  const head = mk('head', neck, [0, CH.neck, 0]);
+  add(head, new THREE.SphereGeometry(0.115, 28, 20), M.helmet, [0, 0.11, 0]).scale.set(0.95, 1.08, 1.02);
+  const visor = add(head, new THREE.SphereGeometry(0.105, 28, 16, Math.PI * 0.08, Math.PI * 0.84, Math.PI * 0.32, Math.PI * 0.3), M.visor, [0, 0.11, 0.022]); visor.scale.set(1.0, 1.1, 1.06);
+  add(head, new THREE.TorusGeometry(0.1, 0.008, 6, 32, Math.PI), M.accent, [0, 0.165, 0], [0, Math.PI / 2, Math.PI / 2]);
+  // 腕
+  ['L', 'R'].forEach(sd => {
+    const sx = sd === 'L' ? 1 : -1;
+    const sh = mk('sh' + sd, chest, [sx * 0.2, CH.chest - 0.05, 0]);
+    add(sh, new THREE.SphereGeometry(0.062, 16, 12), M.panel);
+    add(sh, limbGeo(0.052, 0.042, CH.upper), M.suit);
+    ring(sh, 0.05, -0.02);
+    const el = mk('el' + sd, sh, [0, -CH.upper, 0]);
+    add(el, new THREE.SphereGeometry(0.044, 12, 10), M.accent).scale.setScalar(0.9);
+    add(el, limbGeo(0.042, 0.034, CH.fore), M.suit);
+    const wr = mk('wr' + sd, el, [0, -CH.fore, 0]);
+    add(wr, new THREE.BoxGeometry(0.06, 0.09, 0.03), M.panel, [0, -0.045, 0]);
+    add(wr, new THREE.BoxGeometry(0.02, 0.05, 0.022), M.panel, [sx * 0.03, -0.03, 0.018], [0.3, 0, sx * 0.3]);
+    ring(wr, 0.035, 0.0);
+    // 脚
+    const hip = mk('hip' + sd, hips, [sx * 0.095, -0.02, 0]);
+    add(hip, limbGeo(0.075, 0.058, CH.thigh), M.suit);
+    add(hip, new THREE.BoxGeometry(0.012, CH.thigh * 0.7, 0.012), M.accent, [sx * 0.072, -CH.thigh * 0.45, 0]);
+    const kn = mk('kn' + sd, hip, [0, -CH.thigh, 0]);
+    add(kn, new THREE.SphereGeometry(0.06, 14, 10), M.panel, [0, 0, 0.02]).scale.set(1, 1, 0.8);
+    add(kn, limbGeo(0.056, 0.042, CH.shin), M.suit);
+    ring(kn, 0.044, -CH.shin + 0.06);
+    const an = mk('an' + sd, kn, [0, -CH.shin, 0]);
+    add(an, new THREE.BoxGeometry(0.085, 0.06, 0.22), M.panel, [0, -0.045, 0.05]);
+    add(an, new THREE.BoxGeometry(0.087, 0.014, 0.222), M.accent, [0, -0.072, 0.05]);
+  });
+  // 関節：いまの角度・速さ・目標
+  const cur = {}, vel = {}, tgt = {};
+  JOINTS.forEach(k => { cur[k] = V3(); vel[k] = V3(); tgt[k] = V3(); });
+  const C = { root, J, cur, tgt, sc, k: opts.stiff || 140, ik: { L: null, R: null }, lookAt: null, sway: V3(), lastPos: null, lastVel: null, extra: null };
+  C.pose = (p, extra) => {
+    const P = typeof p === 'string' ? POSES[p] : p;
+    JOINTS.forEach(k => { const a = (P && P[k]) || (POSES.idle[k] && p !== 'stand' ? POSES.idle[k] : null); tgt[k].set(...(a || [0, 0, 0]).map(x => x * DEG)); });
+    if (extra) Object.keys(extra).forEach(k => tgt[k].set(...extra[k].map(x => x * DEG)));
+    C.drop = typeof p === 'string' ? (DROP[p] || 0) : (p && p.drop) || 0;
+    return C;
+  };
+  C.add = (k, a) => { tgt[k].x += a[0] * DEG; tgt[k].y += a[1] * DEG; tgt[k].z += a[2] * DEG; return C; };
+  C.snap = () => { JOINTS.forEach(k => { cur[k].copy(tgt[k]); vel[k].set(0, 0, 0); }); J.hips.position.y = CH.hipH - (C.drop || 0); return C; };
+  C.look = p => { C.lookAt = p; return C; };
+  C.reach = (side, p) => { C.ik[side] = p; return C; };
+  C.hand = side => { const v = V3(0, -0.06, 0); J['wr' + side].localToWorld(v); return v; };
+  C.pose('idle').snap();
+  // 腕の2関節 IK（肩から目標点へ。ひじは下・うしろに曲げる）
+  const _q = new THREE.Quaternion(), _qi = new THREE.Quaternion(), _d = V3(), _n = V3(), _u = V3(), _o = V3(), _pole = V3();
+  function solveArm(side, target, dt) {
+    const sh = J['sh' + side], el = J['el' + side], chestG = J.chest;
+    chestG.updateMatrixWorld(true);
+    sh.getWorldPosition(_o);
+    const inv = new THREE.Matrix4().copy(chestG.matrixWorld).invert();
+    const tL = target.clone().applyMatrix4(inv), oL = _o.clone().applyMatrix4(inv);
+    const s3 = chestG.getWorldScale(V3()).x;
+    _d.subVectors(tL, oL);
+    const L1 = CH.upper, L2 = CH.fore + 0.06;
+    let D = _d.length();
+    if (D < 1e-4) return;
+    _d.divideScalar(D);
+    D = clamp(D, Math.abs(L1 - L2) + 0.02, L1 + L2 - 0.005);
+    const alpha = Math.acos(clamp((L1 * L1 + D * D - L2 * L2) / (2 * L1 * D), -1, 1));
+    const bend = Math.PI - Math.acos(clamp((L1 * L1 + L2 * L2 - D * D) / (2 * L1 * L2), -1, 1));
+    _pole.set(side === 'L' ? 0.5 : -0.5, -1, -0.8).normalize();
+    _n.crossVectors(_d, _pole); if (_n.lengthSq() < 1e-6) _n.set(1, 0, 0); _n.normalize();
+    _u.copy(_d).applyAxisAngle(_n, alpha);
+    _q.setFromUnitVectors(V3(0, -1, 0), _u);
+    const k = 1 - Math.exp(-dt * 14);
+    sh.quaternion.slerp(_q, dt > 0 ? k : 1);
+    _qi.copy(sh.quaternion).invert();
+    const nL = _n.clone().applyQuaternion(_qi);
+    const qe = new THREE.Quaternion().setFromAxisAngle(nL, -bend);
+    el.quaternion.slerp(qe, dt > 0 ? k : 1);
+    J['wr' + side].rotation.set(0, 0, 0);
+    void s3;
+  }
+  C.update = (dt, t) => {
+    dt = Math.min(dt, 0.05);
+    // 体の加速度 → 上体が慣性でゆれる
+    root.updateMatrixWorld(true);
+    const p = root.getWorldPosition(V3());
+    if (C.lastPos && dt > 0) {
+      const v = p.clone().sub(C.lastPos).divideScalar(dt);
+      if (C.lastVel) {
+        const a = v.clone().sub(C.lastVel).divideScalar(dt);
+        const qInv = root.getWorldQuaternion(new THREE.Quaternion()).invert();
+        a.applyQuaternion(qInv).divideScalar(C.sc);
+        C.sway.lerp(a, Math.min(1, dt * 20));
+      }
+      C.lastVel = v;
+    }
+    C.lastPos = p;
+    const lean = V3(clamp(-C.sway.z * 0.035, -0.7, 0.7), 0, clamp(C.sway.x * 0.035, -0.6, 0.6));
+    const k = C.k, c = 2 * Math.sqrt(k) * 0.75;
+    JOINTS.forEach(j => {
+      const T = tgt[j].clone();
+      if (j === 'spine') { T.x += lean.x * 0.6; T.z += lean.z * 0.6; }
+      if (j === 'chest') { T.x += lean.x * 0.4; T.z += lean.z * 0.4; }
+      if (j === 'neck') { T.x += lean.x * 0.3; }
+      if (j === 'shL' || j === 'shR') { T.x += lean.x * 0.8; }
+      if (dt > 0) {
+        const cv = cur[j], vv = vel[j];
+        vv.x += ((T.x - cv.x) * k - vv.x * c) * dt; vv.y += ((T.y - cv.y) * k - vv.y * c) * dt; vv.z += ((T.z - cv.z) * k - vv.z * c) * dt;
+        cv.addScaledVector(vv, dt);
+      }
+    });
+    J.hips.position.y = lerp(J.hips.position.y, CH.hipH - (C.drop || 0), dt > 0 ? 1 - Math.exp(-dt * 10) : 0);
+    // 呼吸（ほんの少し）
+    const br = Math.sin((t || 0) * 2.2) * 0.012;
+    JOINTS.forEach(j => {
+      if ((j === 'shL' || j === 'elL') && C.ik.L) return;
+      if ((j === 'shR' || j === 'elR') && C.ik.R) return;
+      J[j].rotation.set(cur[j].x + (j === 'chest' ? br : 0), cur[j].y, cur[j].z);
+    });
+    // 頭を見たい物に向ける
+    if (C.lookAt) {
+      J.neck.updateMatrixWorld(true);
+      const loc = J.neck.worldToLocal(C.lookAt.clone());
+      const yaw = clamp(Math.atan2(loc.x, loc.z), -1.2, 1.2), pitch = clamp(-Math.atan2(loc.y - 0.1, Math.hypot(loc.x, loc.z)), -0.9, 0.9);
+      const hk = 1 - Math.exp(-(dt || 0.016) * 8);
+      J.head.rotation.y = lerp(J.head.rotation.y, yaw, hk); J.head.rotation.x = lerp(J.head.rotation.x, pitch, hk);
+      cur.head.set(J.head.rotation.x, J.head.rotation.y, 0);
+    }
+    if (C.ik.L) solveArm('L', C.ik.L, dt);
+    if (C.ik.R) solveArm('R', C.ik.R, dt);
+  };
+  if (!opts.noReg && R) R.chars.push(C);
+  return C;
+}
+// 歩く・走る（足と腕をふる）。phase は時間で進める
+function walkPose(C, phase, amt) {
+  const s = Math.sin(phase), c2 = Math.cos(phase);
+  const a = amt || 1;
+  return C.pose({
+    spine: [8 * a, 0, 0], hipL: [-35 * s * a, 0, 0], hipR: [35 * s * a, 0, 0],
+    knL: [Math.max(0, -c2) * 60 * a + 8, 0, 0], knR: [Math.max(0, c2) * 60 * a + 8, 0, 0],
+    shL: [30 * s * a, 0, 6], shR: [-30 * s * a, 0, -6], elL: [-50 * a, 0, 0], elR: [-50 * a, 0, 0],
+  });
+}
+
+// ======================= 実験ごとのキャラクター（ACTORS）と「いまの式」（EQ） =======================
+const GREEN = 0x3cc4a0, ORANGE = 0xf08a4b, BLUE = 0x6fa8ff;
+const nf = (x, d) => fmt(x, d === undefined ? 2 : d);
+const ACTORS = {};
+// EQ[id](s) → { at: 3Dの点（なければ左下に固定）, html }
+const EQ = {};
+
+// ---------- 自由落下：台の上でボールを落とす・投げ上げる ----------
+ACTORS.fall = {
+  init(s) {
+    const p = s.p, b = s.balls[0];
+    const c = makeChar({ color: GREEN });
+    c.root.position.set(-0.55, p.h0, 0.05); c.root.rotation.y = Math.PI / 2;
+    c.pose(p.v0 > 0 ? 'windup' : 'crouch').snap();
+    R.group.add(c.root); s.ch = c; s.chState = 'hold';
+    if (p.h0 === 0) c.root.position.x = -0.75;
+    void b;
+  },
+  draw(s) {
+    const c = s.ch, b = s.balls[0], p = s.p;
+    c.look(b.m.position);
+    if (s.t < 0.02) { c.reach('R', b.m.position.clone().add(V3(-s.r * 0.6, 0, 0))); return; }
+    if (s.chState === 'hold') { s.chState = 'go'; c.reach('R', null); c.pose(p.v0 > 0 ? 'release' : 'crouch', p.v0 > 0 ? null : { shR: [-70, 0, -10], elR: [-10, 0, 0] }); }
+    if (s.ended && s.chState !== 'end') { s.chState = 'end'; c.pose('cheer'); }
+  },
+};
+EQ.fall = s => {
+  const b = s.balls[0], p = s.p, t = s.ended && b.land ? b.land : s.t;
+  return { at: b.m.position, html: `<b>等加速度運動（上向きが正、a = −g）</b>
+    <div><var>v</var> = <var>v</var>₀ − <var>gt</var> = ${nf(p.v0, 1)} − ${p.g}×${nf(t)} = <em>${nf(b.v)} m/s</em></div>
+    <div><var>y</var> = <var>h</var> + <var>v</var>₀<var>t</var> − ½<var>gt</var>² = <em>${nf(b.y)} m</em></div>${p.air ? '<div class="sm">空気抵抗あり：ピンポン球は a = −g − kv|v|</div>' : ''}` };
+};
+
+// ---------- 放物運動：ボールをけって飛ばす ----------
+ACTORS.proj = {
+  init(s) {
+    const c = makeChar({ color: GREEN });
+    c.root.position.set(-0.42, s.p.h0, -0.18); c.root.rotation.y = Math.PI / 2;
+    c.pose('kickBack').snap(); R.group.add(c.root); s.ch = c; s.kicked = false;
+  },
+  draw(s) {
+    const c = s.ch; c.look(s.b.position);
+    if (!s.kicked && s.t > 0) { s.kicked = true; c.pose('kick'); setTimeout(() => { if (s.ch === c && !s.ended) c.pose('watch'); }, 450); }
+    if (s.ended && !s.cheer) { s.cheer = true; c.pose('cheer'); }
+  },
+};
+EQ.proj = s => {
+  const p = s.p, th = p.th * DEG;
+  return { at: s.b.position, html: `<b>横は等速・縦は投げ上げ</b>
+    <div><var>x</var> = <var>v</var>₀cos<var>θ</var>·<var>t</var> = ${nf(p.v0 * Math.cos(th), 2)}×${nf(s.t)} = <em>${nf(s.x - s.x0)} m</em></div>
+    <div><var>v<sub>y</sub></var> = <var>v</var>₀sin<var>θ</var> − <var>gt</var> = ${nf(p.v0 * Math.sin(th), 2)} − 9.8×${nf(s.t)} = <em>${nf(s.vy)} m/s</em></div>
+    <div><var>y</var> = <var>h</var> + <var>v</var>₀sin<var>θ</var>·<var>t</var> − ½<var>gt</var>² = <em>${nf(s.y)} m</em></div>` };
+};
+
+// ---------- 斜面：そりに乗ってすべる ----------
+ACTORS.incline = {
+  init(s) {
+    const c = makeChar({ color: GREEN, scale: 0.42 });
+    c.root.position.set(-0.05, 0.25, 0); c.root.rotation.y = Math.PI / 2;
+    c.pose('sled').snap(); s.blk.add(c.root); s.ch = c;
+  },
+  draw(s) {
+    const c = s.ch;
+    if (!s.static && !s.wasSliding) { s.wasSliding = true; c.pose('sled', { shL: [-150, 0, 40], shR: [-150, 0, -40], elL: [-20, 0, 0], elR: [-20, 0, 0] }); }
+    if (s.ended && !s.static && !s.endPose) { s.endPose = true; c.pose('sled'); }
+  },
+};
+EQ.incline = s => {
+  const p = s.p, th = p.th * DEG, g = 9.8, m = p.m, N = m * g * Math.cos(th);
+  const at = s.blk.position.clone().add(V3(0, 0.6, 0));
+  if (s.static) return { at, html: `<b>静止：力のつり合い</b>
+    <div>斜面方向：<var>f</var> = <var>mg</var>sin<var>θ</var> = <em>${nf(m * g * Math.sin(th), 1)} N</em></div>
+    <div>限界：<var>μN</var> = ${p.mu0}×${nf(N, 1)} = ${nf(p.mu0 * N, 1)} N（これをこえるとすべる）</div>` };
+  return { at, html: `<b>運動方程式（斜面にそって下向きが正）</b>
+    <div><var>ma</var> = <var>mg</var>sin<var>θ</var> − <var>μ'mg</var>cos<var>θ</var></div>
+    <div><var>a</var> = 9.8×(${nf(Math.sin(th), 3)} − ${p.mu}×${nf(Math.cos(th), 3)}) = <em>${nf(s.a || 0)} m/s²</em></div>
+    <div><var>v</var> = <em>${nf(s.v)} m/s</em></div>` };
+};
+
+// ---------- 衝突：台車に乗った2人 ----------
+ACTORS.collide = {
+  init(s) {
+    [['A', GREEN, Math.PI / 2], ['B', ORANGE, -Math.PI / 2]].forEach(([k, col, ry]) => {
+      const T = s[k], c = makeChar({ color: col, scale: 0.36 + T.m * 0.03 });
+      c.root.position.set(0, 0.32 + T.m * 0.03 + (0.16 + T.m * 0.07) / 2, 0); c.root.rotation.y = ry;
+      c.pose('kneel').snap(); T.c.add(c.root); T.ch = c;
+    });
+  },
+  draw(s) {
+    s.A.ch.look(s.B.c.position.clone().add(V3(0, 0.6, 0))); s.B.ch.look(s.A.c.position.clone().add(V3(0, 0.6, 0)));
+    if (s.hit && !s.posed) { s.posed = true; if (s.p.e === 0) { s.A.ch.pose('kneel', { shR: [-90, 30, -10], shL: [-90, -30, 10] }); s.B.ch.pose('kneel', { shR: [-90, 30, -10], shL: [-90, -30, 10] }); } }
+  },
+};
+EQ.collide = s => {
+  const A = s.A, B = s.B, P = A.m * A.v + B.m * B.v;
+  return { at: V3((A.x + B.x) / 2, 1.6, 0), html: `<b>運動量の保存</b>
+    <div><var>m</var><sub>A</sub><var>v</var><sub>A</sub> + <var>m</var><sub>B</sub><var>v</var><sub>B</sub> = ${nf(A.m, 1)}×${nf(A.v)} + ${nf(B.m, 1)}×${nf(B.v)} = <em>${nf(P)}</em></div>
+    ${s.hit ? `<div><var>e</var> = −(<var>v</var><sub>A</sub>' − <var>v</var><sub>B</sub>')/(<var>v</var><sub>A</sub> − <var>v</var><sub>B</sub>) = <em>${nf(s.eMeas)}</em></div>` : '<div class="sm">まだぶつかっていない（それぞれ等速）</div>'}` };
+};
+
+// ---------- ばね振り子：おもりに乗った人が慣性でゆれる ----------
+ACTORS.spring = {
+  init(s) {
+    const c = makeChar({ color: GREEN, scale: 0.16 });
+    c.root.position.set(0, 0.09, 0); c.root.rotation.y = Math.PI / 2;
+    c.pose('kneel').snap(); s.blk.add(c.root); s.ch = c;
+  },
+  draw() {},
+};
+EQ.spring = s => {
+  const p = s.p;
+  return { at: s.blk.position.clone().add(V3(0, 0.18, 0)), html: `<b>単振動（フックの法則）</b>
+    <div><var>F</var> = −<var>kx</var> = −${p.k}×${nf(s.x, 3)} = <em>${nf(-p.k * s.x)} N</em></div>
+    <div><var>a</var> = <var>F</var>/<var>m</var> = <em>${nf(-p.k * s.x / p.m)} m/s²</em></div>
+    <div class="sm"><var>x</var> = <var>A</var>cos<var>ωt</var>、<var>T</var> = 2π√(<var>m</var>/<var>k</var>) = ${nf(2 * Math.PI * Math.sqrt(p.m / p.k), 3)} s</div>` };
+};
+
+// ---------- 単振り子：ブランコ ----------
+ACTORS.pend = {
+  init(s) {
+    const p = s.p;
+    s.swing = new THREE.Group(); s.swing.position.copy(s.piv); R.group.add(s.swing);
+    const sc = clamp(p.L * 0.3, 0.12, 0.42);
+    const seat = box(0.5 * sc / 0.42 * 0.42, 0.03, 0.22 * sc / 0.42 * 0.42 + 0.06, solid(0x9c7a54)); seat.position.y = -p.L; s.swing.add(seat);
+    const c = makeChar({ color: GREEN, scale: sc });
+    c.root.position.set(0, -p.L + 0.015, 0); c.root.rotation.y = Math.PI / 2;
+    c.pose('swing').snap(); s.swing.add(c.root); s.ch = c;
+    s.bob.visible = false; s.str.visible = false;
+    [-1, 1].forEach(q => { const r = cyl(0.006, 0.006, p.L, solid(0x3a3a36), 6); r.position.set(0, -p.L / 2, q * 0.08); s.swing.add(r); });
+  },
+  draw(s) {
+    s.swing.rotation.z = s.th; s.str.visible = false;
+    // こぐ動き：速さに合わせてひざを曲げのばし
+    const k = Math.sign(s.om) * 25;
+    s.ch.pose('swing', { knL: [70 - k, 0, 0], knR: [70 - k, 0, 0], spine: [-k * 0.4, 0, 0] });
+  },
+};
+EQ.pend = s => {
+  const p = s.p, F = -p.m * p.g * Math.sin(s.th);
+  return { at: s.bob.position, html: `<b>振り子をもどす力</b>
+    <div><var>F</var> = −<var>mg</var>sin<var>θ</var> = −${p.m}×${p.g}×sin${nf(s.th / DEG, 1)}° = <em>${nf(F, 3)} N</em></div>
+    <div class="sm">振れが小さいとき単振動：<var>T</var> = 2π√(<var>L</var>/<var>g</var>) = ${nf(2 * Math.PI * Math.sqrt(p.L / p.g), 3)} s</div>` };
+};
+
+// ---------- 等速円運動：ハンマー投げ ----------
+ACTORS.circle = {
+  init(s) {
+    const c = makeChar({ color: GREEN, scale: 0.38 });
+    c.root.position.set(0, 0.63, 0); c.pose('idle').snap(); R.group.add(c.root); s.ch = c;
+  },
+  draw(s) {
+    const c = s.ch;
+    if (!s.cut) {
+      const ang = Math.atan2(s.pos.x, s.pos.z);
+      c.root.rotation.y = ang;
+      const dir = V3(s.pos.x, 0, s.pos.z).normalize();
+      c.reach('R', V3(0, 0.63 + 0.42, 0).addScaledVector(dir, 0.2).add(V3(dir.z * 0.06, 0, -dir.x * 0.06)));
+      c.reach('L', V3(0, 0.63 + 0.42, 0).addScaledVector(dir, 0.2).add(V3(-dir.z * 0.06, 0, dir.x * 0.06)));
+      c.pose('ready', { spine: [-8, 0, 0] });
+    } else if (!s.cutPosed) { s.cutPosed = true; c.reach('R', null); c.reach('L', null); c.pose('point'); }
+    c.look(s.pos);
+  },
+};
+EQ.circle = s => {
+  const p = s.p, v = p.r * s.w;
+  if (s.cut) return { at: s.pos, html: `<b>ひもが切れた → 力 0</b><div>慣性の法則：等速直線運動 <var>v</var> = <em>${nf(v)} m/s</em></div>` };
+  return { at: s.pos, html: `<b>向心力（中心向き）</b>
+    <div><var>F</var> = <var>mv</var>²/<var>r</var> = ${p.m}×${nf(v)}²÷${p.r} = <em>${nf(p.m * v * v / p.r)} N</em></div>
+    <div class="sm"><var>v</var> = <var>rω</var> = ${p.r}×${nf(s.w)}</div>` };
+};
+
+// ---------- 万有引力：山の上から大砲を撃つ人 ----------
+ACTORS.orbit = {
+  init(s) {
+    const r0 = (RE + s.p.alt * 1000) * s.k;
+    const c = makeChar({ color: GREEN, scale: 0.18 });
+    c.root.position.set(-0.14, r0 - 0.1, 0.05); c.root.rotation.y = Math.PI / 2; c.pose('point').snap(); R.group.add(c.root); s.ch = c;
+  },
+  draw(s) { s.ch.look(s.sat.position); if (s.crash && !s.cp) { s.cp = true; s.ch.pose('shield'); } },
+};
+EQ.orbit = s => {
+  const r = s.pos.length();
+  return { at: s.sat.position, html: `<b>万有引力が向心力</b>
+    <div><var>a</var> = <var>GM</var>/<var>r</var>² = <em>${nf(GM / (r * r))} m/s²</em>（<var>r</var> = ${nf(r / 1e6, 2)}×10⁶ m）</div>
+    <div>円軌道なら <var>v</var> = √(<var>GM</var>/<var>r</var>) = ${nf(Math.sqrt(GM / r) / 1000)} km/s　いま <em>${nf(s.vel.length() / 1000)} km/s</em></div>` };
+};
+
+// ---------- 気体：ピストンの上の人 ----------
+ACTORS.gas = {
+  init(s) {
+    const c = makeChar({ color: GREEN, scale: 0.42 });
+    c.root.position.set(0, 1.35, 0); c.pose('idle').snap(); s.pis.add(c.root); s.ch = c;
+  },
+  draw(s) {
+    const p = s.p, Ht = p.V / 10 * 2, c = s.ch;
+    const mode = s.H - Ht > 0.01 ? 'pushDown' : p.T >= 450 ? 'hot' : p.T <= 150 ? 'shield' : 'idle';
+    if (mode !== s.chMode) { s.chMode = mode; c.pose(mode); }
+  },
+};
+EQ.gas = s => {
+  const p = s.p, Pm = s.P / s.Pref * 100;
+  return { at: null, html: `<b>状態方程式 <var>PV</var> = <var>nRT</var></b>
+    <div><var>P</var> = <em>${s.t > 1 ? nf(Pm, 0) : '…'} kPa</em>　<var>V</var> = ${nf(p.V, 1)} L　<var>T</var> = ${p.T} K</div>
+    <div><var>PV</var>/<var>T</var> = ${s.t > 1 ? nf(Pm * p.V / p.T, 2) : '…'}（温度・体積を変えても一定）</div>` };
+};
+
+// ---------- 横波・縦波：端を手でゆらす ----------
+ACTORS.wave = {
+  init(s) {
+    const c = makeChar({ color: GREEN, scale: 0.55 });
+    c.root.position.set(-s.len / 2 - 0.95, 0, 0); c.root.rotation.y = Math.PI / 2; c.pose('idle').snap(); R.group.add(c.root); s.ch = c;
+    s.drv.children.forEach(o => { if (o !== s.arm) o.visible = false; });
+  },
+  draw(s) { const c = s.ch; c.reach('R', s.arm.position.clone().add(V3(-0.05, 0, 0.05))); c.look(s.beads[12].position); },
+};
+EQ.wave = s => {
+  const p = s.p, lam = p.v / p.f;
+  return { at: null, html: `<b>正弦波（+x 向きに進む）</b>
+    <div><var>y</var> = <var>A</var> sin 2π(<var>t</var>/<var>T</var> − <var>x</var>/<var>λ</var>)　<var>A</var> = ${p.A} m、<var>T</var> = ${nf(1 / p.f)} s</div>
+    <div><var>v</var> = <var>fλ</var> = ${p.f}×${nf(lam)} = <em>${nf(p.v)} m/s</em></div>` };
+};
+
+// ---------- 干渉：水そうのそばで見る ----------
+ACTORS.interf = {
+  init(s) {
+    const c = makeChar({ color: GREEN, scale: 1.3 });
+    c.root.position.set(s.S / 2 + 1.1, 0, -2.5); c.root.rotation.y = -Math.PI / 2 - 0.3; c.pose('crouch', { shR: [-70, 0, -10], elR: [-10, 0, 0] }).snap(); R.group.add(c.root); s.ch = c;
+  },
+  draw(s) { s.ch.look(V3(0, 0.6, 0)); },
+};
+EQ.interf = s => {
+  const p = s.p, same = p.phase === 'same';
+  return { at: null, html: `<b>干渉の条件（${same ? '同位相' : '逆位相'}）</b>
+    <div>弱め合う：|<var>S</var>₁<var>P</var> − <var>S</var>₂<var>P</var>| = ${same ? '(<var>m</var> + ½)<var>λ</var>' : '<var>mλ</var>'}</div>
+    <div>強め合う：|<var>S</var>₁<var>P</var> − <var>S</var>₂<var>P</var>| = ${same ? '<var>mλ</var>' : '(<var>m</var> + ½)<var>λ</var>'}</div>
+    <div class="sm"><var>λ</var> = ${p.lam} cm、<var>d</var> = ${p.d} cm</div>` };
+};
+
+// ---------- 定常波：弦をはじく・管をふく ----------
+ACTORS.standing = {
+  init(s) {
+    const c = makeChar({ color: GREEN, scale: 0.85 });
+    if (s.p.mode === 'string') { c.root.position.set(-s.L / 4, 0, -0.85); c.pose('idle').snap(); }
+    else { c.root.position.set(s.L / 2 + 0.55, 0, 0); c.root.rotation.y = -Math.PI / 2; c.pose('blow').snap(); }
+    R.group.add(c.root); s.ch = c;
+  },
+  draw(s, t) {
+    if (s.p.mode === 'string') { s.ch.reach('R', V3(-s.L / 4 + 0.05, s.y0 + 0.08 + 0.05 * Math.sin(t * 6), -0.05)); s.ch.look(V3(0, s.y0, 0)); }
+  },
+};
+EQ.standing = s => {
+  const p = s.p, m = s.m, lam = p.mode === 'closed' ? 4 * p.Lr / m : 2 * p.Lr / m;
+  const f = p.vs / lam;
+  const law = p.mode === 'closed' ? `<var>L</var> = (2<var>n</var> − 1)<var>λ</var>/4 → <var>λ</var> = 4×${p.Lr}/${m}` : `<var>L</var> = <var>n</var><var>λ</var>/2 → <var>λ</var> = 2×${p.Lr}/${m}`;
+  return { at: null, html: `<b>固有振動（${p.mode === 'string' ? '弦' : p.mode === 'open' ? '開管' : '閉管'}）</b>
+    <div>${law} = ${nf(lam, 3)} m</div>
+    <div><var>f</var> = <var>V</var>/<var>λ</var> = ${p.vs}÷${nf(lam, 3)} = <em>${nf(f, 0)} Hz</em></div>` };
+};
+
+// ---------- ドップラー：救急車の運転手と、聞いている2人 ----------
+ACTORS.doppler = {
+  init(s) {
+    const d = makeChar({ color: ORANGE, scale: 0.3 });
+    d.root.position.set(-0.12, 0.49, 0); d.root.rotation.y = Math.PI / 2; d.pose('sit', { shR: [-60, 0, -20], elR: [-40, 0, 0] }).snap(); s.car.add(d.root); s.drv = d;
+    [s.front, s.back].forEach((g, i) => {
+      g.children.forEach(o => { o.visible = false; });
+      const c = makeChar({ color: GREEN, scale: 1.5 }); c.root.rotation.y = i ? Math.PI / 2 : -Math.PI / 2; c.pose('ear').snap(); g.add(c.root); g.ch = c;
+    });
+  },
+  draw(s) { [s.front, s.back].forEach(g => g.ch.look(s.car.position.clone().add(V3(0, 0.6, 0)))); },
+};
+EQ.doppler = s => {
+  const p = s.p, ff = dop(p.vs, p.f0, 1), fb = dop(p.vs, p.f0, -1);
+  return { at: null, html: `<b>ドップラー効果（音速 <var>V</var> = 340 m/s）</b>
+    <div>前：<var>f'</var> = <var>f</var>·<var>V</var>/(<var>V</var> − <var>v<sub>s</sub></var>) = ${p.f0}×340/(340 − ${p.vs}) = <em>${ff ? nf(ff, 0) + ' Hz' : '衝撃波'}</em></div>
+    <div>後ろ：<var>f'</var> = <var>f</var>·<var>V</var>/(<var>V</var> + <var>v<sub>s</sub></var>) = <em>${nf(fb, 0)} Hz</em></div>` };
+};
+
+// ---------- 屈折：レーザーを持ってねらう ----------
+ACTORS.refr = {
+  init(s) { const c = makeChar({ color: GREEN, scale: 0.9 }); c.pose('crouch').snap(); R.group.add(c.root); s.ch = c; },
+  draw(s) {
+    const c = s.ch, L = s.laser.position, d = V3(L.x, 0, L.z).normalize();
+    c.root.position.copy(d.clone().multiplyScalar(4.05)); c.root.rotation.y = Math.atan2(-d.x, -d.z);
+    c.reach('R', L.clone().addScaledVector(d, 0.25).add(V3(0, 0.02, 0)));
+    c.reach('L', L.clone().addScaledVector(d, -0.1));
+    c.look(V3(0, 0.3, 0));
+  },
+};
+EQ.refr = s => {
+  const p = s.p, n1 = p.dir === 'in' ? 1 : p.n, n2 = p.dir === 'in' ? p.n : 1, si = Math.sin(p.th * DEG);
+  const sr = n1 / n2 * si;
+  return { at: V3(0, 0.6, 0), html: `<b>屈折の法則</b>
+    <div><var>n</var>₁ sin<var>i</var> = <var>n</var>₂ sin<var>r</var></div>
+    <div>${nf(n1)}×sin${nf(p.th, 1)}° = ${nf(n2)}×sin<var>r</var> → sin<var>r</var> = <em>${sr <= 1 ? nf(sr, 3) : nf(sr, 3) + ' ＞ 1'}</em></div>
+    ${sr > 1 ? '<div class="sm">sin が 1 をこえる → 屈折できない＝全反射</div>' : `<div class="sm"><var>r</var> = ${nf(Math.asin(sr) / DEG, 1)}°</div>`}` };
+};
+
+// ---------- レンズ：物体が人、像はさかさまの人 ----------
+ACTORS.lens = {
+  init(s) {
+    const o = makeChar({ color: GREEN, scale: 1 / 1.62 }); o.pose('cheer').snap(); R.group.add(o.root); s.objC = o;
+    const im = makeChar({ color: ORANGE, scale: 1 / 1.62, ghost: true }); im.pose('cheer').snap(); R.group.add(im.root); s.imgC = im;
+  },
+  draw(s) {
+    s.obj.visible = false; s.flame.visible = false;
+    s.objC.root.position.set(-s.p.a, s.ax, 0); s.objC.root.rotation.y = 0.25;
+    const show = s.img.visible; s.img.visible = false;
+    s.imgC.root.visible = show;
+    if (show) { s.imgC.root.position.set(s.b, s.ax, 0); s.imgC.root.rotation.y = 0.25; const k = 1 / 1.62; s.imgC.root.scale.set(k * Math.abs(s.m), k * s.m, k * Math.abs(s.m)); }
+  },
+};
+EQ.lens = s => {
+  const p = s.p, f = p.kind === 'convex' ? p.f : -p.f;
+  return { at: null, html: `<b>レンズの式</b>
+    <div>1/<var>a</var> + 1/<var>b</var> = 1/<var>f</var> → 1/${nf(p.a)} + 1/<var>b</var> = 1/${nf(f)}</div>
+    <div><var>b</var> = <em>${isFinite(s.b) ? nf(s.b) + ' cm' : '∞'}</em>　倍率 |<var>b</var>/<var>a</var>| = <em>${isFinite(s.m) ? nf(Math.abs(s.m)) : '—'}</em></div>
+    <div class="sm">${!isFinite(s.b) ? '焦点に置くと像はできない' : s.b > 0 ? 'b ＞ 0：さかさまの実像（オレンジの人）' : 'b ＜ 0：正立の虚像（オレンジの人）'}</div>` };
+};
+
+// ---------- 電場：電位の坂をそりですべる ----------
+ACTORS.efield = {
+  init(s) { const c = makeChar({ color: GREEN, scale: 0.2 }); c.pose('sled').snap(); c.root.visible = false; R.group.add(c.root); s.ch = c; },
+  draw(s) {
+    const c = s.ch, on = !!s.probe && s.p.surf;
+    c.root.visible = on;
+    if (on) {
+      c.root.position.copy(s.tq2.position).add(V3(0, 0.05, 0));
+      const [ex, ez] = s.E(s.probe.x, s.probe.z); c.root.rotation.y = Math.atan2(ex, ez);
+    }
+  },
+};
+EQ.efield = s => {
+  const pr = s.probe || { x: 0, z: 0 }, [ex, ez] = s.E(pr.x, pr.z);
+  return { at: s.probe ? s.tq.position : null, html: `<b>電位と電場（点電荷の和）</b>
+    <div><var>V</var> = <var>kQ</var>₁/<var>r</var>₁ + <var>kQ</var>₂/<var>r</var>₂ = <em>${nf(s.pot(pr.x, pr.z))}</em>（相対）</div>
+    <div><var>E</var>（ベクトルの和）の大きさ = <em>${nf(Math.hypot(ex, ez))}</em>　正の電荷は <var>V</var> の低い方へ</div>` };
+};
+
+// ---------- ローレンツ力：見ている人 ----------
+ACTORS.lorentz = {
+  init(s) { const c = makeChar({ color: GREEN, scale: 0.9 }); c.root.position.set(1.9, 0.12, 1.9); c.root.rotation.y = -Math.PI * 0.75; c.pose('point').snap(); R.group.add(c.root); s.ch = c; },
+  draw(s) { s.ch.look(s.pos); },
+};
+EQ.lorentz = s => {
+  const p = s.p, vp = p.v * Math.sin(p.al * DEG);
+  return { at: s.pos, html: `<b>ローレンツ力が向心力</b>
+    <div><var>F</var> = <var>qv</var>⊥<var>B</var> = 1×${nf(vp)}×${p.B} = <em>${nf(vp * p.B)}</em></div>
+    <div><var>r</var> = <var>mv</var>⊥/<var>qB</var> = ${p.m}×${nf(vp)}÷${p.B} = <em>${nf(s.r)}</em>　速さは一定 ${nf(s.vel.length(), 3)}</div>` };
+};
+
+// ---------- 電磁誘導：磁石を持って出し入れする ----------
+ACTORS.induct = {
+  init(s) { const c = makeChar({ color: GREEN, scale: 0.72 }); c.root.rotation.y = Math.PI / 2; c.pose('idle').snap(); R.group.add(c.root); s.ch = c; s.lastXm = s.xm; s.wph = 0; },
+  draw(s, t) {
+    const c = s.ch, back = s.p.pole === 'N' ? -1 : 1;
+    const endX = s.xm + back * s.mL / 2;
+    c.root.position.set(Math.min(endX, s.xm - s.mL / 2) - 0.48, 0, 0.12);
+    const vx = (s.xm - s.lastXm); s.lastXm = s.xm;
+    s.wph += vx * 9;
+    walkPose(c, s.wph, clamp(Math.abs(vx) * 60, 0, 1));
+    c.reach('R', V3(s.xm - s.mL / 2 + 0.12, s.cy, 0.06)); c.reach('L', V3(s.xm - s.mL / 2 + 0.12, s.cy, -0.06));
+    c.look(V3(0, s.cy, 0)); void t;
+  },
+};
+EQ.induct = s => {
+  const em = s.emf * 0.1;
+  return { at: V3(0, s.cy + 1.0, 0), html: `<b>ファラデーの電磁誘導の法則</b>
+    <div><var>V</var> = −<var>N</var> Δ<var>Φ</var>/Δ<var>t</var>　<var>N</var> = ${s.p.N}</div>
+    <div>いま <var>V</var> = <em>${nf(em)}</em>（相対）${Math.abs(em) < 0.02 ? '　磁束が変わらない → 0' : em < 0 ? '　磁束が増えている' : '　磁束が減っている'}</div>` };
+};
+
+// ---------- 直流回路：豆電球のそばの人 ----------
+ACTORS.circuit = {
+  init(s) { const c = makeChar({ color: GREEN, scale: 0.8 }); c.root.position.set(0.9, 0, -2.2); c.pose('watch').snap(); R.group.add(c.root); s.ch = c; },
+  draw(s) {
+    const c = s.ch, cal = s.def.calc(s), P = Math.max(cal.V1 * cal.I1, cal.V2 * cal.I2);
+    const mode = P > 5 ? 'shield' : 'watch'; if (mode !== s.chMode) { s.chMode = mode; c.pose(mode); }
+    c.look(s.bulbs[0].at);
+  },
+};
+EQ.circuit = s => {
+  const p = s.p, c = s.def.calc(s);
+  return { at: null, html: `<b>オームの法則（${p.mode === 'series' ? '直列' : '並列'}）</b>
+    <div>${p.mode === 'series' ? `<var>R</var> = <var>R</var>₁ + <var>R</var>₂ = ${p.R1} + ${p.R2} = ${nf(c.R)} Ω` : `1/<var>R</var> = 1/${p.R1} + 1/${p.R2} → <var>R</var> = ${nf(c.R)} Ω`}</div>
+    <div><var>I</var> = <var>V</var>/<var>R</var> = ${p.V}÷${nf(c.R)} = <em>${nf(c.I)} A</em></div>
+    <div><var>P</var>₁ = <var>I</var>₁<var>V</var>₁ = <em>${nf(c.I1 * c.V1)} W</em>　<var>P</var>₂ = <em>${nf(c.I2 * c.V2)} W</em></div>` };
+};
+
+// ---------- 光電効果：光源を持つ人 ----------
+ACTORS.photo = {
+  init(s) { const c = makeChar({ color: GREEN, scale: 1.05 }); c.root.position.set(-3.1, 0, 2.0); c.root.rotation.y = Math.PI * 0.75; c.pose('watch').snap(); R.group.add(c.root); s.ch = c; },
+  draw(s) { s.ch.look(V3(0, s.y, 0)); s.ch.reach('R', s.lamp.position.clone().add(V3(-0.15, -0.25, 0.2))); },
+};
+EQ.photo = s => {
+  const E = s.def.phE(s), W = s.def.W(s);
+  return { at: V3(0, s.y + 1.1, 0), html: `<b>アインシュタインの光電方程式</b>
+    <div><var>hν</var> = 1240/<var>λ</var> = 1240/${s.p.nm} = ${nf(E)} eV</div>
+    <div>${E > W ? `<var>K</var>₀ = <var>hν</var> − <var>W</var> = ${nf(E)} − ${W} = <em>${nf(E - W)} eV</em>` : `<var>hν</var> = ${nf(E)} ＜ <var>W</var> = ${W} → <em>電子は出ない</em>`}</div>` };
+};
 
 // ======================= かみくだいた説明（物理が苦手な人向け） =======================
 // 授業の画面ごと（LESSONS の steps と同じ順）
@@ -4148,6 +4814,7 @@ $('btnPlay').addEventListener('click', togglePlay);
 $('btnRestart').addEventListener('click', () => { restart(); state.running = true; updatePlay(); });
 $('btnStep').addEventListener('click', () => { const s = state.s; if (!s || s.ended) return; state.running = false; updatePlay(); advance(s, 0.05 * (s.def.timeScale || 1)); renderLive(true); });
 $('speed').addEventListener('click', ev => { const b = ev.target.closest('[data-sp]'); if (!b) return; state.speed = +b.dataset.sp; document.querySelectorAll('#speed [data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+$('btnEq').addEventListener('click', () => { showEq = !showEq; try { localStorage.setItem('physics-3d:eq', showEq ? '1' : '0'); } catch (e) { /* 無視 */ } if (state.s) renderEq(state.s); });
 $('btnReset').addEventListener('click', () => { if (R && R.lastView) view(...R.lastView); });
 $('btnFull').addEventListener('click', () => {
   // 授業モードでは説明パネルもいっしょに全画面にする（プロジェクター向け）
