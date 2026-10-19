@@ -3002,32 +3002,55 @@ sim({
   view() { return [[-0.6, 1.6, 0.3], 3.6, [0.25, 0.4, 1]]; },
 });
 
-// ======================= キャラクター「ペンタ」（白衣のペンギン研究員） =======================
-// 氷の上をおなかですべるペンギンは、摩擦と慣性の先生にぴったり。丸めがねと小さな白衣、首にスカーフ。
-// 関節ごとにばねのように追いかけて動く。体の加速度に合わせて上体が慣性でゆれる。
+// ======================= キャラクター「ペンタ」（アデリーペンギンの研究員） =======================
+// 本物のアデリーペンギンに近い形：黒い頭と背中、くっきり白いおなか、目のまわりの白い輪、平たいつばさ、ピンクの水かき。
+// 関節ごとにばねのように追いかけて動く。体の加速度に合わせて上体が慣性でゆれる。まばたきもする。
 // makeChar({ color: スカーフの色, scale }) → { root, pose(名前|オブジェクト), look(点|null), reach('L'|'R', 点|null), update(dt) }
-const CH = { thigh: 0.15, shin: 0.13, hipH: 0.36, spine: 0.3, chest: 0.3, neck: 0.04, upper: 0.2, fore: 0.2 };
-let CH_MATS = null;
+const CH = { thigh: 0.12, shin: 0.1, hipH: 0.3, spine: 0.26, chest: 0.26, neck: 0.03, upper: 0.18, fore: 0.17 };
+let CH_MATS = null, FEATHER_TEX = null;
+// 羽毛のこまかいムラ（白黒の色に重ねる）
+function featherTex() {
+  if (FEATHER_TEX) return FEATHER_TEX;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 900; i++) { const x = Math.random() * 128, y = Math.random() * 128, v = 225 + Math.random() * 30; g.fillStyle = `rgb(${v},${v},${v})`; g.beginPath(); g.ellipse(x, y, 1.2 + Math.random() * 2, 3 + Math.random() * 4, 0, 0, 6.28); g.fill(); }
+  FEATHER_TEX = new THREE.CanvasTexture(c); FEATHER_TEX.wrapS = FEATHER_TEX.wrapT = THREE.RepeatWrapping; FEATHER_TEX.repeat.set(3, 2);
+  return FEATHER_TEX;
+}
 function charMats(color, ghost) {
   if (!CH_MATS) CH_MATS = {};
   const key = color;
   if (!ghost && CH_MATS[key]) return CH_MATS[key];
-  const env = { envMap: envMap(), combine: THREE.MixOperation };
   const m = {
-    body: new THREE.MeshPhongMaterial(Object.assign({ color: 0x1f2a33, shininess: 60, specular: 0x4a5a68, reflectivity: 0.06 }, env)),
-    belly: new THREE.MeshPhongMaterial({ color: 0xfbf8f0, shininess: 30, specular: 0x333333 }),
-    coat: new THREE.MeshPhongMaterial({ color: 0xdfe7e6, shininess: 12, specular: 0x222222, side: THREE.DoubleSide }),
-    beak: new THREE.MeshPhongMaterial({ color: 0xf2a23a, shininess: 70, specular: 0x664422 }),
-    cheek: new THREE.MeshPhongMaterial({ color: 0xe0675a, transparent: true, opacity: 0.85, shininess: 10 }),
-    eye: new THREE.MeshPhongMaterial({ color: 0x0b0e12, shininess: 200, specular: 0xffffff }),
+    plumage: new THREE.MeshPhongMaterial({ vertexColors: true, map: featherTex(), shininess: 22, specular: 0x262c33 }),
+    black: new THREE.MeshPhongMaterial({ color: 0x161d24, map: featherTex(), shininess: 26, specular: 0x2a323b }),
+    white: new THREE.MeshPhongMaterial({ color: 0xfdfbf6, map: featherTex(), shininess: 20, specular: 0x222222 }),
+    beak: new THREE.MeshPhongMaterial({ color: 0xf29a3a, shininess: 90, specular: 0x775533 }),
+    feet: new THREE.MeshPhongMaterial({ color: 0xf2a7a0, shininess: 40, specular: 0x553333 }),
+    claw: new THREE.MeshPhongMaterial({ color: 0x3a2e2e, shininess: 60 }),
+    cheek: new THREE.MeshPhongMaterial({ color: 0xf08a8a, transparent: true, opacity: 0.55, shininess: 5, depthWrite: false }),
+    eye: new THREE.MeshPhongMaterial({ color: 0x07090c, shininess: 250, specular: 0xffffff }),
     shine: new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    frame: new THREE.MeshPhongMaterial({ color: 0x6b4a2e, shininess: 80, specular: 0x886644 }),
-    accent: new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.2, shininess: 30 }),
+    accent: new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.18, shininess: 30 }),
   };
   if (ghost) { Object.values(m).forEach(x => { x.transparent = true; x.opacity = 0.62; x.depthWrite = false; x.side = THREE.DoubleSide; }); return m; }
   Object.values(m).forEach(x => { x.userData = { shared: true }; });
   CH_MATS[key] = m;
   return m;
+}
+// 白と黒をぬり分けた回転体（前の white 角度より内側が白）
+function plumageLathe(prof, whiteAt, seg) {
+  const geo = new THREE.LatheGeometry(prof.map(([r, y]) => V2(Math.max(r, 1e-3), y)), seg || 64);
+  const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
+  const W = [0.99, 0.985, 0.965], B = [0.085, 0.11, 0.14];
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const half = whiteAt(y), phi = Math.abs(Math.atan2(x, z));
+    const c = half > 0 && phi < half ? W : B;
+    col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
 }
 // 先細りのカプセル（長さ L、下向き）
 function limbGeo(r1, r2, L) {
@@ -3062,7 +3085,7 @@ const POSES = {
   sled: { hipL: [-88, 0, 10], hipR: [-88, 0, -10], knL: [30, 0, 0], knR: [30, 0, 0], anL: [-30, 0, 0], anR: [-30, 0, 0], spine: [-10, 0, 0], shL: [-50, 0, 20], shR: [-50, 0, -20], elL: [-30, 0, 0], elR: [-30, 0, 0] },
 };
 // すわる・ひざをつくポーズでは腰を下げる（sit・sled・swing は root が座面）
-const DROP = { sit: 0.25, sled: 0.25, swing: 0.25, kneel: 0.12, crouch: 0.1, ready: 0.03, pushDown: 0.04, blow: 0, belly: 0.06 };
+const DROP = { sit: 0.21, sled: 0.21, swing: 0.21, kneel: 0.1, crouch: 0.08, ready: 0.03, pushDown: 0.03, blow: 0, belly: 0.05 };
 const JOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'shL', 'elL', 'wrL', 'shR', 'elR', 'wrR', 'hipL', 'knL', 'anL', 'hipR', 'knR', 'anR'];
 function makeChar(opts) {
   opts = opts || {};
@@ -3075,60 +3098,59 @@ function makeChar(opts) {
   const ring = (parent, r, y, rotX) => { const m = add(parent, new THREE.TorusGeometry(r, r * 0.13, 6, 24), M.accent, [0, y || 0, 0], [rotX === undefined ? Math.PI / 2 : rotX, 0, 0]); return m; };
   // 腰（足のつけね）
   const hips = mk('hips', root, [0, CH.hipH, 0]);
-  // 胴体：たまご形の黒い体 + 白いおなか + 小さな白衣 + しっぽ
+  // 胴体：頭までなめらかにつながる、ぽってりした形。前は白、背中とわきは黒
   const spine = mk('spine', hips, [0, 0.02, 0]);
-  const prof = [[0, -0.36], [0.18, -0.34], [0.27, -0.25], [0.315, -0.1], [0.32, 0.05], [0.3, 0.2], [0.25, 0.36], [0.18, 0.5], [0.11, 0.6], [0, 0.66]];
-  const egg = pts => new THREE.LatheGeometry(pts.map(([r, y]) => V2(Math.max(r, 1e-3), y)), 40);
-  add(spine, egg(prof), M.body).scale.set(1, 1, 0.9);
-  const bel = add(spine, egg(prof.slice(0, 8).map(([r, y]) => [r * 0.86, y * 0.92])), M.belly, [0, 0.0, 0.07]); bel.scale.set(0.82, 1, 0.88);
-  const coatPts = [[0.35, -0.28], [0.335, -0.12], [0.33, 0.05], [0.31, 0.2], [0.27, 0.32], [0.225, 0.4]];
-  add(spine, new THREE.LatheGeometry(coatPts.map(([r, y]) => V2(r, y)), 40, Math.PI * 0.3, Math.PI * 1.4), M.coat).scale.set(1, 1, 0.92);
-  [-1, 1].forEach(q => { const lap = add(spine, new THREE.BoxGeometry(0.07, 0.2, 0.015), M.coat, [q * 0.12, 0.36, 0.2], [-0.35, q * 0.5, q * 0.35]); lap.renderOrder = 1; });
-  add(spine, new THREE.BoxGeometry(0.09, 0.08, 0.02), M.coat, [0.22, 0.1, 0.2], [0, 0.75, 0]);
-  add(spine, new THREE.CylinderGeometry(0.008, 0.008, 0.1, 8), M.accent, [0.21, 0.15, 0.215], [0.1, 0, 0.1]);
-  add(spine, new THREE.ConeGeometry(0.06, 0.16, 12), M.body, [0, -0.3, -0.24], [-2.2, 0, 0]);
+  const prof = [[0, -0.29], [0.16, -0.28], [0.255, -0.21], [0.3, -0.1], [0.315, 0.02], [0.305, 0.15], [0.27, 0.28], [0.22, 0.4], [0.18, 0.5], [0.16, 0.58], [0, 0.64]];
+  const body = add(spine, plumageLathe(prof, y => (y < 0.47 ? 1.15 - Math.max(0, y - 0.1) * 1.3 : 0)), M.plumage); body.scale.set(1, 1, 0.92);
+  // しっぽ（短く、うしろにぴんと）
+  add(spine, new THREE.ConeGeometry(0.07, 0.14, 12), M.black, [0, -0.24, -0.25], [-2.1, 0, 0]).scale.set(1, 1, 0.45);
   const chest = mk('chest', spine, [0, CH.spine, 0]);
-  // スカーフ（色でペンタを見分ける）
-  add(chest, new THREE.TorusGeometry(0.13, 0.035, 10, 28), M.accent, [0, 0.28, 0], [Math.PI / 2 + 0.15, 0, 0]);
-  add(chest, new THREE.BoxGeometry(0.06, 0.16, 0.025), M.accent, [0.07, 0.19, 0.15], [0.2, 0, 0.25]);
-  // 頭
+  // スカーフ（細め。色で2羽を見分ける）
+  add(chest, new THREE.TorusGeometry(0.168, 0.022, 10, 32), M.accent, [0, 0.21, 0.005], [Math.PI / 2 + 0.12, 0, 0]);
+  add(chest, new THREE.BoxGeometry(0.045, 0.12, 0.018), M.accent, [0.06, 0.14, 0.165], [0.3, 0, 0.3]);
+  // 頭：大きめの丸い頭、目のまわりに白い輪（アデリーペンギン）
   const neck = mk('neck', chest, [0, CH.chest, 0]);
   const head = mk('head', neck, [0, CH.neck, 0]);
-  add(head, new THREE.SphereGeometry(0.2, 32, 24), M.body, [0, 0.15, 0]).scale.set(1, 0.95, 0.95);
+  add(head, new THREE.SphereGeometry(0.235, 36, 28), M.black, [0, 0.16, 0]).scale.set(1, 0.95, 0.97);
+  const eyes = [];
   [-1, 1].forEach(q => {
-    add(head, new THREE.SphereGeometry(0.058, 20, 14), M.belly, [q * 0.08, 0.19, 0.155]).scale.set(1, 1.05, 0.5);
-    add(head, new THREE.SphereGeometry(0.032, 16, 12), M.eye, [q * 0.08, 0.19, 0.18]);
-    add(head, new THREE.SphereGeometry(0.01, 8, 6), M.shine, [q * 0.08 + 0.012, 0.202, 0.208]);
-    add(head, new THREE.SphereGeometry(0.03, 12, 8), M.cheek, [q * 0.13, 0.11, 0.135]).scale.set(1, 0.6, 0.4);
-    // 丸めがね（少しずり落ちている）
-    add(head, new THREE.TorusGeometry(0.056, 0.008, 8, 28), M.frame, [q * 0.08, 0.175, 0.205], [0, 0, 0]).rotation.x = -0.12;
-    add(head, new THREE.CylinderGeometry(0.005, 0.005, 0.09, 6), M.frame, [q * 0.14, 0.18, 0.13], [Math.PI / 2, 0, 0]);
+    const eg = new THREE.Group(); eg.position.set(q * 0.105, 0.2, 0.185); eg.rotation.y = q * 0.45; head.add(eg);
+    add(eg, new THREE.SphereGeometry(0.06, 24, 16), M.white, [0, 0, 0]).scale.set(1, 1.08, 0.38);
+    const ball = new THREE.Group(); ball.position.z = 0.016; eg.add(ball); eyes.push(ball);
+    add(ball, new THREE.SphereGeometry(0.04, 20, 16), M.eye).scale.set(1, 1.12, 0.6);
+    add(ball, new THREE.SphereGeometry(0.013, 10, 8), M.shine, [0.012, 0.016, 0.022]);
+    add(ball, new THREE.SphereGeometry(0.006, 8, 6), M.shine, [-0.012, -0.012, 0.022]);
+    add(head, new THREE.SphereGeometry(0.03, 14, 10), M.cheek, [q * 0.14, 0.11, 0.165], [0, q * 0.6, 0]).scale.set(1.2, 0.7, 0.3);
   });
-  add(head, new THREE.CylinderGeometry(0.005, 0.005, 0.05, 6), M.frame, [0, 0.185, 0.215], [0, 0, Math.PI / 2]);
-  add(head, new THREE.ConeGeometry(0.045, 0.13, 16), M.beak, [0, 0.11, 0.24], [Math.PI / 2, 0, 0]).scale.set(1, 1, 0.7);
-  // つばさ（腕）
+  // くちばし：小さく、少し下向き
+  const bk = add(head, new THREE.ConeGeometry(0.042, 0.1, 18), M.beak, [0, 0.12, 0.25], [Math.PI / 2 + 0.25, 0, 0]); bk.scale.set(1, 1, 0.75);
+  // つばさ：平たく、上は黒・内側は白
   ['L', 'R'].forEach(sd => {
     const sx = sd === 'L' ? 1 : -1;
-    const sh = mk('sh' + sd, chest, [sx * 0.25, 0.14, 0]);
-    add(sh, limbGeo(0.075, 0.06, CH.upper), M.body).scale.set(0.38, 1, 1);
+    const sh = mk('sh' + sd, chest, [sx * 0.26, 0.08, -0.02]);
+    add(sh, limbGeo(0.07, 0.062, CH.upper), M.black).scale.set(0.3, 1, 1);
+    add(sh, limbGeo(0.064, 0.056, CH.upper), M.white, [-sx * 0.006, 0, 0]).scale.set(0.24, 0.98, 0.9);
     const el = mk('el' + sd, sh, [0, -CH.upper, 0]);
-    add(el, limbGeo(0.06, 0.03, CH.fore + 0.04), M.body).scale.set(0.34, 1, 1);
+    add(el, limbGeo(0.062, 0.022, CH.fore + 0.05), M.black).scale.set(0.28, 1, 1);
+    add(el, limbGeo(0.056, 0.018, CH.fore + 0.04), M.white, [-sx * 0.006, 0, 0]).scale.set(0.22, 1, 0.88);
     mk('wr' + sd, el, [0, -CH.fore, 0]);
-    // 足（短いオレンジの脚と、水かきのある足）
-    const hip = mk('hip' + sd, hips, [sx * 0.11, -0.02, 0]);
-    add(hip, limbGeo(0.06, 0.05, CH.thigh), M.body);
+    // 足：短い脚と、ピンクの水かき（指3本と小さなつめ）
+    const hip = mk('hip' + sd, hips, [sx * 0.1, -0.02, 0]);
+    add(hip, limbGeo(0.055, 0.045, CH.thigh), M.black);
     const kn = mk('kn' + sd, hip, [0, -CH.thigh, 0]);
-    add(kn, limbGeo(0.035, 0.03, CH.shin), M.beak);
+    add(kn, limbGeo(0.032, 0.028, CH.shin), M.feet);
     const an = mk('an' + sd, kn, [0, -CH.shin, 0]);
-    const fs = new THREE.Shape(); fs.moveTo(-0.06, -0.03); fs.lineTo(-0.075, 0.12); fs.quadraticCurveTo(-0.04, 0.1, -0.025, 0.14); fs.quadraticCurveTo(0, 0.11, 0.025, 0.14); fs.quadraticCurveTo(0.04, 0.1, 0.075, 0.12); fs.lineTo(0.06, -0.03); fs.lineTo(-0.06, -0.03);
-    const fg = new THREE.ExtrudeGeometry(fs, { depth: 0.025, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 2 });
-    fg.rotateX(Math.PI / 2); fg.translate(0, -0.012, 0.0);
-    add(an, fg, M.beak, [0, -0.0, 0.02]);
+    an.rotation.y = sx * 0.25;
+    add(an, new THREE.SphereGeometry(0.06, 16, 10), M.feet, [0, -0.045, 0.03]).scale.set(1, 0.32, 1.2);
+    [-1, 0, 1].forEach(k => {
+      add(an, new THREE.SphereGeometry(0.024, 10, 8), M.feet, [k * 0.04, -0.05, 0.1 - Math.abs(k) * 0.015], [0, k * 0.35, 0]).scale.set(0.8, 0.6, 1.9);
+      add(an, new THREE.ConeGeometry(0.008, 0.025, 6), M.claw, [k * 0.048, -0.052, 0.138 - Math.abs(k) * 0.02], [Math.PI / 2, 0, 0]);
+    });
   });
   // 関節：いまの角度・速さ・目標
   const cur = {}, vel = {}, tgt = {};
   JOINTS.forEach(k => { cur[k] = V3(); vel[k] = V3(); tgt[k] = V3(); });
-  const C = { root, J, cur, tgt, sc, k: opts.stiff || 140, ik: { L: null, R: null }, lookAt: null, sway: V3(), lastPos: null, lastVel: null, extra: null };
+  const C = { root, J, eyes, blinkAt: 1 + Math.random() * 3, tilt: 0, sc, cur, tgt, k: opts.stiff || 140, ik: { L: null, R: null }, lookAt: null, sway: V3(), lastPos: null, lastVel: null, extra: null };
   C.pose = (p, extra) => {
     const P = typeof p === 'string' ? POSES[p] : p;
     JOINTS.forEach(k => { const a = (P && P[k]) || (POSES.idle[k] && p !== 'stand' ? POSES.idle[k] : null); tgt[k].set(...(a || [0, 0, 0]).map(x => x * DEG)); });
@@ -3203,12 +3225,18 @@ function makeChar(opts) {
       }
     });
     J.hips.position.y = lerp(J.hips.position.y, CH.hipH - (C.drop || 0), dt > 0 ? 1 - Math.exp(-dt * 10) : 0);
+    // まばたき（ときどき目を閉じる）と、首を少しかしげる
+    const tt = t || 0;
+    if (tt > C.blinkAt + 0.14) C.blinkAt = tt + 2 + Math.random() * 3.5;
+    const bl = tt > C.blinkAt && tt < C.blinkAt + 0.14 ? 0.12 : 1;
+    eyes.forEach(e => { e.scale.y = lerp(e.scale.y, bl, 0.6); });
+    const tilt = C.lookAt ? 0 : Math.sin(tt * 0.7 + C.blinkAt) * 0.07;
     // 呼吸（ほんの少し）
     const br = Math.sin((t || 0) * 2.2) * 0.012;
     JOINTS.forEach(j => {
       if ((j === 'shL' || j === 'elL') && C.ik.L) return;
       if ((j === 'shR' || j === 'elR') && C.ik.R) return;
-      J[j].rotation.set(cur[j].x + (j === 'chest' ? br : 0), cur[j].y, cur[j].z);
+      J[j].rotation.set(cur[j].x + (j === 'chest' ? br : 0), cur[j].y, cur[j].z + (j === 'head' ? tilt : 0));
     });
     // 頭を見たい物に向ける
     if (C.lookAt) {
@@ -3538,15 +3566,15 @@ EQ.refr = s => {
 // ---------- レンズ：物体がペンタ、像はさかさまのペンタ ----------
 ACTORS.lens = {
   init(s) {
-    const o = makeChar({ color: GREEN, scale: 1 / 1.36 }); o.pose('cheer').snap(); R.group.add(o.root); s.objC = o;
-    const im = makeChar({ color: ORANGE, scale: 1 / 1.36, ghost: true }); im.pose('cheer').snap(); R.group.add(im.root); s.imgC = im;
+    const o = makeChar({ color: GREEN, scale: 1 / 1.25 }); o.pose('cheer').snap(); R.group.add(o.root); s.objC = o;
+    const im = makeChar({ color: ORANGE, scale: 1 / 1.25, ghost: true }); im.pose('cheer').snap(); R.group.add(im.root); s.imgC = im;
   },
   draw(s) {
     s.obj.visible = false; s.flame.visible = false;
     s.objC.root.position.set(-s.p.a, s.ax, 0); s.objC.root.rotation.y = 0.25;
     const show = s.img.visible; s.img.visible = false;
     s.imgC.root.visible = show;
-    if (show) { s.imgC.root.position.set(s.b, s.ax, 0); s.imgC.root.rotation.y = 0.25; const k = 1 / 1.36; s.imgC.root.scale.set(k * Math.abs(s.m), k * s.m, k * Math.abs(s.m)); }
+    if (show) { s.imgC.root.position.set(s.b, s.ax, 0); s.imgC.root.rotation.y = 0.25; const k = 1 / 1.25; s.imgC.root.scale.set(k * Math.abs(s.m), k * s.m, k * Math.abs(s.m)); }
   },
 };
 EQ.lens = s => {
