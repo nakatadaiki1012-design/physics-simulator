@@ -226,6 +226,19 @@ ol.sol2 .w::before { content: "なぜ？ "; color: var(--accent); font-weight: 7
 .ls-flow li.done { color: var(--accent); border-color: var(--accent); }
 .ls-easybtn { display: block; width: 100%; text-align: left; border: 1px dashed var(--ke); background: transparent; color: var(--ink); border-radius: 4px; padding: 7px 12px; font-size: 14px; font-weight: 700; margin: 2px 0 8px; }
 .ls-fbox { margin: 8px 0; animation: lsIn .35s ease; }
+/* 観察：こんなとき、どうなる？（予想 → 答え） */
+.ls-ask { border: 1px solid var(--line); border-radius: 3px; padding: 8px 12px 10px; background: color-mix(in srgb, var(--vel) 6%, var(--panel)); }
+.ls-askh { font-size: 12px; font-weight: 700; color: var(--vel); letter-spacing: .06em; }
+.ls-ask .ls-q { margin: 2px 0 8px; }
+.ls-ask .verdict { margin-top: 8px; }
+.ls-ans { margin-top: 10px; animation: lsIn .35s ease; }
+/* 問題の図：3D の左上に「この問題の数字」 */
+.figcap { position: absolute; left: 8px; top: 46px; z-index: 3; max-width: min(300px, calc(100% - 70px)); background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--warm); border-radius: 3px; padding: 4px 9px 5px; font-size: 12.5px; line-height: 1.5; pointer-events: none; display: flex; flex-wrap: wrap; gap: 0 10px; }
+.figcap b { width: 100%; font-size: 11.5px; color: var(--warm); letter-spacing: .06em; }
+.figcap span { font-family: var(--font-data); white-space: nowrap; }
+.figcap small { width: 100%; color: var(--muted); font-size: 11px; }
+.figcap[hidden] { display: none; }
+@media (max-width: 640px) { .figcap { font-size: 11px; top: 42px; } }
 .ls-fh { font-size: 12px; font-weight: 700; color: var(--warm); letter-spacing: .06em; }
 .exsteps { display: grid; gap: 8px; margin: 6px 0; }
 .exstep { border-left: 3px solid var(--accent); background: var(--chip); border-radius: 2px; padding: 6px 12px; animation: lsIn .35s ease; }
@@ -237,7 +250,7 @@ ol.sol2 .w::before { content: "なぜ？ "; color: var(--accent); font-weight: 7
 .exw { color: var(--muted); font-size: 13.5px !important; }
 .exans { font: 700 22px var(--font-data); color: var(--accent); }
 @keyframes lsIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .ls-fbox, .exstep { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ls-fbox, .exstep, .ls-ans { animation: none; } }
 /* 授業モード：左の一覧を消して、大きな文字の説明パネルにする */
 body.present .app { grid-template-columns: minmax(0, 1fr) 460px; }
 body.present .lib { display: none; }
@@ -321,6 +334,7 @@ body.present .lib { display: none; }
     <div id="stage"></div>
     <div class="labels" id="labels"></div>
     <div class="ov ov-tl" id="ovTL"></div>
+    <div class="figcap" id="figcap" hidden></div>
     <div class="eqbox" id="eqbox" aria-live="off" hidden></div>
     <div class="ov ov-tr">
       <button type="button" class="ibtn eqbtn" id="btnEq" aria-pressed="true" title="いま動いている式を3Dのそばに出す" aria-label="いまの式を表示">式</button>
@@ -940,6 +954,25 @@ function placeEq() {
 const G_OPTS = [[9.8, '地球 9.8'], [1.6, '月 1.6'], [24.8, '木星 24.8']];
 
 // ---------- 自由落下・鉛直投げ上げ ----------
+// 身近な物：校舎（窓のならんだ壁）とサッカーボール
+function school(h, w, d) {
+  const fl = Math.max(1, Math.round(h / 3.5)), hp = Math.round(256 * h / fl / w), cv = document.createElement('canvas'); cv.width = 256; cv.height = hp * fl;
+  const x = cv.getContext('2d'), n = Math.max(1, Math.round(w / 0.8)), cw = 256 / n;
+  x.fillStyle = '#efe7d6'; x.fillRect(0, 0, 256, cv.height);
+  for (let i = 0; i < fl; i++) { const y0 = i * hp; x.fillStyle = '#d9cdb4'; x.fillRect(0, y0 + hp - 10, 256, 10); for (let j = 0; j < n; j++) { x.fillStyle = '#7fa6c4'; x.fillRect(j * cw + cw * 0.12, y0 + hp * 0.3, cw * 0.76, hp * 0.45); x.fillStyle = '#eaf2f8'; x.fillRect(j * cw + cw * 0.5 - 1, y0 + hp * 0.3, 2, hp * 0.45); } }
+  const wall = new THREE.MeshPhongMaterial({ map: new THREE.CanvasTexture(cv), shininess: 10 }), plain = solid(0xe6dcc7, { shininess: 10 });
+  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [wall, plain, plain, plain, wall, wall]);
+}
+let _soccer = null;
+function soccerMat() {
+  if (_soccer) return _soccer;
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const x = cv.getContext('2d');
+  x.fillStyle = '#f7f5ef'; x.fillRect(0, 0, 256, 128); x.fillStyle = '#26282c';
+  [[32, 64], [96, 64], [160, 64], [224, 64], [0, 18], [64, 18], [128, 18], [192, 18], [256, 18], [0, 110], [64, 110], [128, 110], [192, 110], [256, 110]].forEach(([cx, cy]) => { x.beginPath(); for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5 - Math.PI / 2; x.lineTo(cx + Math.cos(a) * 14, cy + Math.sin(a) * 12); } x.fill(); });
+  _soccer = new THREE.MeshPhongMaterial({ map: new THREE.CanvasTexture(cv), shininess: 60 }); _soccer.userData.shared = true;
+  return _soccer;
+}
+
 sim({
   id: 'fall', cat: '力学', icon: '落', name: '自由落下と鉛直投げ上げ',
   lead: '高い所から落とす・真上に投げる。速さは時間に比例して変わる。',
@@ -955,14 +988,16 @@ sim({
     const top = p.h0 + (p.v0 > 0 ? p.v0 * p.v0 / (2 * p.g) : 0);
     s.H = Math.max(4, Math.ceil(top + 1));
     s.r = clamp(s.H * 0.016, 0.12, 0.34);
-    // 台（高さ h のやぐら）
+    // 校舎（高さ h の屋上から落とす）。h = 0 のときは校庭
     if (p.h0 > 0) {
-      const wood = solid(0x9c7a54, { shininess: 15 }), steel = solid(0x59606a, { shininess: 40 });
-      const plat = box(1.4, 0.12, 1.4, wood); plat.position.set(-0.55, p.h0 - 0.06, 0); g.add(plat);
-      [[-1.15, -0.6], [0.05, -0.6], [-1.15, 0.6], [0.05, 0.6]].forEach(([x, z]) => { const l = cyl(0.04, 0.04, p.h0, steel, 10); l.position.set(x, p.h0 / 2, z); g.add(l); });
-      for (let y = 2; y < p.h0 - 0.5; y += 2.5) [[-0.6], [0.6]].forEach(([z]) => g.add(rod(V3(-1.15, y, z), V3(0.05, y + 2, z), 0.02, steel)));
-      g.add(contactShadow(2.2, 2.2, 0.4)).position.x = -0.55;
+      const bw = 3.2, bd = 2.4, bld = school(p.h0, bw, bd);
+      bld.position.set(-0.32 - bw / 2 + 0.1, p.h0 / 2, 0); g.add(bld);
+      const rail = solid(0x59606a, { shininess: 40 }), ex = -0.24;
+      g.add(rod(V3(ex, p.h0 + 0.55, -bd / 2), V3(ex, p.h0 + 0.55, bd / 2), 0.025, rail));
+      for (let z = -bd / 2; z <= bd / 2 + 0.01; z += 0.4) g.add(rod(V3(ex, p.h0, z), V3(ex, p.h0 + 0.55, z), 0.015, rail));
+      g.add(contactShadow(bw + 0.8, bd + 0.8, 0.35)).position.x = -0.32 - bw / 2;
     }
+    const grass = new THREE.Mesh(new THREE.CircleGeometry(4.5, 48), solid(0xb59c68, { shininess: 2, specular: 0x000000 })); grass.rotation.x = -Math.PI / 2; grass.position.set(-0.8, 0.003, 0); g.add(grass);
     const ls = clamp(s.H * 0.022, 0.16, 0.45);
     const rl = ruler(s.H, s.H > 12 ? 1 : 0.5, s.H > 12 ? 5 : 2, '', ls); rl.position.set(1.0, 0, -0.4); g.add(rl);
     const ml = textSprite('高さ [m]', ls * 1.1, '#3a3a36', 'bold 40px "Zen Kaku Gothic New", sans-serif'); ml.position.set(1.0 + ls * 1.5, s.H + ls * 1.6, -0.4); g.add(ml);
@@ -1062,7 +1097,7 @@ sim({
     s.r = clamp(s.span * 0.012, 0.1, 0.32);
     setFloor(true, s.span > 25 ? 5 : 1, 0);
     // 台と発射台
-    if (p.h0 > 0) { const t = roundBox(1.6, p.h0, 1.4, 0.06, solid(0xb39b78, { shininess: 10 })); t.position.set(-0.4, p.h0 / 2, 0); g.add(t); g.add(contactShadow(2.4, 2.2, 0.45)).position.x = -0.4; }
+    if (p.h0 > 0) { const t = school(p.h0, 1.8, 1.6); t.position.set(-0.8, p.h0 / 2, 0); g.add(t); g.add(contactShadow(2.6, 2.4, 0.4)).position.x = -0.8; }
     // 発射はキャラクターのキック（ボールは足もと x = 0 から飛び出す）
     const k = s.span / 14;
     s.x0 = 0;
@@ -1077,7 +1112,7 @@ sim({
     wall.rotation.y = Math.PI / 2; wall.position.set(s.wallX, wh / 2, 0); wall.userData.noFit = true; g.add(wall);
     s.wall = wall;
     // ボール・影
-    s.b = ball(s.r, metal(0xc8452f, 0.25)); g.add(s.b);
+    s.b = ball(s.r, soccerMat()); g.add(s.b);
     s.sh = blob(s.r * 4); g.add(s.sh);
     s.pg = ball(s.r * 0.6, glow(0x2c6352, 0.85), 16); g.add(s.pg); // 床の影（横の動き）
     s.pw = ball(s.r * 0.6, glow(0xb8502c, 0.85), 16); g.add(s.pw); // かべの影（たての動き）
@@ -1105,6 +1140,7 @@ sim({
     if (s.y <= 0 && s.t > 0.01) { s.y = 0; s.land = s.x - s.x0; s.tland = s.t; if (p.h0 === 0) s.mem[p.v0 + ':' + p.th] = s.land; return 'stop'; }
   },
   draw(s) {
+    s.b.rotation.z = -s.t * 9; // ボールの回転
     const p = s.p;
     s.b.position.set(s.x, s.y + s.r, 0);
     s.sh.update(s.x, s.y, 0);
@@ -1156,13 +1192,13 @@ sim({
 
 // ---------- 斜面と摩擦 ----------
 sim({
-  id: 'incline', cat: '力学', icon: '摩', name: '斜面と摩擦力',
-  lead: '重力を斜面に平行・垂直に分ける。摩擦がたえきれなくなると、すべり出す。',
+  id: 'incline', cat: '力学', icon: '摩', name: '斜面と摩擦力（滑り台）',
+  lead: '公園の滑り台で考える。重力を斜面に平行・垂直に分ける。摩擦がたえきれなくなると、すべり出す。',
   params: [
     { k: 'th', label: '斜面の角度 <var>θ</var>', min: 0, max: 60, step: 1, v: 20, unit: '°', reset: true },
     { k: 'mu0', label: '静止摩擦係数 <var>μ</var>', min: 0, max: 1, step: 0.01, v: 0.5, reset: true },
     { k: 'mu', label: '動摩擦係数 <var>μ\'</var>', min: 0, max: 1, step: 0.01, v: 0.3, reset: true },
-    { k: 'm', label: '質量 <var>m</var>', min: 0.5, max: 5, step: 0.1, v: 2, unit: 'kg', reset: true },
+    { k: 'm', label: '質量 <var>m</var>', min: 1, max: 40, step: 0.5, v: 5, unit: 'kg', reset: true },
   ],
   p0: { vec: true, dec: true },
   legend: [['f', '力'], ['v', '速度']],
@@ -1173,19 +1209,32 @@ sim({
     s.Ls = 6; // 斜面の長さ
     const W = s.Ls * Math.cos(th), Hh = s.Ls * Math.sin(th);
     s.W = W; s.Hh = Math.max(Hh, 0.001);
-    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(W, 0); sh.lineTo(0, Math.max(Hh, 0.02)); sh.lineTo(0, 0);
-    const geo = new THREE.ExtrudeGeometry(sh, { depth: 1.8, bevelEnabled: false }); geo.translate(-W / 2, 0, -0.9);
-    const wedge = new THREE.Mesh(geo, solid(0xc9b48e, { shininess: 12 })); g.add(wedge);
-    if (Hh < 0.03) { wedge.visible = false; const pl = box(W, 0.06, 1.8, solid(0xc9b48e)); pl.position.y = 0.03; g.add(pl); }
-    g.add(contactShadow(W + 1.5, 2.8, 0.45));
+    // 公園の滑り台：すべる面・手すり・上の台・はしご・砂場
+    const bed = solid(0xf2c14e, { shininess: 70 }), side = solid(0xe0573f, { shininess: 60 }), pole = solid(0x2f8f6a, { shininess: 50 });
+    const along = (L, h, d, mat, off, z) => { const m = box(L, h, d, mat); m.rotation.z = -th; m.position.set(0, Math.max(Hh, 0.02) / 2, z).addScaledVector(V3(Math.sin(th), Math.cos(th), 0), off); g.add(m); return m; };
+    along(s.Ls, 0.06, 1.0, bed, -0.03, 0);
+    [-0.53, 0.53].forEach(z => { along(s.Ls, 0.14, 0.05, side, 0.04, z); along(s.Ls, 0.045, 0.09, side, 0.12, z); });
+    const sand = new THREE.Mesh(new THREE.CircleGeometry(W / 2 + 2.6, 48), solid(0xb59c68, { shininess: 2, specular: 0x000000 })); sand.rotation.x = -Math.PI / 2; sand.position.set(-0.6, 0.004, 0); g.add(sand);
+    if (Hh > 0.3) {
+      const x0 = -W / 2, pw = 1.0;
+      const plat = box(pw, 0.08, 1.2, side); plat.position.set(x0 - pw / 2, Hh - 0.04, 0); g.add(plat);
+      [[x0 - pw + 0.05, -0.55], [x0 - pw + 0.05, 0.55], [x0 - 0.05, -0.55], [x0 - 0.05, 0.55]].forEach(([x, z]) => { const c = cyl(0.045, 0.045, Hh + 0.75, pole, 12); c.position.set(x, (Hh + 0.75) / 2, z); g.add(c); });
+      [-0.55, 0.55].forEach(z => g.add(rod(V3(x0 - pw + 0.05, Hh + 0.7, z), V3(x0 - 0.05, Hh + 0.7, z), 0.035, pole)));
+      // はしご
+      const lx = x0 - pw, foot = lx - Hh * 0.35;
+      [-0.4, 0.4].forEach(z => g.add(rod(V3(foot, 0, z), V3(lx, Hh, z), 0.035, pole)));
+      for (let y = 0.3; y < Hh - 0.1; y += 0.3) g.add(rod(V3(foot + (lx - foot) * y / Hh, y, -0.4), V3(foot + (lx - foot) * y / Hh, y, 0.4), 0.025, metal(0xc8ccd2, 0.5)));
+      if (Hh > 1.2) [-0.45, 0.45].forEach(z => { const c = cyl(0.04, 0.04, Hh / 2, pole, 10); c.position.set(0, Hh / 4, z); g.add(c); });
+    }
+    g.add(contactShadow(W + 2.5, 2.8, 0.35));
     // 角度の弧
-    const arc = []; for (let i = 0; i <= 20; i++) { const a = Math.PI - th * i / 20; arc.push(V3(W / 2 + Math.cos(a) * 0.9, 0.01 + Math.sin(a) * 0.9, 0.91)); }
+    const arc = []; for (let i = 0; i <= 20; i++) { const a = Math.PI - th * i / 20; arc.push(V3(W / 2 + Math.cos(a) * 0.9, 0.01 + Math.sin(a) * 0.9, 0.62)); }
     g.add(makeLine(arc, COL.ink, 0, 0.7));
-    const tl = textSprite('θ', 0.3, '#24282b', 'italic bold 48px "Shippori Mincho B1", serif'); tl.position.set(W / 2 - 1.15, 0.2, 0.92); g.add(tl);
+    const tl = textSprite('θ', 0.3, '#24282b', 'italic bold 48px "Shippori Mincho B1", serif'); tl.position.set(W / 2 - 1.15, 0.2, 0.63); g.add(tl);
     // 物体
     s.dir = V3(Math.cos(th), -Math.sin(th), 0); s.nrm = V3(Math.sin(th), Math.cos(th), 0);
     s.top = V3(-W / 2, Math.max(Hh, 0.02), 0);
-    s.blk = roundBox(0.8, 0.5, 0.7, 0.05, solid(0x8a5a3a, { shininess: 25 })); s.blk.rotation.z = -th; g.add(s.blk);
+    s.blk = new THREE.Group(); s.blk.rotation.z = -th; g.add(s.blk); // ペンタ（ACTORS）がここに座る
     s.u = 0.7; s.v = 0; s.static = true;
     s.arG = makeArrow(COL.force, 0.035); s.arN = makeArrow(COL.force, 0.035); s.arF = makeArrow(COL.force, 0.035);
     s.arS = makeArrow(0xe0a080, 0.022); s.arC = makeArrow(0xe0a080, 0.022); s.arV = makeArrow(COL.vel, 0.035);
@@ -1254,16 +1303,16 @@ sim({
     <p class="txt">加速度は質量 <var>m</var> によらない。質量を変えても、力はすべて <var>m</var> 倍になるだけで、v–t グラフは同じになる。</p>`,
   points: [['o', '静止摩擦力は「つり合う大きさ」。いつも μN ではない'], ['o', 'すべり出す角度 θ₀ は tanθ₀ = μ（摩擦角）'], ['x', '垂直抗力はいつも mg、はまちがい（斜面では mg cosθ）'], ['o', '動摩擦係数 μ\' はふつう μ より小さい']],
   exam: '運動方程式を斜面方向に立てる問題、静止摩擦力の大きさ（最大摩擦力と区別）、糸でつながった2物体がよく出る。',
-  view() { return [[0, 1.2, 0], 3.6, [0.25, 0.25, 1]]; },
+  view() { return [[0, 1.2, 0], 3.8, [0.2, 0.55, 1]]; },
 });
 
 // ---------- 運動量保存と衝突 ----------
 sim({
-  id: 'collide', cat: '力学', icon: '衝', name: '運動量の保存と衝突',
-  lead: 'ぶつかる前と後で、運動量の和は変わらない。はねかえり係数で衝突のようすが決まる。',
+  id: 'collide', cat: '力学', icon: '衝', name: '運動量の保存と衝突（バンパーカー）',
+  lead: '遊園地のバンパーカーで考える。ぶつかる前と後で、運動量の和は変わらない。はねかえり係数で衝突のようすが決まる。',
   params: [
-    { k: 'mA', label: '質量 <var>m</var><sub>A</sub>', min: 0.5, max: 3, step: 0.1, v: 1, unit: 'kg', reset: true },
-    { k: 'mB', label: '質量 <var>m</var><sub>B</sub>', min: 0.5, max: 3, step: 0.1, v: 1, unit: 'kg', reset: true },
+    { k: 'mA', label: '質量 <var>m</var><sub>A</sub>（人＋車）', min: 50, max: 300, step: 10, v: 100, unit: 'kg', reset: true },
+    { k: 'mB', label: '質量 <var>m</var><sub>B</sub>（人＋車）', min: 50, max: 300, step: 10, v: 100, unit: 'kg', reset: true },
     { k: 'vA', label: '速度 <var>v</var><sub>A</sub>', min: -2, max: 3, step: 0.1, v: 1.5, unit: 'm/s', reset: true },
     { k: 'vB', label: '速度 <var>v</var><sub>B</sub>', min: -3, max: 2, step: 0.1, v: 0, unit: 'm/s', reset: true },
     { k: 'e', label: 'はねかえり係数 <var>e</var>', min: 0, max: 1, step: 0.05, v: 1, reset: true },
@@ -1272,26 +1321,28 @@ sim({
   legend: [['v', '速度（右向きが正）']],
   init(s) {
     const p = s.p, g = R.group;
-    // エアトラック
-    const al = metal(0xb9c0c8, 0.5);
-    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 9, 3), al); rail.rotation.z = Math.PI / 2; rail.rotation.x = Math.PI; rail.position.y = 0.5; g.add(rail);
-    [-4.3, 4.3].forEach(x => { const l = box(0.12, 0.42, 0.6, solid(0x3a4049)); l.position.set(x, 0.21, 0); g.add(l); const st = box(0.1, 0.5, 0.5, solid(0x3a4049)); st.position.set(x * 1.03, 0.7, 0); g.add(st); });
-    for (let x = -4; x <= 4.01; x += 0.5) { const h = cyl(0.012, 0.012, 0.01, solid(0x555555), 6); h.position.set(x, 0.67, 0.06); g.add(h); }
-    const sc = ruler(8, 0.1, 10, ''); sc.rotation.z = -Math.PI / 2; sc.position.set(-4, 0.25, 0.36); g.add(sc);
-    g.add(contactShadow(10, 1.6, 0.5));
+    // 遊園地のバンパーカー：ゴムの床・まわりのさく・目もり
+    const floor = box(9.4, 0.06, 3.2, solid(0x3b4552, { shininess: 25 })); floor.position.y = 0.03; g.add(floor);
+    [-1.65, 1.65].forEach(z => { const f = box(9.4, 0.3, 0.12, solid(0xf2c14e, { shininess: 40 })); f.position.set(0, 0.2, z); g.add(f); });
+    [-4.75, 4.75].forEach(x => { const f = box(0.12, 0.3, 3.4, solid(0xf2c14e, { shininess: 40 })); f.position.set(x, 0.2, 0); g.add(f); });
+    const sc = ruler(8, 0.1, 10, ''); sc.rotation.z = -Math.PI / 2; sc.position.set(-4, 0.07, 1.45); g.add(sc);
+    g.add(contactShadow(10, 3.6, 0.4));
     const cart = (m, color, name) => {
-      const w = 0.55 + m * 0.18;
+      const k = m / 100, w = 0.62 + k * 0.12;
       const c = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, w, 3, 1, true), solid(color, { shininess: 60, side: THREE.DoubleSide })); body.rotation.z = Math.PI / 2; body.rotation.x = Math.PI; body.scale.set(1.15, 1, 1.15); c.add(body);
-      const topb = roundBox(w * 0.7, 0.16 + m * 0.07, 0.3, 0.03, metal(0x6b727b, 0.3)); topb.position.y = 0.32 + m * 0.03; c.add(topb);
-      const flag = textSprite(name, 0.28, '#24282b', 'bold 44px "Shippori Mincho B1", serif'); flag.position.y = 0.75 + m * 0.07; c.add(flag);
-      const bump = new THREE.Mesh(springGeo(5, 0.06, 0.012), metal(0xd0d4d8, 0.6)); bump.rotation.z = -Math.PI / 2; bump.scale.y = 0.18; c.add(bump);
-      c.position.y = 0.66; g.add(c);
-      return { c, w, bump };
+      const body = roundBox(w, 0.3, 0.78, 0.1, solid(color, { shininess: 90 })); body.position.y = 0.05; c.add(body);
+      const back = roundBox(0.18, 0.36, 0.72, 0.06, solid(color, { shininess: 90 })); back.position.set(-w / 2 + 0.12, 0.3, 0); c.add(back);
+      const rub = new THREE.Mesh(new THREE.TorusGeometry(1, 0.09, 10, 40), solid(0x1d1f22, { shininess: 15 })); rub.rotation.x = Math.PI / 2; rub.scale.set(w / 2 + 0.09, 0.45, 1); rub.position.y = -0.08; c.add(rub);
+      const wheel = cyl(0.025, 0.025, 0.2, metal(0x8d949c), 8); wheel.position.set(w / 2 - 0.16, 0.3, 0); wheel.rotation.z = 0.6; c.add(wheel);
+      const sw = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.018, 8, 20), solid(0x1d1f22)); sw.position.set(w / 2 - 0.22, 0.38, 0); sw.rotation.y = Math.PI / 2; sw.rotation.x = 0.6; c.add(sw);
+      const pole = cyl(0.018, 0.018, 1.2, metal(0xc8ccd2, 0.5), 8); pole.position.set(-w / 2 + 0.06, 0.8, 0); c.add(pole);
+      const flag = textSprite(name, 0.3, '#24282b', 'bold 44px "Shippori Mincho B1", serif'); flag.position.set(-w / 2 + 0.06, 1.5, 0); c.add(flag);
+      c.position.y = 0.3; g.add(c);
+      return { c, w, bump: new THREE.Group() };
     };
     s.A = Object.assign(cart(p.mA, 0x2c6352, 'A'), { x: -2.4, v: p.vA, m: p.mA });
     s.B = Object.assign(cart(p.mB, 0xb8502c, 'B'), { x: 0.8, v: p.vB, m: p.mB });
-    s.A.bump.position.x = s.A.w / 2; s.B.bump.position.x = -s.B.w / 2 - 0.18;
+    s.B.c.rotation.y = Math.PI; // B は左向き
     s.aA = makeArrow(COL.vel, 0.035); s.aB = makeArrow(COL.vel, 0.035); g.add(s.aA.g, s.aB.g);
     s.lA = addLabel('', () => s.A.c.position.clone().add(V3(0, 0.95, 0)), 'v'); s.lB = addLabel('', () => s.B.c.position.clone().add(V3(0, 0.95, 0)), 'v');
     s.p0 = p.mA * p.vA + p.mB * p.vB; s.K0 = 0.5 * p.mA * p.vA * p.vA + 0.5 * p.mB * p.vB * p.vB;
@@ -1314,7 +1365,7 @@ sim({
   draw(s) {
     const A = s.A, B = s.B;
     A.c.position.x = A.x; B.c.position.x = B.x;
-    s.aA.set(V3(A.x, 1.25, 0), V3(A.v, 0, 0), 0.6); s.aB.set(V3(B.x, 1.25, 0), V3(B.v, 0, 0), 0.6);
+    s.aA.set(V3(A.x, 1.3, 0), V3(A.v, 0, 0), 0.6); s.aB.set(V3(B.x, 1.3, 0), V3(B.v, 0, 0), 0.6);
     s.aA.g.visible = s.aA.g.visible && s.p.vec; s.aB.g.visible = s.aB.g.visible && s.p.vec;
     s.lA.set(`vA ${fmt(A.v, 2)}`); s.lB.set(`vB ${fmt(B.v, 2)}`);
   },
@@ -1339,7 +1390,7 @@ sim({
   },
   act(s, a, el) {
     const p = s.p;
-    if (el.dataset.preset === '1') { p.e = 1; } else if (el.dataset.preset === '0') { p.e = 0; } else if (el.dataset.preset === 'swap') { p.mA = p.mB = 1; p.vA = 1.5; p.vB = 0; p.e = 1; }
+    if (el.dataset.preset === '1') { p.e = 1; } else if (el.dataset.preset === '0') { p.e = 0; } else if (el.dataset.preset === 'swap') { p.mA = p.mB = 100; p.vA = 1.5; p.vB = 0; p.e = 1; }
     restart();
   },
   goal: 'はねかえり係数を <b>0（くっつく）</b> にしてぶつけよう。運動量の和と運動エネルギーの和は、それぞれどうなる？',
@@ -1352,7 +1403,7 @@ sim({
     <li><b>0</b><span><var>e</var> = 0：完全非弾性衝突。2つはくっついて同じ速度になる。失うエネルギーが最大。</span></li></ul>`,
   points: [['o', 'どんな衝突でも運動量の和は保存（外力がないとき）'], ['x', '運動エネルギーもいつも保存、はまちがい（e = 1 のときだけ）'], ['o', '速度は向きをふくめて符号をつけて計算する'], ['o', 'e は「速度の差」の比。速さの比ではない']],
   exam: '運動量保存とはねかえり係数の式を連立して衝突後の速度を求める問題、失われた運動エネルギー、壁との衝突、2次元の衝突がよく出る。',
-  view() { return [[0, 0.7, 0], 5.3, [0, 0.45, 1]]; },
+  view() { return [[0, 0.6, 0], 4.6, [0, 0.32, 1]]; },
 });
 
 // ---------- 単振動（ばね振り子） ----------
@@ -1441,12 +1492,12 @@ sim({
 
 // ---------- 単振り子 ----------
 sim({
-  id: 'pend', cat: '力学', icon: '子', name: '単振り子',
-  lead: '周期はひもの長さで決まり、おもりの重さによらない。',
+  id: 'pend', cat: '力学', icon: '子', name: '単振り子（ブランコ）',
+  lead: 'ブランコは振り子。周期はひもの長さで決まり、乗る人の重さによらない。',
   params: [
-    { k: 'L', label: 'ひもの長さ <var>L</var>', min: 0.2, max: 2, step: 0.01, v: 1, unit: 'm', reset: true },
+    { k: 'L', label: 'ひもの長さ <var>L</var>', min: 0.2, max: 3, step: 0.01, v: 1, unit: 'm', reset: true },
     { k: 'th0', label: '振れ角 <var>θ</var><sub>0</sub>', min: 3, max: 80, step: 1, v: 12, unit: '°', reset: true },
-    { k: 'm', label: '質量 <var>m</var>', min: 0.05, max: 1, step: 0.05, v: 0.2, unit: 'kg', reset: true },
+    { k: 'm', label: '質量 <var>m</var>', min: 0.05, max: 60, step: 0.05, v: 0.2, unit: 'kg', reset: true },
   ],
   p0: { g: 9.8, vec: false, trail: true },
   rs: ['g'],
@@ -1454,20 +1505,23 @@ sim({
   h: 1 / 600,
   init(s) {
     const p = s.p, g = R.group;
-    const H = 2.4;
+    const H = Math.max(2.4, p.L + 0.6);
     s.piv = V3(0, H, 0);
-    const steel = metal(0x8d949c, 0.4), dark = solid(0x3a4049, { shininess: 30 });
-    const base = roundBox(1.6, 0.08, 0.8, 0.02, dark); base.position.set(-0.5, 0.04, 0); g.add(base);
-    const post = cyl(0.03, 0.03, H + 0.1, steel, 16); post.position.set(-1.1, (H + 0.1) / 2, 0); g.add(post);
-    const arm = cyl(0.022, 0.022, 1.2, steel, 12); arm.rotation.z = Math.PI / 2; arm.position.set(-0.5, H, 0); g.add(arm);
-    const clamp_ = box(0.08, 0.06, 0.08, dark); clamp_.position.copy(s.piv); g.add(clamp_);
-    g.add(contactShadow(2.2, 1.4, 0.5)).position.x = -0.5;
+    // 公園のブランコ：A字の柱と上のはり・砂場
+    const frame = solid(0x2f6fb0, { shininess: 60 }), bar = solid(0xe0573f, { shininess: 60 }), dark = solid(0x3a4049, { shininess: 30 });
+    const zf = 1.25, sp = H * 0.4;
+    g.add(rod(V3(0, H, -zf - 0.1), V3(0, H, zf + 0.1), 0.045, bar));
+    [-zf, zf].forEach(z => [-1, 1].forEach(q => g.add(rod(V3(q * sp, 0, z * 1.08), V3(0, H + 0.02, z), 0.04, frame))));
+    [-zf, zf].forEach(z => g.add(rod(V3(-sp * 0.45, H * 0.55, z * 1.04), V3(sp * 0.45, H * 0.55, z * 1.04), 0.028, frame)));
+    const clamp_ = box(0.1, 0.08, 0.5, dark); clamp_.position.copy(s.piv); g.add(clamp_);
+    const sand = new THREE.Mesh(new THREE.CircleGeometry(Math.max(2.2, H * 0.95), 48), solid(0xb59c68, { shininess: 2, specular: 0x000000 })); sand.rotation.x = -Math.PI / 2; sand.position.y = 0.004; g.add(sand);
+    g.add(contactShadow(2.4, 2.4, 0.4));
     // 分度器
     const pts = []; for (let i = -60; i <= 60; i += 2) { const a = i * DEG, r1 = 0.32, r2 = i % 10 === 0 ? 0.27 : 0.3; pts.push(V3(Math.sin(a) * r1, H - Math.cos(a) * r1, 0.01), V3(Math.sin(a) * r2, H - Math.cos(a) * r2, 0.01)); }
     g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x3a3a36 })));
     g.add(makeLine([s.piv, V3(0, H - Math.min(p.L, 2.2), 0)], COL.ink, 0.03, 0.4));
     s.str = makeLine([V3(), V3()], 0x3a3a36, 0, 0.9); g.add(s.str);
-    s.r = 0.035 + Math.cbrt(p.m) * 0.05;
+    s.r = 0.035 + Math.cbrt(Math.min(p.m, 1)) * 0.05;
     s.bob = ball(s.r, metal(0xb08a3a, 0.4)); g.add(s.bob);
     s.sh = blob(0.3); g.add(s.sh);
     s.trail = makeTrail(0xb8502c, 600, 0.5); g.add(s.trail.line);
@@ -1521,7 +1575,7 @@ sim({
     <p class="txt">最下点で速さが最大になり、張力は <var>mg</var> より大きくなる（円運動の向心力が必要なため）：<var>T</var> = <var>mg</var> + <var>mv</var><sup>2</sup>/<var>L</var>。</p>`,
   points: [['o', '周期は長さの平方根に比例。4 倍の長さで 2 倍'], ['o', '月では g が約 1/6 なので、周期は約 2.4 倍'], ['x', '重いおもりほど速く振れる、はまちがい'], ['o', '最高点で速さ 0、最下点で速さ最大（エネルギー保存）']],
   exam: '周期の計算、最下点の速さ v = √(2gL(1−cosθ))、最下点の張力、エレベーター内の振り子（見かけの重力）がよく出る。',
-  view() { return [[0, 1.4, 0], 1.6, [0.15, 0.1, 1]]; },
+  view(s) { const H = Math.max(2.4, s.p.L + 0.6); return [[0, H - s.p.L * 0.6, 0], 1.3 + s.p.L * 0.9, [0.75, 0.25, 1]]; },
 });
 
 // ---------- 等速円運動 ----------
@@ -3348,18 +3402,17 @@ EQ.proj = s => {
     <div><var>y</var> = <var>h</var> + <var>v</var>₀sin<var>θ</var>·<var>t</var> − ½<var>gt</var>² = <em>${nf(s.y)} m</em></div>` };
 };
 
-// ---------- 斜面：ペンタのおなかすべり ----------
+// ---------- 斜面：滑り台にすわってすべるペンタ ----------
 ACTORS.incline = {
   init(s) {
-    // ペンタがブロックの上でおなかすべり
-    const c = makeChar({ color: GREEN, scale: 0.5 });
-    c.root.position.set(-0.2, 0.25, 0); c.root.rotation.y = Math.PI / 2;
-    c.pose('belly').snap(); s.blk.add(c.root); s.ch = c;
+    const c = makeChar({ color: GREEN, scale: 0.62 });
+    c.root.position.set(-0.05, -0.22, 0); c.root.rotation.y = Math.PI / 2;
+    c.pose('sit', { shL: [-20, 0, 35], shR: [-20, 0, -35] }).snap(); s.blk.add(c.root); s.ch = c;
   },
   draw(s) {
     const c = s.ch;
-    if (!s.static && !s.wasSliding) { s.wasSliding = true; c.pose('belly', { shL: [60, 0, 70], shR: [60, 0, -70] }); }
-    if (s.ended && !s.static && !s.endPose) { s.endPose = true; c.pose('belly', { shL: [-40, 0, 80], shR: [-40, 0, -80] }); }
+    if (!s.static && !s.wasSliding) { s.wasSliding = true; c.pose('sit', { shL: [-150, 0, 40], shR: [-150, 0, -40] }); }
+    if (s.ended && !s.static && !s.endPose) { s.endPose = true; c.pose('sit', { shL: [-170, 0, 70], shR: [-170, 0, -70] }); }
   },
 };
 EQ.incline = s => {
@@ -3374,24 +3427,24 @@ EQ.incline = s => {
     <div><var>v</var> = <em>${nf(s.v)} m/s</em></div>` };
 };
 
-// ---------- 衝突：台車に乗った2人 ----------
+// ---------- 衝突：バンパーカーに乗った2羽 ----------
 ACTORS.collide = {
   init(s) {
-    [['A', GREEN, Math.PI / 2], ['B', ORANGE, -Math.PI / 2]].forEach(([k, col, ry]) => {
-      const T = s[k], c = makeChar({ color: col, scale: 0.36 + T.m * 0.03 });
-      c.root.position.set(0, 0.32 + T.m * 0.03 + (0.16 + T.m * 0.07) / 2, 0); c.root.rotation.y = ry;
-      c.pose('kneel').snap(); T.c.add(c.root); T.ch = c;
+    [['A', GREEN], ['B', ORANGE]].forEach(([k, col]) => {
+      const T = s[k], c = makeChar({ color: col, scale: 0.42 });
+      c.root.position.set(-T.w / 2 + 0.3, 0.2, 0); c.root.rotation.y = Math.PI / 2;
+      c.pose('sit', { shL: [-60, 0, 20], shR: [-60, 0, -20] }).snap(); T.c.add(c.root); T.ch = c;
     });
   },
   draw(s) {
     s.A.ch.look(s.B.c.position.clone().add(V3(0, 0.6, 0))); s.B.ch.look(s.A.c.position.clone().add(V3(0, 0.6, 0)));
-    if (s.hit && !s.posed) { s.posed = true; if (s.p.e === 0) { s.A.ch.pose('kneel', { shR: [-90, 30, -10], shL: [-90, -30, 10] }); s.B.ch.pose('kneel', { shR: [-90, 30, -10], shL: [-90, -30, 10] }); } }
+    if (s.hit && !s.posed) { s.posed = true; [s.A.ch, s.B.ch].forEach(c => c.pose('sit', { shL: [-150, 0, 60], shR: [-150, 0, -60] })); }
   },
 };
 EQ.collide = s => {
   const A = s.A, B = s.B, P = A.m * A.v + B.m * B.v;
   return { at: V3((A.x + B.x) / 2, 1.6, 0), html: `<b>運動量の保存</b>
-    <div><var>m</var><sub>A</sub><var>v</var><sub>A</sub> + <var>m</var><sub>B</sub><var>v</var><sub>B</sub> = ${nf(A.m, 1)}×${nf(A.v)} + ${nf(B.m, 1)}×${nf(B.v)} = <em>${nf(P)}</em></div>
+    <div><var>m</var><sub>A</sub><var>v</var><sub>A</sub> + <var>m</var><sub>B</sub><var>v</var><sub>B</sub> = ${nf(A.m, 0)}×${nf(A.v)} + ${nf(B.m, 0)}×${nf(B.v)} = <em>${nf(P)}</em></div>
     ${s.hit ? `<div><var>e</var> = −(<var>v</var><sub>A</sub>' − <var>v</var><sub>B</sub>')/(<var>v</var><sub>A</sub> − <var>v</var><sub>B</sub>) = <em>${nf(s.eMeas)}</em></div>` : '<div class="sm">まだぶつかっていない（それぞれ等速）</div>'}` };
 };
 
@@ -3418,12 +3471,12 @@ ACTORS.pend = {
     const p = s.p;
     s.swing = new THREE.Group(); s.swing.position.copy(s.piv); R.group.add(s.swing);
     const sc = clamp(p.L * 0.3, 0.12, 0.42);
-    const seat = box(0.5 * sc / 0.42 * 0.42, 0.03, 0.22 * sc / 0.42 * 0.42 + 0.06, solid(0x9c7a54)); seat.position.y = -p.L; s.swing.add(seat);
+    const seat = roundBox(0.3 * sc + 0.12, 0.04, 2 * (0.08 + sc * 0.3) + 0.06, 0.015, solid(0x2b2d30, { shininess: 20 })); seat.position.y = -p.L; s.swing.add(seat);
     const c = makeChar({ color: GREEN, scale: sc });
     c.root.position.set(0, -p.L + 0.015, 0); c.root.rotation.y = Math.PI / 2;
     c.pose('swing').snap(); s.swing.add(c.root); s.ch = c;
     s.bob.visible = false; s.str.visible = false;
-    [-1, 1].forEach(q => { const r = cyl(0.006, 0.006, p.L, solid(0x3a3a36), 6); r.position.set(0, -p.L / 2, q * 0.08); s.swing.add(r); });
+    [-1, 1].forEach(q => { const r = cyl(0.008, 0.008, p.L, metal(0x9aa1a8, 0.5), 6); r.position.set(0, -p.L / 2, q * (0.08 + sc * 0.3)); s.swing.add(r); });
   },
   draw(s) {
     s.swing.rotation.z = s.th; s.str.visible = false;
@@ -3879,49 +3932,56 @@ const SIM_EASY = {
 // ======================= 計算ドリル（数字が毎回変わる・ヒントと解説つき） =======================
 // gen() → { q, ans, unit, given:[[記号, 値]], find, hints:[…], sol:[[式, なぜ]], why, trap, wrong:[[まちがえたときの値, 原因]] }
 const s3 = x => sig(x, 3);
+// 授業の流れ：LESSON_PLAN[授業id] = { basic: 例題と類題の問題, apply: 応用問題, adv: 発展問題（なくてもよい） }
+// ASK[授業id] = [{ q: 'こんなとき…どうなる？', pick: [正解, まちがい, まちがい] }, …]（授業の steps と同じ順・同じ数）
+const LESSON_PLAN = {}, ASK = {};
 const DRILLS = [
   { id: 'd-accel', sim: 'incline', name: '等加速度運動の速さ', gen() {
-    const a = rnd(0.5, 4, 0.5), t = rnd(2, 8, 1), v = a * t;
-    return { q: `止まっていた台車が、加速度 ${a} m/s² で一直線に動き出した。${t} 秒後の速さは何 m/s か。`, ans: v, unit: 'm/s',
+    const a = rnd(1, 3, 0.5), t = rnd(1, 3, 0.5), v = a * t;
+    return { q: `滑り台の上で止まっていたペンタが、加速度 ${a} m/s² ですべり出した。${t} 秒後の速さは何 m/s か。`, ans: v, unit: 'm/s',
       given: [['v₀（はじめの速さ）', '0 m/s（止まっていた）'], ['a（加速度）', `${a} m/s²（1秒ごとに ${a} m/s ずつ速くなる）`], ['t（時間）', `${t} s`]], find: `${t} 秒後の速さ v`,
       hints: ['加速度 ' + a + ' m/s² は「1 秒ごとに ' + a + ' m/s ずつ速くなる」という意味。', '速さの式 v = v₀ + at を使う。', `v₀ = 0 なので、v = ${a} × ${t}。`],
       sol: [['v = v₀ + at', '等加速度運動の速さの式。はじめの速さに「増えたぶん（加速度 × 時間）」をたす'], [`v = 0 + ${a} × ${t} = ${s3(v)} m/s`, '止まっていたので v₀ = 0']],
       why: '加速度は「1 秒あたりに速さがどれだけ増えるか」。だから t 秒間では a × t だけ速くなる。はじめの速さ v₀ にそれをたしたものが、いまの速さ。',
       trap: '距離の式（x = ½at²）とまちがえないように。問われているのは「速さ」。',
+      set: { th: Math.round(Math.asin(a / 9.8) / DEG), mu0: 0, mu: 0, m: 5, vec: false, dec: false },
       wrong: [[0.5 * a * t * t, 'それは進んだ距離（x = ½at²）。速さは v = at'], [a / t, 'a ÷ t になっている。速さは a × t']] };
   } },
   { id: 'd-fall', sim: 'fall', name: '自由落下の時間', gen() {
-    const h = rnd(5, 80, 5), t = Math.sqrt(2 * h / 9.8);
-    return { q: `高さ ${h} m の所から小球を静かにはなした。地面に着くまでの時間は何秒か。g = 9.8 m/s² とする。`, ans: t, unit: 's',
+    const h = rnd(5, 20, 2.5), t = Math.sqrt(2 * h / 9.8);
+    return { q: `校舎の高さ ${h} m の所から、ボールを静かにはなした。地面に着くまでの時間は何秒か。g = 9.8 m/s² とする。`, ans: t, unit: 's',
       given: [['h（落ちる高さ）', `${h} m`], ['v₀（はじめの速さ）', '0 m/s（「静かに」＝初速 0）'], ['g', '9.8 m/s²']], find: '落ちるまでの時間 t',
       hints: ['「静かにはなす」は、はじめの速さが 0 という意味。', '落ちた距離と時間の関係の式は y = ½gt²。', `${h} = ½ × 9.8 × t² を t² について解き、最後に √ をとる。`],
       sol: [[`${h} = ½ × 9.8 × t²`, '自由落下の距離の式 y = ½gt² に、わかっている数を入れる'], [`t² = ${h} × 2 ÷ 9.8 = ${s3(2 * h / 9.8)}`, '両辺を 2 倍して 9.8 で割り、t² だけにする'], [`t = √${s3(2 * h / 9.8)} = ${s3(t)} s`, '2乗をはずすために √ をとる（時間なのでプラスの方）']],
       why: '自由落下は「初速 0 の等加速度運動」。等加速度の式 x = v₀t + ½at² で、v₀ = 0、a = g としたものが y = ½gt²。時間が知りたくて、距離がわかっているので、この式を使う。',
       trap: '√ をとり忘れると、t² の値を答えてしまう。また ½ を忘れると答えが √2 倍ずれる。',
+      set: { h0: h, v0: 0, strobe: true, air: false },
       wrong: [[2 * h / 9.8, '√ をとり忘れている（それは t² の値）'], [Math.sqrt(h / 9.8), '½ を 2 倍し忘れている（t² = 2h/g）'], [h / 9.8, 'y = gt としてしまっている。距離の式は y = ½gt²']] };
   } },
   { id: 'd-up', sim: 'fall', name: '投げ上げの最高点', gen() {
-    const v = rnd(5, 30, 1), H = v * v / 19.6;
-    return { q: `小球を真上に初速度 ${v} m/s で投げ上げた。最高点の高さ（投げた所から）は何 m か。g = 9.8 m/s²。`, ans: H, unit: 'm',
+    const v = rnd(5, 19, 1), H = v * v / 19.6;
+    return { q: `校庭でボールを真上に初速度 ${v} m/s で投げ上げた。最高点の高さ（投げた所から）は何 m か。g = 9.8 m/s²。`, ans: H, unit: 'm',
       given: [['v₀', `${v} m/s（上向き）`], ['g', '9.8 m/s²'], ['最高点での速さ v', '0 m/s']], find: '最高点の高さ H',
       hints: ['最高点では、ボールが一瞬止まる。つまり速さ v = 0。', '時間がわからず、速さと距離がわかっているときは v² − v₀² = 2ax を使う。', `上向きを正とすると a = −9.8。0² − ${v}² = 2 × (−9.8) × H。`],
       sol: [[`0² − ${v}² = 2 × (−9.8) × H`, 'v² − v₀² = 2ax に、v = 0、v₀ = ' + v + '、a = −g を入れる（上向きが正なので重力加速度はマイナス）'], [`−${v * v} = −19.6 × H`, '左辺と右辺を計算する'], [`H = ${v * v} ÷ 19.6 = ${s3(H)} m`, '両辺を −19.6 で割る']],
       why: '問題に「時間」が出てこないので、時間 t を使わない式 v² − v₀² = 2ax が便利。最高点では速さ 0 になる、というのが一番のポイント。',
       trap: '最高点で「加速度も 0」と考えるのはまちがい。加速度はずっと −g。また、2 をかけ忘れると答えが 2 倍になる。',
+      set: { h0: 0, v0: v, strobe: true, air: false },
       wrong: [[v * v / 9.8, '2g ではなく g で割っている（v² = 2gH）'], [v / 9.8, 'それは最高点までの「時間」（t = v₀/g）'], [v * v, '2g で割るのを忘れている']] };
   } },
   { id: 'd-horiz', sim: 'proj', name: '水平投射の到達距離', gen() {
-    const h = rnd(5, 45, 5), v = rnd(2, 20, 1), t = Math.sqrt(2 * h / 9.8), x = v * t;
-    return { q: `高さ ${h} m のがけの上から、水平に ${v} m/s で小球を投げた。がけの下から何 m はなれた所に落ちるか。g = 9.8 m/s²。`, ans: x, unit: 'm',
+    const h = rnd(2, 10, 1), v = rnd(4, 20, 1), t = Math.sqrt(2 * h / 9.8), x = v * t;
+    return { q: `高さ ${h} m の屋上から、水平に ${v} m/s でボールを投げた。建物の真下から何 m はなれた所に落ちるか。g = 9.8 m/s²。`, ans: x, unit: 'm',
       given: [['h', `${h} m`], ['横の速さ v₀', `${v} m/s（ずっと同じ）`], ['縦のはじめの速さ', '0 m/s（水平に投げたので）']], find: '落ちた所までの水平距離 x',
       hints: ['横と縦に分けて考える。横は同じ速さで進むだけ。縦は自由落下と同じ。', 'まず「縦」の動きから、落ちるまでの時間を求める（y = ½gt²）。', `その時間のあいだ、横に ${v} m/s で進む。距離 = 速さ × 時間。`],
       sol: [[`${h} = ½ × 9.8 × t² → t = ${s3(t)} s`, '縦は自由落下と同じなので、落ちるまでの時間を先に求める'], [`x = ${v} × ${s3(t)} = ${s3(x)} m`, '横は等速なので、距離 = 速さ × 時間']],
       why: '水平に投げた物は、横の速さは変わらず（横には力がはたらかない）、縦は自由落下する。2つの動きは別々に考えてよい。時間だけが2つの動きで共通なので、時間を「橋わたし」に使う。',
       trap: '横の速さで縦の時間を計算してしまう、まちがいが多い。時間は縦（高さ）だけで決まり、投げる速さには関係しない。',
+      set: { v0: v, th: 0, h0: h },
       wrong: [[t, 'それは落ちるまでの「時間」。最後に横の速さをかける'], [v * 2 * h / 9.8, '√ をとり忘れている（t = √(2h/g)）']] };
   } },
   { id: 'd-range', sim: 'proj', name: '斜方投射の到達距離', gen() {
-    const v = rnd(10, 30, 2), th = pick([15, 30, 45, 60, 75]), L = v * v * Math.sin(2 * th * DEG) / 9.8, sn = { 30: 0.5, 60: 0.866, 90: 1, 120: 0.866, 150: 0.5 }[2 * th];
+    const v = rnd(10, 24, 2), th = pick([15, 30, 45, 60, 75]), L = v * v * Math.sin(2 * th * DEG) / 9.8, sn = { 30: 0.5, 60: 0.866, 90: 1, 120: 0.866, 150: 0.5 }[2 * th];
     const vx = v * Math.cos(th * DEG), vy = v * Math.sin(th * DEG), T = 2 * vy / 9.8;
     return { q: `水平な地面から、初速度 ${v} m/s・仰角 ${th}° で小球を投げた。水平到達距離は何 m か。g = 9.8 m/s²。（sin${2 * th}° = ${sn}）`, ans: L, unit: 'm',
       given: [['v₀', `${v} m/s`], ['θ', `${th}°`], ['g', '9.8 m/s²']], find: '地面に落ちるまでに横に進む距離 L',
@@ -3929,57 +3989,63 @@ const DRILLS = [
       sol: [[`横 ${s3(vx)} m/s、縦 ${s3(vy)} m/s`, '速度を横と縦に分ける（cos と sin）'], [`t = 2 × ${s3(vy)} ÷ 9.8 = ${s3(T)} s`, '縦の速さが 0 になる時間（v₀sinθ/g）の 2 倍で、地面にもどる'], [`L = ${s3(vx)} × ${s3(T)} = ${s3(L)} m`, '横は等速なので、速さ × 時間'], [`（まとめると L = v₀² sin2θ / g = ${v}² × ${sn} ÷ 9.8）`, '2sinθcosθ = sin2θ を使った公式でも同じ']],
       why: '斜めに投げても「横は等速・縦は投げ上げ」に分ければ、水平投射と同じ考え方。時間を縦の動きで求めて、横の距離に使う。',
       trap: '最高点までの時間（v₀sinθ/g）だけで計算すると、答えが半分になる。地面にもどるまでは、その 2 倍。',
+      set: { v0: v, th, h0: 0 },
       wrong: [[L / 2, '最高点までの時間しか使っていない。地面にもどるのはその 2 倍の時間'], [v * v / 9.8, 'sin2θ をかけていない']] };
   } },
   { id: 'd-incline', sim: 'incline', name: '斜面をすべる加速度', gen() {
-    const mu = rnd(0.1, 0.5, 0.05), a = 9.8 * (0.5 - mu * 0.865);
+    const mu = rnd(0.1, 0.5, 0.05), a = 9.8 * (0.5 - mu * 0.866);
     if (a <= 0) return this.gen();
-    return { q: `傾き 30° のあらい斜面を物体がすべり下りている。動摩擦係数を ${mu} とすると、加速度の大きさは何 m/s² か。g = 9.8 m/s²、sin30° = 0.5、cos30° = 0.865。`, ans: a, unit: 'm/s²',
+    return { q: `傾き 30° の滑り台を、ペンタがすべり下りている。動摩擦係数を ${mu} とすると、加速度の大きさは何 m/s² か。g = 9.8 m/s²、sin30° = 0.5、cos30° = 0.866。`, ans: a, unit: 'm/s²',
       given: [['θ', '30°'], ["μ'（動摩擦係数）", String(mu)], ['g', '9.8 m/s²'], ['質量 m', '書いていない → 最後に消えるので文字のままでよい']], find: '斜面にそった加速度 a',
       hints: ['重力 mg を「斜面にそった向き mg sin30°」と「斜面に垂直な向き mg cos30°」に分ける。', '垂直な向きはつり合うので、垂直抗力 N = mg cos30°。動摩擦力は μ\'N。', '斜面にそって下向きの運動方程式：ma = mg sin30° − μ\'mg cos30°。両辺を m で割ると m が消える。'],
-      sol: [['N = mg cos30°', '斜面に垂直な向きは動かないので、力がつり合う'], [`動摩擦力 = ${mu} × mg cos30°`, '動摩擦力 = 動摩擦係数 × 垂直抗力'], ['ma = mg sin30° − μ\'mg cos30°', '斜面を下る向きを正として運動方程式をたてる（摩擦は上向きなのでマイナス）'], [`a = 9.8 × (0.5 − ${mu} × 0.865) = ${s3(a)} m/s²`, '両辺を m で割り、数を入れる']],
+      sol: [['N = mg cos30°', '斜面に垂直な向きは動かないので、力がつり合う'], [`動摩擦力 = ${mu} × mg cos30°`, '動摩擦力 = 動摩擦係数 × 垂直抗力'], ['ma = mg sin30° − μ\'mg cos30°', '斜面を下る向きを正として運動方程式をたてる（摩擦は上向きなのでマイナス）'], [`a = 9.8 × (0.5 − ${mu} × 0.866) = ${s3(a)} m/s²`, '両辺を m で割り、数を入れる']],
       why: '運動方程式 ma = F は「物体が進む向き」の力だけで立てる。斜面では、進む向き（斜面にそった向き）とそれに垂直な向きに力を分けるのがコツ。',
       trap: '垂直抗力を mg としてしまう（それは水平な床のとき）。斜面では mg cos30°。',
-      wrong: [[9.8 * (0.5 - mu), "垂直抗力を mg としている。斜面では N = mg cos30°"], [9.8 * 0.5, '摩擦力を引くのを忘れている'], [9.8 * (0.5 + mu * 0.865), '摩擦力の向きが逆。すべり下りるとき、摩擦力は斜面の上向き']] };
+      set: { th: 30, mu0: mu, mu, m: 5, vec: true, dec: true },
+      wrong: [[9.8 * (0.5 - mu), "垂直抗力を mg としている。斜面では N = mg cos30°"], [9.8 * 0.5, '摩擦力を引くのを忘れている'], [9.8 * (0.5 + mu * 0.866), '摩擦力の向きが逆。すべり下りるとき、摩擦力は斜面の上向き']] };
   } },
   { id: 'd-mom', sim: 'collide', name: '衝突してくっつく', gen() {
-    const mA = rnd(1, 5, 1), mB = rnd(1, 5, 1), v = rnd(1, 6, 0.5), V = mA * v / (mA + mB);
-    return { q: `なめらかな面の上で、速さ ${v} m/s で進む質量 ${mA} kg の物体 A が、止まっている質量 ${mB} kg の物体 B に衝突し、一体となった。衝突後の速さは何 m/s か。`, ans: V, unit: 'm/s',
+    const mA = rnd(100, 300, 50), mB = rnd(100, 300, 50), v = rnd(1, 3, 0.5), V = mA * v / (mA + mB);
+    return { q: `遊園地のバンパーカーで、速さ ${v} m/s で進む A（人と車で ${mA} kg）が、止まっている B（${mB} kg）にぶつかり、くっついて一緒に動いた。床との摩擦は考えない。衝突後の速さは何 m/s か。`, ans: V, unit: 'm/s',
       given: [['m_A', `${mA} kg`], ['v_A', `${v} m/s`], ['m_B', `${mB} kg`], ['v_B', '0 m/s（止まっている）']], find: 'くっついたあとの速さ V',
       hints: ['ぶつかる前と後で「運動量の合計」は変わらない。運動量 = 質量 × 速度。', `前の運動量の合計は ${mA} × ${v} + ${mB} × 0。`, `くっついたあとは、質量 ${mA} + ${mB} kg の1つの物体が速さ V で動く。`],
       sol: [[`前：${mA} × ${v} + ${mB} × 0 = ${s3(mA * v)}`, 'ぶつかる前の運動量の合計'], [`後：(${mA} + ${mB}) × V = ${mA + mB}V`, 'くっついたので、2つの質量の合計で1つの物体として動く'], [`${mA + mB}V = ${s3(mA * v)} → V = ${s3(V)} m/s`, '運動量保存：前の合計 = 後の合計']],
       why: 'ぶつかるとき、A と B はおたがいに同じ大きさで逆向きの力をおよぼし合う。だから A が失った運動量を B がそのままもらい、合計は変わらない（運動量保存）。くっつく衝突では運動エネルギーは保存されないので、エネルギーの式は使えない。',
       trap: '運動エネルギー保存（½mv²）で計算すると、まちがった答えになる。くっつく衝突では、エネルギーの一部が熱や音になって減る。',
+      set: { mA, mB, vA: v, vB: 0, e: 0 },
       wrong: [[v * Math.sqrt(mA / (mA + mB)), '運動エネルギー保存を使っている。くっつく衝突では運動量保存を使う'], [mA * v / mB, 'くっついたあとの質量を B だけにしている。合計 (m_A + m_B)']] };
   } },
   { id: 'd-spring', sim: 'spring', name: 'ばね振り子の周期', gen() {
-    const m = rnd(0.1, 2, 0.1), k = rnd(10, 100, 10), T = 2 * Math.PI * Math.sqrt(m / k);
+    const m = rnd(0.1, 2, 0.1), k = rnd(10, 60, 10), T = 2 * Math.PI * Math.sqrt(m / k);
     return { q: `ばね定数 ${k} N/m のばねに質量 ${m} kg のおもりをつけて単振動させた。周期は何秒か。π = 3.14。`, ans: T, unit: 's',
       given: [['m', `${m} kg`], ['k', `${k} N/m`], ['π', '3.14']], find: '1往復の時間（周期）T',
       hints: ['ばね振り子の周期の公式 T = 2π√(m/k) を使う。', `√ の中は「質量 ÷ ばね定数」= ${m} ÷ ${k}。`, '√ の中を先に計算してから、2 × 3.14 をかける。'],
       sol: [[`m/k = ${m} ÷ ${k} = ${s3(m / k)}`, '√ の中を先に計算する'], [`√${s3(m / k)} = ${s3(Math.sqrt(m / k))}`, '√ をとる'], [`T = 2 × 3.14 × ${s3(Math.sqrt(m / k))} = ${s3(T)} s`, '2π をかける']],
       why: '重いほどゆっくり（m が分子）、硬いばねほど速く（k が分母）振動する。式の形を覚えるときは、この「感覚」と合わせて覚えるとまちがえにくい。',
       trap: 'm と k を逆にして √(k/m) にしてしまうまちがいが多い。「重いほど周期が長い」と思い出そう。',
+      set: { m, k, A: 0.2 },
       wrong: [[2 * Math.PI * Math.sqrt(k / m), 'm と k が逆。T = 2π√(m/k)（重いほど周期が長い）'], [Math.sqrt(m / k), '2π をかけ忘れている'], [2 * Math.PI * m / k, '√ をとり忘れている']] };
   } },
   { id: 'd-pend', sim: 'pend', name: '単振り子の周期', gen() {
-    const L = rnd(0.2, 2.5, 0.1), T = 2 * Math.PI * Math.sqrt(L / 9.8);
-    return { q: `長さ ${L} m の単振り子の周期は何秒か。g = 9.8 m/s²、π = 3.14。`, ans: T, unit: 's',
+    const L = rnd(1, 3, 0.1), T = 2 * Math.PI * Math.sqrt(L / 9.8);
+    return { q: `ひもの長さ ${L} m のブランコ（単振り子と考える）が小さくゆれている。1往復する時間（周期）は何秒か。g = 9.8 m/s²、π = 3.14。`, ans: T, unit: 's',
       given: [['L', `${L} m`], ['g', '9.8 m/s²']], find: '1往復の時間（周期）T',
       hints: ['単振り子の周期の公式は T = 2π√(L/g)。おもりの質量は関係ない。', `√ の中は ${L} ÷ 9.8。`, '√ の中を先に計算してから、2 × 3.14 をかける。'],
       sol: [[`L/g = ${L} ÷ 9.8 = ${s3(L / 9.8)}`, '√ の中を先に計算する'], [`√${s3(L / 9.8)} = ${s3(Math.sqrt(L / 9.8))}`, '√ をとる'], [`T = 2 × 3.14 × ${s3(Math.sqrt(L / 9.8))} = ${s3(T)} s`, '2π をかける']],
       why: '長いひもほどゆっくりゆれる（L が分子）。重力が強いほど速くゆれる（g が分母）。質量は、重力と動かしにくさの両方に同じだけ効くので、打ち消し合って式に出てこない。',
       trap: '√ をとり忘れる、2π をかけ忘れる、の2つが多い。',
+      set: { L, th0: 10, m: 20 },
       wrong: [[2 * Math.PI * Math.sqrt(9.8 / L), 'L と g が逆。T = 2π√(L/g)'], [Math.sqrt(L / 9.8), '2π をかけ忘れている'], [2 * Math.PI * L / 9.8, '√ をとり忘れている']] };
   } },
   { id: 'd-circ', sim: 'circle', name: '向心力の大きさ', gen() {
-    const m = rnd(0.1, 2, 0.1), r = pick([0.5, 1.5, 2, 2.5, 3]), v = rnd(2, 10, 1), F = m * v * v / r;
+    const m = rnd(0.1, 1, 0.1), r = pick([0.5, 0.8, 1, 1.2]), v = rnd(2, 5, 0.5), F = m * v * v / r;
     return { q: `質量 ${m} kg の物体が、半径 ${r} m の円周上を速さ ${v} m/s で等速円運動している。向心力の大きさは何 N か。`, ans: F, unit: 'N',
       given: [['m', `${m} kg`], ['r', `${r} m`], ['v', `${v} m/s`]], find: '中心向きの力（向心力）F',
       hints: ['円運動の加速度は a = v²/r（中心向き）。', '運動方程式 F = ma に、この加速度を入れる。', `F = ${m} × ${v}² ÷ ${r}。v を 2 乗するのを忘れずに。`],
       sol: [[`a = ${v}² ÷ ${r} = ${s3(v * v / r)} m/s²`, '円運動の向心加速度 a = v²/r'], [`F = ${m} × ${s3(v * v / r)} = ${s3(F)} N`, '運動方程式 F = ma']],
       why: '速さが一定でも、向きが変わり続けるので加速度がある。その加速度を生む中心向きの力が向心力。運動方程式 F = ma をそのまま使えばよい。',
       trap: 'v を 2 乗し忘れる（mv/r）まちがいが多い。速さが 2 倍なら力は 4 倍。',
+      set: { m, r, T: Math.min(4, Math.max(0.6, +(2 * Math.PI * r / v).toFixed(1))) },
       wrong: [[m * v / r, 'v を 2 乗し忘れている（F = mv²/r）'], [m * v * v * r, 'r をかけている。r で割る（F = mv²/r）']] };
   } },
   { id: 'd-orbit', sim: 'orbit', name: '第1宇宙速度', gen() {
@@ -3990,46 +4056,51 @@ const DRILLS = [
       sol: [['mg = mv²/R', '重力が向心力の役目をしている'], ['v = √(gR)', 'm を消して、v について解く'], [`v = √(${g} × ${Rk}×10³) = ${s3(v * 1000)} m/s`, 'R を m に直して入れる（1 km = 1000 m）'], [`= ${s3(v)} km/s`, '1000 で割って km/s にする']],
       why: '人工衛星は「重力で落ち続けながら、地面にとどかない」円運動をしている。円運動に必要な向心力を、重力がちょうど出している、という式を立てる。',
       trap: 'km のまま計算すると、けたが合わなくなる。必ず m に直してから計算する。',
+      set: { v0: Math.min(12, Math.max(4, +v.toFixed(2))), alt: 400 }, figNote: '図は地球で、その速さで打ち出したようす',
       wrong: [[Math.sqrt(g * Rk), 'R を m に直していない（km のまま計算）'], [g * Rk / 1000, '√ をとり忘れている']] };
   } },
   { id: 'd-gas', sim: 'gas', name: '状態方程式', gen() {
-    const n = rnd(0.5, 3, 0.5), T = rnd(270, 400, 10), V = rnd(10, 50, 5), P = n * 8.31 * T / (V * 1e-3) / 1000;
+    const n = rnd(0.5, 3, 0.5), T = rnd(270, 400, 10), V = rnd(5, 20, 1), P = n * 8.31 * T / (V * 1e-3) / 1000;
     return { q: `${n} mol の理想気体が、温度 ${T} K・体積 ${V} L の容器に入っている。圧力は何 kPa か。R = 8.31 J/(mol·K)。`, ans: P, unit: 'kPa',
       given: [['n', `${n} mol`], ['T', `${T} K`], ['V', `${V} L = ${V}×10⁻³ m³`], ['R', '8.31 J/(mol·K)']], find: '圧力 P（kPa）',
       hints: ['状態方程式 PV = nRT を P について解く：P = nRT/V。', '体積は m³ に直す。1 L = 1000 cm³ = 10⁻³ m³。', '計算すると Pa（パスカル）で出るので、1000 で割って kPa にする。'],
       sol: [[`V = ${V} L = ${V}×10⁻³ m³`, 'R の単位に合わせて、体積を m³ にする'], [`P = ${n} × 8.31 × ${T} ÷ (${V}×10⁻³) = ${s3(P * 1000)} Pa`, 'P = nRT/V に入れる'], [`= ${s3(P)} kPa`, '1 kPa = 1000 Pa']],
       why: '気体の圧力・体積・温度・量の関係はすべて PV = nRT にまとまっている。わからない1つの量について解くだけ。単位をそろえる（Pa・m³・K）のが一番の注意点。',
       trap: 'L のまま計算すると 1000 倍ずれる。温度は必ず K（絶対温度）を使う。',
+      set: { T, V, N: 200 },
       wrong: [[n * 8.31 * T / V / 1000, '体積を m³ に直していない（1 L = 10⁻³ m³）'], [n * 8.31 * T / (V * 1e-3), 'Pa のまま。1000 で割って kPa にする']] };
   } },
   { id: 'd-boyle', sim: 'gas', name: 'ボイル・シャルルの法則', gen() {
-    const P1 = rnd(80, 200, 10), V1 = rnd(2, 10, 1), T1 = rnd(270, 330, 10), V2 = rnd(1, 10, 1), T2 = rnd(270, 450, 10), P2 = P1 * V1 * T2 / (T1 * V2);
+    const P1 = rnd(80, 200, 10), V1 = rnd(5, 20, 1), T1 = rnd(270, 330, 10), V2 = rnd(5, 20, 1), T2 = rnd(270, 450, 10), P2 = P1 * V1 * T2 / (T1 * V2);
     return { q: `圧力 ${P1} kPa・体積 ${V1} L・温度 ${T1} K の気体を、体積 ${V2} L・温度 ${T2} K にした。圧力は何 kPa になるか。`, ans: P2, unit: 'kPa',
       given: [['前', `P₁ = ${P1} kPa、V₁ = ${V1} L、T₁ = ${T1} K`], ['後', `P₂ = ?、V₂ = ${V2} L、T₂ = ${T2} K`]], find: '変化したあとの圧力 P₂',
       hints: ['気体の量が変わらないとき、PV/T は一定（ボイル・シャルルの法則）。', `${P1} × ${V1} ÷ ${T1} = P₂ × ${V2} ÷ ${T2}。`, '両辺の単位がそろっていれば、L や kPa のままでもよい（比の計算なので）。'],
       sol: [[`${P1} × ${V1} / ${T1} = P₂ × ${V2} / ${T2}`, '前と後で PV/T が等しい'], [`P₂ = ${P1} × ${V1} × ${T2} ÷ (${T1} × ${V2})`, 'P₂ について解く'], [`P₂ = ${s3(P2)} kPa`, '計算する']],
       why: 'PV = nRT で n と R が変わらないので、PV/T = nR は一定。前と後を「=」でつなぐだけなので、単位は両辺でそろっていれば何でもよい（ただし温度は必ず K）。',
       trap: '温度を ℃ で入れるとまちがう。必ず絶対温度（K）を使う。',
+      set: { T: T2, V: V2, N: 200 }, figNote: '図は変化したあとの気体',
       wrong: [[P1 * V1 / V2, '温度の変化を入れていない（PV/T が一定）'], [P1 * V2 * T2 / (T1 * V1), '体積の比が逆。体積が小さくなると圧力は大きくなる']] };
   } },
   { id: 'd-wave', sim: 'wave', name: '波の速さ v = fλ', gen() {
-    const f = rnd(2, 50, 2), l = rnd(0.2, 3, 0.1), v = f * l;
+    const f = rnd(0.5, 1.5, 0.25), l = rnd(1, 2, 0.5), v = f * l;
     return { q: `振動数 ${f} Hz、波長 ${l} m の波の速さは何 m/s か。`, ans: v, unit: 'm/s',
       given: [['f（1秒にゆれる回数）', `${f} Hz`], ['λ（1つの波の長さ）', `${l} m`]], find: '波の速さ v',
       hints: ['1回ゆれる間に、波は1波長ぶん進む。', `1秒間に ${f} 回ゆれるので、1秒間に ${l} m の波が ${f} 個ぶん進む。`, 'v = fλ。'],
       sol: [[`v = ${f} × ${l} = ${s3(v)} m/s`, '1秒間に進む距離 = 1秒間の波の数 × 1つの波の長さ']],
       why: '「1秒間に何個の波が出るか（f）」×「波1個の長さ（λ）」=「1秒間に波が進む距離（v）」。電車が 1 秒に 10 両通過し、1 両が 20 m なら速さは 200 m/s、と同じ考え方。',
       trap: '周期 T がわかっているときは f = 1/T に直してから使う。',
+      set: { f, v, A: 0.25, type: 'trans' },
       wrong: [[l / f, 'λ ÷ f になっている。v = f × λ'], [f / l, 'f ÷ λ になっている。v = f × λ']] };
   } },
   { id: 'd-pipe', sim: 'standing', name: '閉管の基本振動数', gen() {
-    const L = rnd(0.2, 1, 0.05), f = 340 / (4 * L);
+    const L = rnd(0.3, 1, 0.05), f = 340 / (4 * L);
     return { q: `長さ ${L} m の閉管で、基本振動の音の振動数は何 Hz か。音速 340 m/s、開口端補正は考えない。`, ans: f, unit: 'Hz',
       given: [['L（管の長さ）', `${L} m`], ['V（音速）', '340 m/s']], find: '基本振動の振動数 f',
       hints: ['閉管は、閉じたはしが節、開いたはしが腹。', '基本振動では、管の長さに「4分の1波長」がちょうど1個入る：L = λ/4。', `λ = 4 × ${L}。そのあと v = fλ を使う。`],
       sol: [[`λ = 4L = 4 × ${L} = ${s3(4 * L)} m`, '節から腹までは 1/4 波長。基本振動は管の中にそれが1つだけ'], [`f = V/λ = 340 ÷ ${s3(4 * L)} = ${s3(f)} Hz`, 'v = fλ を f について解く']],
       why: '管の中にできる定常波の形を思いうかべると、波長が決まる。閉管の基本振動は「節 → 腹」だけの形で、これは波の 1/4。だから波長は管の長さの 4 倍。',
       trap: '開管（両方開いている）の式 λ = 2L を使ってしまうと、答えが 2 倍になる。',
+      set: { n: 1, Lr: L, vs: 340, mode: 'closed' },
       wrong: [[340 / (2 * L), '開管の式（λ = 2L）を使っている。閉管は λ = 4L'], [340 / L, 'λ = L にしている。閉管の基本振動は λ = 4L']] };
   } },
   { id: 'd-dop', sim: 'doppler', name: 'ドップラー効果', gen() {
@@ -4040,26 +4111,29 @@ const DRILLS = [
       sol: [[`λ' = (340 − ${vs}) ÷ ${f} = ${s3(lam)} m`, '1秒間に出した f 個の波が、(V − v_s) の長さにつまっている'], [`f' = 340 ÷ ${s3(lam)} = ${s3(ff)} Hz`, '止まった人には音速 V で届くので、f\' = V/λ\'']],
       why: '音源が動くと、波を出しながら追いかけるので、前では波の間かくがつまる。音の速さは変わらないので、間かくがつまったぶん、1秒間にとどく波の数（振動数）が増える。',
       trap: '近づくときは分母が V − v_s（小さくなる → 高い音）。遠ざかるときは V + v_s。「近づくと高い」を思い出して符号を確かめよう。',
+      set: { vs, f0: f },
       wrong: [[f * 340 / (340 + vs), '符号が逆（遠ざかるときの式）。近づくときは V − v_s'], [f * (340 - vs) / 340, '分子と分母が逆。f\' = f × V/(V − v_s)']] };
   } },
   { id: 'd-refr', sim: 'refr', name: '屈折角（sin を求める）', gen() {
-    const n = pick([1.2, 1.25, 1.33, 1.4, 1.5, 1.6, 2]), i = pick([30, 45, 60]), si = { 30: 0.5, 45: 0.71, 60: 0.87 }[i], sr = Math.sin(i * DEG) / n;
+    const n = pick([1.33, 1.5, 2.42]), i = pick([30, 45, 60]), si = { 30: 0.5, 45: 0.71, 60: 0.87 }[i], sr = Math.sin(i * DEG) / n;
     return { q: `空気中から屈折率 ${n} の物質に、入射角 ${i}° で光が入った。屈折角を r とするとき、sin r の値を求めよ。sin30° = 0.50、sin45° = 0.71、sin60° = 0.87。`, ans: sr, unit: '',
       given: [['n₁（空気）', '1'], ['n₂（物質）', String(n)], ['入射角 i', `${i}°（sin${i}° = ${si}）`]], find: 'sin r',
       hints: ['屈折の法則：n₁ sin i = n₂ sin r。', `空気の屈折率は 1。1 × sin${i}° = ${n} × sin r。`, `sin r = ${si} ÷ ${n}。`],
       sol: [[`1 × ${si} = ${n} × sin r`, '屈折の法則 n₁ sin i = n₂ sin r に入れる'], [`sin r = ${si} ÷ ${n} = ${s3(sr)}`, 'sin r について解く']],
       why: '光は遅くなる物質に入ると、境界の法線に近づくように曲がる。屈折率が大きいほど大きく曲がる（sin r が小さくなる）。',
       trap: 'n をかけてしまうと sin が 1 をこえることがある。sin は 1 より大きくならないので、答えをチェックしよう。',
+      set: { th: i, n, dir: 'in' },
       wrong: [[Math.sin(i * DEG) * n, 'n で割るところをかけている。sin r = sin i ÷ n']] };
   } },
   { id: 'd-crit', sim: 'refr', name: '臨界角（sin を求める）', gen() {
-    const n = pick([1.25, 1.33, 1.5, 1.6, 2, 2.42]);
+    const n = pick([1.33, 1.5, 2.42]);
     return { q: `屈折率 ${n} の物質から空気中へ光が出るとき、臨界角を θ とする。sin θ の値を求めよ。`, ans: 1 / n, unit: '',
       given: [['n₁（物質）', String(n)], ['n₂（空気）', '1']], find: '臨界角 θ の sin',
       hints: ['臨界角は「屈折角がちょうど 90°」になるときの入射角。', `屈折の法則：${n} × sin θ = 1 × sin90°。sin90° = 1。`, `sin θ = 1 ÷ ${n}。`],
       sol: [[`${n} × sin θ = 1 × sin90°`, '屈折角が 90°（境界にそって進む）になるのが臨界角'], [`sin θ = 1 ÷ ${n} = ${s3(1 / n)}`, 'sin90° = 1 なので']],
       why: '入射角をだんだん大きくすると、屈折角が先に 90° に達する。それ以上は外に出られず全反射する。その境目が臨界角。',
       trap: '入射角が「物質の中」、屈折角が「空気の中」。屈折の法則の左右を逆にしないように。',
+      set: { th: Math.round(Math.asin(1 / n) / DEG * 2) / 2, n, dir: 'out' },
       wrong: [[n, 'n₁ と n₂ が逆。sin θ = 1/n']] };
   } },
   { id: 'd-lens', sim: 'lens', name: 'レンズの式', gen() {
@@ -4070,6 +4144,7 @@ const DRILLS = [
       sol: [[`1/${a} + 1/b = 1/${f}`, 'レンズの式に入れる'], [`1/b = 1/${f} − 1/${a} = ${a - f}/${f * a}`, '1/b について解き、通分する'], [`b = ${f * a}/${a - f} = ${s3(b)} cm`, '逆数をとる'], [`倍率 = b/a = ${s3(b / a)} 倍`, '（おまけ）像の大きさは物体の b/a 倍。b > 0 なのでさかさまの実像']],
       why: 'レンズの式は、物体と像の位置の関係を表す。分数の計算になるので、「1/b を求めてから、最後に逆数」という手順を守るとまちがえにくい。',
       trap: '1/b を求めたところで止めて、逆数をとり忘れるまちがいが多い。',
+      set: (k => ({ f: +(f / k).toFixed(2), a: +(a / k).toFixed(2), kind: 'convex' }))(Math.max(a / 8.5, f / 3.4)), figNote: '図は同じ形のまま小さくしてある',
       wrong: [[(a - f) / (f * a), '逆数をとり忘れている（それは 1/b の値）'], [a * f / (a + f), '1/b = 1/f + 1/a としている。1/b = 1/f − 1/a']] };
   } },
   { id: 'd-ohm', sim: 'circuit', name: '並列回路の電流', gen() {
@@ -4080,6 +4155,7 @@ const DRILLS = [
       sol: [[`I₁ = ${V} ÷ ${R1} = ${s3(I1)} A`, 'R₁ に電池の電圧がそのままかかる（並列）'], [`I₂ = ${V} ÷ ${R2} = ${s3(I2)} A`, 'R₂ にも同じ電圧がかかる'], [`I = ${s3(I1)} + ${s3(I2)} = ${s3(I)} A`, '分かれた電流は、合流するともとの電流になる']],
       why: '並列は「分かれ道」。どちらの道にも同じ電圧がかかり、流れる電流はそれぞれの抵抗で決まる。合成抵抗 1/R = 1/R₁ + 1/R₂ を使っても同じ答えになる。',
       trap: '直列の合成抵抗 R₁ + R₂ を使うと、電流が小さくなりすぎる。',
+      set: { V, R1, R2, mode: 'parallel' },
       wrong: [[V / (R1 + R2), '直列の合成抵抗を使っている。並列では、それぞれに電池の電圧がかかる'], [V / R1, 'R₁ の電流だけ。R₂ の電流も足す']] };
   } },
   { id: 'd-lor', sim: 'lorentz', name: '磁場中の円運動の半径', gen() {
@@ -4090,10 +4166,11 @@ const DRILLS = [
       sol: [['mv²/r = evB', 'ローレンツ力が向心力の役目をする'], ['r = mv / (eB)', 'r について解く（v が1つ消える）'], [`r = 9.1×10⁻³¹ × ${v}×10⁶ ÷ (1.6×10⁻¹⁹ × ${B}×10⁻³) = ${s3(r / 100)} m`, '数を入れる。10 の何乗は「たし算・ひき算」でまとめる'], [`= ${s3(r)} cm`, '1 m = 100 cm']],
       why: '磁場中の電子は、進む向きに垂直な力を受け続けるので円をかく。この力を「円運動に必要な中心向きの力」と等しいとおくのが、円運動の問題の基本の形。',
       trap: '10 の何乗の計算で、けたをまちがえやすい。また最後に cm に直すのを忘れないように。',
+      set: { B: +(0.5 + (B - 1) / 8 * 1.5).toFixed(2), v: +(0.5 + (v - 1) / 8 * 2.5).toFixed(1), al: 90, m: 1 }, figNote: '図は大きさを目で見える大きさに直してある',
       wrong: [[r / 100, 'm のまま。100 をかけて cm にする']] };
   } },
   { id: 'd-photo', sim: 'photo', name: '光電効果', gen() {
-    const nm = rnd(200, 450, 10), W = pick([1.9, 2.3, 2.5, 3.0]), E = 1240 / nm, K = E - W;
+    const nm = rnd(200, 450, 10), W = pick([1.9, 2.3, 4.3]), E = 1240 / nm, K = E - W;
     if (K <= 0.05) return this.gen();
     return { q: `仕事関数 ${W} eV の金属に、波長 ${nm} nm の光を当てた。飛び出す電子の運動エネルギーの最大値は何 eV か。光子のエネルギーは E [eV] = 1240 / λ [nm] で求めてよい。`, ans: K, unit: 'eV',
       given: [['λ', `${nm} nm`], ['W（電子が外に出るのに必要なエネルギー）', `${W} eV`]], find: '飛び出す電子の運動エネルギーの最大値 K₀',
@@ -4101,6 +4178,7 @@ const DRILLS = [
       sol: [[`E = 1240 ÷ ${nm} = ${s3(E)} eV`, '光子1個のエネルギー（波長が短いほど大きい）'], [`K₀ = ${s3(E)} − ${W} = ${s3(K)} eV`, '受け取ったエネルギーから、外に出るのに使ったぶんを引く']],
       why: '「おこづかい（光子のエネルギー）をもらって、入場料（仕事関数）をはらって外に出る。残ったお金が運動エネルギー」と考えるとわかりやすい。',
       trap: 'E + W と足してしまうまちがい。外に出るためにエネルギーを「使う」ので引き算。',
+      set: { nm, I: 0.5, U: 0, metal: W === 1.9 ? 'Cs' : W === 2.3 ? 'Na' : 'Zn' },
       wrong: [[E + W, '足している。外に出るのに W を使うので引き算（K₀ = E − W）'], [E, 'W を引き忘れている']] };
   } },
 ];
@@ -4117,6 +4195,937 @@ function drillAdvice(P, v) {
   if (Math.abs(r - 1) < 0.1) return 'おしい！ 途中で数を丸めすぎていないか確かめよう（途中は 3 けた以上で計算）。';
   return 'ヒントを順番に見て、使う式から確かめよう。';
 }
+// 授業データ：力学の基本（k-vel, k-fall, k-force, k-law, k-energy, b-plane）
+// ※ ほかの plan ファイルと名前がぶつからないよう、トップレベルに const は置かない。
+DRILLS.push(
+  // ---------- k-vel 応用：時間を使わない式 v² − v₀² = 2ax ----------
+  { id: 'da-vel-v2ax', sim: 'incline', name: '滑り台の下での速さ（v² = 2ax）', gen() {
+    const a = rnd(1, 4, 0.5), x = rnd(2, 4.5, 0.5), v = Math.sqrt(2 * a * x);
+    const th = Math.max(1, Math.round(Math.asin(a / 9.8) * 180 / Math.PI));
+    return { q: `ペンタが滑り台のてっぺんから静かにすべり始めた。加速度は ${a} m/s² で一定だった。${x} m すべり下りたときの速さは何 m/s か。`, ans: v, unit: 'm/s',
+      given: [['v₀（はじめの速さ）', '0 m/s（「静かに」＝止まった状態から）'], ['a（加速度）', `${a} m/s²`], ['x（すべった距離）', `${x} m`], ['t（時間）', '書いていない']], find: `${x} m すべったときの速さ v`,
+      hints: ['問題に「時間」が出てこない。時間がわからないときに使える式はどれかな？', '時間を使わない式 v² − v₀² = 2ax を使う。', `v₀ = 0 なので v² = 2 × ${a} × ${x}。最後に √ をとる。`],
+      sol: [['v² − v₀² = 2ax', '時間 t がわからないので、t が入っていない式を選ぶ'], [`v² − 0² = 2 × ${a} × ${x} = ${s3(2 * a * x)}`, '止まった状態からなので v₀ = 0。わかっている数を入れる'], [`v = √${s3(2 * a * x)} = ${s3(v)} m/s`, 'v² がわかったので、√ をとって v にする']],
+      why: '等加速度の3つの式のうち、v = v₀ + at と x = v₀t + ½at² には時間 t が入っている。時間がわからないときは、t のない v² − v₀² = 2ax を使うと1回で答えが出る。',
+      trap: 'v² を求めたところで終わってしまうまちがいが多い。最後に √ をとるのを忘れずに。',
+      wrong: [[2 * a * x, '√ をとり忘れている。それは v² の値'], [Math.sqrt(a * x), '2 をかけ忘れている（v² = 2ax）'], [a * x, '2 と √ の両方を忘れている']],
+      set: { th, mu0: 0, mu: 0, m: 20, vec: false, dec: false } };
+  } },
+  // ---------- k-vel 発展：距離と時間から逆算 ----------
+  { id: 'da-vel-back', sim: 'incline', name: '距離と時間から下での速さ', gen() {
+    const x = rnd(3, 4.5, 0.5), t = rnd(1.5, 2.5, 0.5), a = 2 * x / (t * t), v = a * t;
+    const th = Math.max(1, Math.round(Math.asin(a / 9.8) * 180 / Math.PI));
+    return { q: `ペンタが滑り台のてっぺんから静かにすべり始め、${x} m 下の下端まで ${t} 秒かかった。加速度は一定とする。下端での速さは何 m/s か。`, ans: v, unit: 'm/s',
+      given: [['v₀', '0 m/s（静かにすべり始めた）'], ['x（すべった距離）', `${x} m`], ['t（かかった時間）', `${t} s`], ['a（加速度）', 'わからない → まずこれを求める']], find: '下端での速さ v',
+      hints: ['加速度がわからないので、2 つのステップに分ける。①加速度 a を求める → ②速さ v を求める。', `① 距離の式 x = v₀t + ½at² に x = ${x}、t = ${t}、v₀ = 0 を入れて a を求める。`, '② 速さの式 v = v₀ + at に、①の a を入れる。'],
+      sol: [[`${x} = ½ × a × ${t}²`, '距離の式 x = v₀t + ½at² に、わかっている数を入れる（v₀ = 0）'], [`a = ${x} × 2 ÷ ${s3(t * t)} = ${s3(a)} m/s²`, '両辺を 2 倍して t² で割り、a を求める'], [`v = ${s3(a)} × ${t} = ${s3(v)} m/s`, '速さの式 v = v₀ + at に入れる'], [`（たしかめ：平均の速さ ${x} ÷ ${t} = ${s3(x / t)} m/s は、0 と v のちょうど真ん中）`, '等加速度では、平均の速さ = (はじめ + おわり) ÷ 2 なので v = 2x/t でも求められる']],
+      why: 'わからない量が 2 つ（a と v）あるときは、まず「わかっている量だけで求められるもの」を先に求める。ここでは x と t がわかっているので、x と t と a の式から a が出る。',
+      trap: `距離 ÷ 時間（${x} ÷ ${t}）は「平均の速さ」。下端での速さは、その 2 倍になる。`,
+      wrong: [[x / t, 'それは平均の速さ（距離 ÷ 時間）。止まった状態から速くなっていくので、下端の速さはその 2 倍'], [a, 'それは加速度 a。最後に v = at で速さにする']],
+      set: { th, mu0: 0, mu: 0, m: 20, vec: false, dec: false } };
+  } },
+
+  // ---------- k-fall 応用：屋上から投げ上げた最高点（地面から） ----------
+  { id: 'da-fall-top', sim: 'fall', name: 'ベランダから投げ上げた最高点', gen() {
+    const h0 = rnd(5, 15, 1), v0 = rnd(4, 12, 1), Hu = v0 * v0 / 19.6, H = h0 + Hu;
+    return { q: `校舎のベランダ（地面からの高さ ${h0} m）から、ボールを真上に ${v0} m/s で投げ上げた。ボールが一番高くなったとき、地面からの高さは何 m か。g = 9.8 m/s²。`, ans: H, unit: 'm',
+      given: [['h₀（ベランダの高さ）', `${h0} m`], ['v₀（投げ上げた速さ）', `${v0} m/s（上向き）`], ['最高点での速さ', '0 m/s'], ['g', '9.8 m/s²']], find: '最高点の「地面からの」高さ',
+      hints: ['2 つのステップに分ける。①ベランダから何 m 上がるか → ②ベランダの高さをたす。', '① 最高点では速さ 0。時間がわからないので v² − v₀² = 2ax を使う（上向きが正、a = −9.8）。', `① 0² − ${v0}² = 2 × (−9.8) × y を解く。② それに ${h0} m をたす。`],
+      sol: [[`0² − ${v0}² = 2 × (−9.8) × y`, 'ベランダを原点、上向きを正とする。最高点では v = 0、加速度は −g'], [`y = ${v0 * v0} ÷ 19.6 = ${s3(Hu)} m`, 'ベランダから上がった高さ'], [`H = ${h0} + ${s3(Hu)} = ${s3(H)} m`, '聞かれているのは地面からの高さなので、ベランダの高さをたす']],
+      why: '投げ上げの式は「投げた所」を原点にしている。だから式で出てくるのは、投げた所から上がった高さ。地面から測るときは、最後に投げた所の高さをたす。',
+      trap: '「どこから測った高さか」に注意。式の答えだけ（ベランダからの高さ）で終わらせない。',
+      wrong: [[Hu, 'ベランダからの高さで終わっている。地面からなので、ベランダの高さ ' + h0 + ' m をたす'], [h0 + v0 * v0 / 9.8, '2g ではなく g で割っている（v₀² = 2gy）'], [h0 + v0 / 9.8, 'v₀/g は最高点までの「時間」。高さではない']],
+      set: { h0, v0, air: false, strobe: true, vec: true, gmode: 'vt' } };
+  } },
+  // ---------- k-fall 発展：投げ上げてから地面に着くまでの時間 ----------
+  { id: 'da-fall-land', sim: 'fall', name: 'ベランダから投げ上げて着地する時間', gen() {
+    const h0 = rnd(5, 20, 1), v0 = rnd(4, 10, 1), t1 = v0 / 9.8, H = h0 + v0 * v0 / 19.6, t2 = Math.sqrt(2 * H / 9.8), T = t1 + t2;
+    return { q: `校舎の屋上（地面からの高さ ${h0} m）から、ボールを真上に ${v0} m/s で投げ上げた。投げてから地面に着くまでの時間は何秒か。g = 9.8 m/s²。`, ans: T, unit: 's',
+      given: [['h₀（屋上の高さ）', `${h0} m`], ['v₀', `${v0} m/s（上向き）`], ['g', '9.8 m/s²']], find: '投げてから地面に着くまでの時間 T',
+      hints: ['「上り」と「下り」に分けて考える。上り：最高点まで。下り：最高点から地面まで（自由落下と同じ）。', `上り：最高点では速さ 0 なので、0 = ${v0} − 9.8t₁ から t₁ を出す。最高点の地面からの高さ H も求める。`, '下り：最高点から静かに落ちるのと同じなので、H = ½ × 9.8 × t₂² から t₂ を出す。最後に T = t₁ + t₂。'],
+      sol: [[`0 = ${v0} − 9.8 × t₁ → t₁ = ${s3(t1)} s`, '上り：v = v₀ − gt で、最高点（v = 0）までの時間'], [`H = ${h0} + ${v0}² ÷ 19.6 = ${s3(H)} m`, '最高点の地面からの高さ（屋上からの上がり ＋ 屋上の高さ）'], [`${s3(H)} = ½ × 9.8 × t₂² → t₂ = √${s3(2 * H / 9.8)} = ${s3(t2)} s`, '下り：最高点では速さ 0 なので、そこから自由落下と同じ'], [`T = ${s3(t1)} + ${s3(t2)} = ${s3(T)} s`, '上りと下りの時間をたす'], [`（たしかめ：y = ${v0}T − 4.9T² に T を入れると −${h0} m になる）`, '屋上を原点にすると、地面は y = −h₀。2次方程式を解いても同じ答え']],
+      why: '最高点で速さがいったん 0 になるので、そこで区切ると「上り＝投げ上げ」「下り＝自由落下」の、知っている運動 2 つになる。2次方程式を解かなくても答えが出せる。',
+      trap: '下りの距離を屋上の高さ ' + h0 + ' m にしてしまうまちがいが多い。最高点は屋上より高いので、落ちる距離は H。',
+      wrong: [[t2, '下りの時間だけになっている。上りの時間 t₁ もたす'], [t1 + Math.sqrt(2 * h0 / 9.8), '下りの距離を屋上の高さにしている。最高点から落ちるので距離は H'], [Math.sqrt(2 * h0 / 9.8), '投げ上げたことを無視して、静かに落としたときの時間になっている']],
+      set: { h0, v0, air: false, strobe: true, vec: true, gmode: 'vt' } };
+  } },
+
+  // ---------- k-force 基本：止まっているときの静止摩擦力 ----------
+  { id: 'da-force-static', sim: 'incline', name: '止まっているときの静止摩擦力', gen() {
+    const T = { 20: [0.34, 0.94], 25: [0.42, 0.91], 30: [0.50, 0.87] }, th = pick([20, 25, 30]), [sn, cs] = T[th], m = rnd(10, 40, 5), mg = m * 9.8, f = mg * sn;
+    return { q: `傾き ${th}° の滑り台の途中で、質量 ${m} kg のペンタが止まっている。滑り台の静止摩擦係数は 0.7 である。ペンタにはたらく静止摩擦力の大きさは何 N か。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}、cos${th}° = ${cs.toFixed(2)}。`, ans: f, unit: 'N',
+      given: [['m', `${m} kg`], ['θ', `${th}°`], ['μ（静止摩擦係数）', '0.7（← じつは使わない！）'], ['g', '9.8 m/s²']], find: '静止摩擦力の大きさ f',
+      hints: ['ペンタは「止まっている」。止まっているときは、力がつり合っている。', '重力を斜面にそった向き mg sinθ と、斜面に垂直な向き mg cosθ に分ける。斜面にそった向きで、静止摩擦力と mg sinθ がつり合う。', `f = ${m} × 9.8 × ${sn.toFixed(2)}。`],
+      sol: [[`mg = ${m} × 9.8 = ${s3(mg)} N`, 'まず重力の大きさを出す'], [`mg sin${th}° = ${s3(mg)} × ${sn.toFixed(2)} = ${s3(f)} N`, '重力のうち、斜面にそって下向きの成分（ペンタをすべらせようとする力）'], [`f = mg sin${th}° = ${s3(f)} N`, '止まっているので、斜面の上向きの静止摩擦力とつり合う']],
+      why: '静止摩擦力は「すべらせようとする力」と同じ大きさになるように、自分で大きさを変える。だから止まっているときは、つり合いの式から求める。',
+      trap: '静止摩擦係数 0.7 を使って μN を計算するのはまちがい。μN は「これ以上は支えられない」という限界（最大摩擦力）で、いつもその大きさではない。',
+      wrong: [[0.7 * mg * cs, 'それは最大摩擦力 μN。止まっているときの静止摩擦力は、つり合いの式で求める'], [mg, '重力 mg そのまま。斜面にそった成分 mg sinθ だけがつり合う'], [mg * cs, 'cos を使っている。斜面にそった成分は sin（mg sinθ）'], [m * sn, 'g = 9.8 をかけ忘れている']],
+      set: { th, mu0: 0.7, mu: 0.5, m, vec: true, dec: true } };
+  } },
+  // ---------- k-force 応用：斜面の最大摩擦力（N を出してから μN） ----------
+  { id: 'da-force-max', sim: 'incline', name: '滑り台の上の最大摩擦力', gen() {
+    const T = { 20: [0.34, 0.94], 25: [0.42, 0.91], 30: [0.50, 0.87] }, th = pick([20, 25, 30]), [sn, cs] = T[th], m = rnd(10, 40, 5), mu = rnd(0.6, 0.9, 0.05);
+    const mg = m * 9.8, N = mg * cs, F0 = mu * N;
+    return { q: `傾き ${th}° の滑り台に、質量 ${m} kg のペンタが止まっている。静止摩擦係数は ${mu} である。ペンタにはたらく最大摩擦力（これ以上は支えきれない限界の摩擦力）の大きさは何 N か。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}、cos${th}° = ${cs.toFixed(2)}。`, ans: F0, unit: 'N',
+      given: [['m', `${m} kg`], ['θ', `${th}°`], ['μ（静止摩擦係数）', String(mu)], ['g', '9.8 m/s²']], find: '最大摩擦力 F₀ = μN',
+      hints: ['最大摩擦力は F₀ = μN。まず垂直抗力 N を求める。', '斜面に垂直な向きはつり合っているので、N = mg cosθ（水平な床のときの mg ではない）。', `① N = ${m} × 9.8 × ${cs.toFixed(2)}　② F₀ = ${mu} × N。`],
+      sol: [[`N = mg cos${th}° = ${m} × 9.8 × ${cs.toFixed(2)} = ${s3(N)} N`, '斜面に垂直な向きのつり合い：垂直抗力 N と mg cosθ がつり合う'], [`F₀ = μN = ${mu} × ${s3(N)} = ${s3(F0)} N`, '最大摩擦力 = 静止摩擦係数 × 垂直抗力'], [`（くらべてみよう：すべらせる力 mg sin${th}° = ${s3(mg * sn)} N ＜ ${s3(F0)} N）`, 'すべらせる力が最大摩擦力より小さいので、ペンタは止まっていられる']],
+      why: '摩擦力は「面に押しつける力（垂直抗力）」が大きいほど大きくなる。斜面では重力の一部（mg cosθ）しか面を押していないので、N = mg cosθ になる。',
+      trap: '垂直抗力を mg にしてしまうまちがいが一番多い。mg になるのは水平な床のときだけ。',
+      wrong: [[mu * mg, '垂直抗力を mg にしている。斜面では N = mg cosθ'], [mu * mg * sn, 'sin を使っている。垂直抗力は mg cosθ'], [mg * sn, 'それはいま実際にはたらいている静止摩擦力（mg sinθ）。限界の値は μN'], [N, 'それは垂直抗力 N。最後に μ をかける']],
+      set: { th, mu0: mu, mu: sig(mu - 0.2, 2), m, vec: true, dec: true } };
+  } },
+  // ---------- k-force 発展：すべり落ちないように押さえる最小の力 ----------
+  { id: 'da-force-push', sim: 'incline', name: 'すべらないように押さえる力', gen() {
+    const T = { 30: [0.50, 0.87], 35: [0.57, 0.82], 40: [0.64, 0.77] }, th = pick([30, 35, 40]), [sn, cs] = T[th], m = rnd(10, 40, 5), mu = rnd(0.1, 0.5, 0.05);
+    const mg = m * 9.8, S = mg * sn, F0 = mu * mg * cs, F = S - F0;
+    return { q: `傾き ${th}° の滑り台に質量 ${m} kg のペンタを置くと、何もしなければすべり落ちてしまう（静止摩擦係数 ${mu}）。斜面にそって上向きに手で押して、ペンタを止めておきたい。押す力は最小で何 N あればよいか。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}、cos${th}° = ${cs.toFixed(2)}。`, ans: F, unit: 'N',
+      given: [['m', `${m} kg`], ['θ', `${th}°`], ['μ', String(mu)], ['g', '9.8 m/s²']], find: '止めておくのに必要な最小の押す力 F',
+      hints: ['押す力が一番小さくてすむのは、摩擦力が「すべり落ちるのを止める向き（斜面の上向き）」に、限界いっぱい（μN）まではたらいているとき。', '斜面にそった向きのつり合い：上向き（F ＋ μN）＝ 下向き（mg sinθ）。N = mg cosθ。', `F = ${m} × 9.8 × ${sn.toFixed(2)} − ${mu} × ${m} × 9.8 × ${cs.toFixed(2)}。`],
+      sol: [[`mg sin${th}° = ${s3(mg)} × ${sn.toFixed(2)} = ${s3(S)} N`, '斜面にそって下向きに、ペンタをすべらせようとする力'], [`μN = ${mu} × ${s3(mg)} × ${cs.toFixed(2)} = ${s3(F0)} N`, '摩擦力が支えられる限界（N = mg cosθ）。押す力が最小のとき、摩擦力はこの大きさで上向き'], [`F + ${s3(F0)} = ${s3(S)}`, '斜面にそった向きのつり合い：上向きの力の合計 ＝ 下向きの力'], [`F = ${s3(S)} − ${s3(F0)} = ${s3(F)} N`, '足りないぶんを手で押す']],
+      why: 'すべらせようとする力 mg sinθ のうち、摩擦力が μN までは支えてくれる。支えきれない残りのぶんだけを手で押せばよい。tanθ ＞ μ なので、手で押さないとすべり落ちる。',
+      trap: '摩擦力の向きに注意。ペンタは下へすべろうとしているので、摩擦力は上向き。手の力と同じ向きになる。',
+      wrong: [[S, '摩擦力を考えていない。摩擦力も上向きに支えてくれる'], [S + F0, '摩擦力の向きが逆。すべり落ちようとしているので、摩擦力は上向き（手と同じ向き）'], [S - mu * mg, '垂直抗力を mg にしている。斜面では N = mg cosθ']],
+      set: { th, mu0: mu, mu, m, vec: true, dec: true } };
+  } },
+
+  // ---------- k-law 基本：なめらかな滑り台の加速度 ----------
+  { id: 'da-law-smooth', sim: 'incline', name: 'なめらかな滑り台の加速度', gen() {
+    const T = { 20: 0.34, 30: 0.50, 40: 0.64 }, th = pick([20, 30, 40]), sn = T[th], m = rnd(10, 40, 5), a = 9.8 * sn;
+    return { q: `傾き ${th}° のなめらかな（摩擦のない）滑り台を、質量 ${m} kg のペンタがすべり下りる。加速度の大きさは何 m/s² か。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}。`, ans: a, unit: 'm/s²',
+      given: [['m', `${m} kg`], ['θ', `${th}°`], ['摩擦', 'なし（なめらか）'], ['g', '9.8 m/s²']], find: '斜面にそった加速度 a',
+      hints: ['運動方程式 ma = F を使う。F は「進む向き（斜面にそった向き）」の力。', '重力 mg のうち、斜面にそった成分は mg sinθ。摩擦はないので、これだけが F。', `${m} × a = ${m} × 9.8 × ${sn.toFixed(2)}。両辺を ${m} で割る。`],
+      sol: [[`F = mg sin${th}° = ${m} × 9.8 × ${sn.toFixed(2)} = ${s3(m * a)} N`, '斜面にそって下向きの力は、重力の斜面方向の成分だけ（垂直抗力は斜面に垂直なので関係しない）'], [`${m} × a = ${s3(m * a)}`, '運動方程式 ma = F'], [`a = ${s3(m * a)} ÷ ${m} = ${s3(a)} m/s²`, '両辺を m で割る（a = g sinθ になり、質量は消える）']],
+      why: '運動方程式は、物体が動く向きの力だけで立てる。斜面では「斜面にそった向き」が動く向きなので、重力をその向きに分けて使う。',
+      trap: '答えに質量は関係しない（a = g sinθ）。力 ' + s3(m * a) + ' N を答えにしないように。',
+      wrong: [[m * a, 'それは斜面にそった「力」mg sinθ。加速度は m で割る'], [9.8, '重力加速度 g そのまま。斜面では g sinθ になる'], [9.8 * { 20: 0.94, 30: 0.87, 40: 0.77 }[th], 'cos を使っている。斜面にそった成分は sin']],
+      set: { th, mu0: 0, mu: 0, m, vec: true, dec: true } };
+  } },
+  // ---------- k-law 応用：摩擦のある滑り台の加速度 ----------
+  { id: 'da-law-rough', sim: 'incline', name: '摩擦のある滑り台の加速度', gen() {
+    const T = { 30: [0.50, 0.87], 35: [0.57, 0.82], 40: [0.64, 0.77] }, th = pick([30, 35, 40]), [sn, cs] = T[th], m = rnd(10, 40, 5), mu = rnd(0.1, 0.5, 0.05);
+    const a = 9.8 * (sn - mu * cs);
+    return { q: `傾き ${th}° の滑り台を、質量 ${m} kg のペンタがすべり下りている。動摩擦係数は ${mu} である。加速度の大きさは何 m/s² か。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}、cos${th}° = ${cs.toFixed(2)}。`, ans: a, unit: 'm/s²',
+      given: [['m', `${m} kg`], ['θ', `${th}°`], ["μ'（動摩擦係数）", String(mu)], ['g', '9.8 m/s²']], find: '斜面にそった加速度 a',
+      hints: ['斜面にそった向きの力は 2 つ：下向きの mg sinθ と、上向きの動摩擦力 μ\'N。', '垂直抗力は N = mg cosθ。だから動摩擦力は μ\'mg cosθ。', `運動方程式：${m} × a = ${m} × 9.8 × ${sn.toFixed(2)} − ${mu} × ${m} × 9.8 × ${cs.toFixed(2)}。`],
+      sol: [[`下向き：mg sin${th}° = ${m} × 9.8 × ${sn.toFixed(2)} = ${s3(m * 9.8 * sn)} N`, 'ペンタをすべらせる力'], [`上向き：μ'mg cos${th}° = ${mu} × ${m} × 9.8 × ${cs.toFixed(2)} = ${s3(mu * m * 9.8 * cs)} N`, '動摩擦力は、すべる向きと逆（斜面の上向き）。N = mg cosθ'], [`${m} × a = ${s3(m * 9.8 * sn)} − ${s3(mu * m * 9.8 * cs)} = ${s3(m * a)}`, '下向きを正として運動方程式 ma = F（F は 2 つの力の差）'], [`a = ${s3(m * a)} ÷ ${m} = ${s3(a)} m/s²`, '両辺を m で割る']],
+      why: '運動方程式の F は「合力」。進む向きの力から、じゃまする向きの力（摩擦力）を引いたものが F になる。',
+      trap: '摩擦力を引き忘れる、または垂直抗力を mg にしてしまう、の 2 つが多い。',
+      wrong: [[9.8 * sn, '摩擦力を引き忘れている（なめらかなときの答え）'], [9.8 * (sn - mu), '垂直抗力を mg にしている。斜面では N = mg cosθ'], [9.8 * (sn + mu * cs), '摩擦力の向きが逆。すべり下りるとき摩擦力は上向き'], [m * a, 'それは合力 F。加速度は m で割る']],
+      set: { th, mu0: mu, mu, m, vec: true, dec: true } };
+  } },
+  // ---------- k-law 発展：加速度から動摩擦力を逆算 ----------
+  { id: 'da-law-back', sim: 'incline', name: '加速度から摩擦力を求める', gen() {
+    const T = { 30: [0.50, 0.87], 35: [0.57, 0.82], 40: [0.64, 0.77] }, th = pick([30, 35, 40]), [sn, cs] = T[th], m = rnd(10, 40, 5), mu = rnd(0.1, 0.4, 0.05);
+    const a = Math.round(9.8 * (sn - mu * cs) * 10) / 10, S = m * 9.8 * sn, f = S - m * a;
+    return { q: `傾き ${th}° の滑り台を、質量 ${m} kg のペンタがすべり下りたところ、加速度の大きさは ${a} m/s² だった。ペンタにはたらく動摩擦力の大きさは何 N か。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}。`, ans: f, unit: 'N',
+      given: [['m', `${m} kg`], ['θ', `${th}°`], ['a（加速度）', `${a} m/s²`], ['g', '9.8 m/s²'], ["動摩擦力 f", 'わからない → これを求める']], find: '動摩擦力の大きさ f',
+      hints: ['ふつうは「力 → 加速度」だが、今回は逆。加速度がわかっているので、運動方程式から力を求める。', '斜面にそった向き：ma = mg sinθ − f（f は上向きの動摩擦力）。', `${m} × ${a} = ${m} × 9.8 × ${sn.toFixed(2)} − f を f について解く。`],
+      sol: [['ma = mg sinθ − f', '斜面を下る向きを正とした運動方程式。摩擦力は上向きなのでマイナス'], [`${m} × ${a} = ${s3(m * a)}、mg sin${th}° = ${m} × 9.8 × ${sn.toFixed(2)} = ${s3(S)}`, '左辺（ma）と、下向きの力をそれぞれ計算する'], [`f = ${s3(S)} − ${s3(m * a)} = ${s3(f)} N`, '式を f について解く'], [`（おまけ：μ' = f ÷ (mg cos${th}°) = ${s3(f / (m * 9.8 * cs))}）`, 'cos の値（' + cs.toFixed(2) + '）を使えば、動摩擦係数もわかる']],
+      why: '運動方程式 ma = F は、加速度から力を求めるときにも使える。「重力の成分だけなら加速度は g sinθ のはず。それより小さいのは摩擦力のせい」と考えると、ma との差が摩擦力になる。',
+      trap: 'ma（' + s3(m * a) + ' N）は「合力」で、摩擦力ではない。摩擦力は、重力の成分と合力の差。',
+      wrong: [[m * a, 'それは合力 ma。摩擦力は mg sinθ − ma'], [S + m * a, '引き算が足し算になっている。f = mg sinθ − ma'], [S, '重力の斜面方向の成分そのまま。そこから ma を引く']],
+      set: { th, mu0: mu, mu, m, vec: true, dec: true } };
+  } },
+
+  // ---------- k-energy 基本：ブランコの最下点の速さ ----------
+  { id: 'da-en-swing', sim: 'pend', name: 'ブランコの一番下での速さ', gen() {
+    const h = rnd(0.2, 1, 0.1), L = rnd(2, 3, 0.5), m = rnd(20, 40, 5), v = Math.sqrt(2 * 9.8 * h);
+    const th0 = Math.round(Math.acos(1 - h / L) * 180 / Math.PI);
+    return { q: `質量 ${m} kg の子どもがブランコに乗っている。一番下より ${h} m 高い所から、静かにゆれ始めた。一番下を通るときの速さは何 m/s か。g = 9.8 m/s²。空気抵抗や摩擦は考えない。`, ans: v, unit: 'm/s',
+      given: [['h（一番下からの高さ）', `${h} m`], ['はじめの速さ', '0 m/s（静かにゆれ始めた）'], ['m', `${m} kg（← 最後に消える）`], ['g', '9.8 m/s²']], find: '一番下での速さ v',
+      hints: ['力学的エネルギー保存：はじめの（運動エネルギー＋位置エネルギー）＝ 一番下での（運動エネルギー＋位置エネルギー）。', '一番下を高さ 0 とする。はじめは速さ 0 なので mgh だけ、一番下では ½mv² だけ。', `½ × m × v² = m × 9.8 × ${h}。両辺の m が消えて v² = 2 × 9.8 × ${h}。`],
+      sol: [[`はじめ：0 + m × 9.8 × ${h}`, '止まっているので運動エネルギーは 0、位置エネルギーは mgh'], ['一番下：½mv² + 0', '高さ 0 なので位置エネルギーは 0'], [`½mv² = m × 9.8 × ${h} → v² = 2 × 9.8 × ${h} = ${s3(19.6 * h)}`, '力学的エネルギー保存。両辺を m で割って 2 倍する'], [`v = √${s3(19.6 * h)} = ${s3(v)} m/s`, '√ をとる']],
+      why: 'ひもの張力はいつも動く向きに垂直なので、仕事をしない。仕事をするのは重力だけなので、力学的エネルギーが保存される。位置エネルギーが減ったぶんが、運動エネルギーに変わる。',
+      trap: '質量は両辺にあるので消える（重い人も軽い人も同じ速さ）。また、最後の √ を忘れないように。',
+      wrong: [[19.6 * h, '√ をとり忘れている。それは v²'], [Math.sqrt(9.8 * h), '½ の扱いをまちがえている（v² = 2gh）'], [m * 9.8 * h, 'それは位置エネルギー mgh（単位は J）。速さに直す']],
+      set: { L, th0, m, vec: false, trail: true } };
+  } },
+  // ---------- k-energy 応用：ブランコの途中の高さでの速さ ----------
+  { id: 'da-en-mid', sim: 'pend', name: 'ブランコの途中での速さ', gen() {
+    const h = rnd(0.6, 1.2, 0.1), h1 = rnd(0.1, 0.4, 0.1), L = rnd(2, 3, 0.5), m = rnd(20, 40, 5), dh = h - h1, v = Math.sqrt(2 * 9.8 * dh);
+    const th0 = Math.round(Math.acos(1 - h / L) * 180 / Math.PI);
+    return { q: `質量 ${m} kg の子どもが、一番下より ${h} m 高い所からブランコで静かにゆれ始めた。一番下より ${h1} m 高い所を通るときの速さは何 m/s か。g = 9.8 m/s²。空気抵抗や摩擦は考えない。`, ans: v, unit: 'm/s',
+      given: [['はじめの高さ', `${h} m（速さ 0）`], ['速さを知りたい所の高さ', `${h1} m`], ['m', `${m} kg（← 消える）`], ['g', '9.8 m/s²']], find: `高さ ${h1} m を通るときの速さ v`,
+      hints: ['力学的エネルギー保存の式を、はじめと「高さ ' + h1 + ' m の所」で立てる。一番下ではないので、位置エネルギーは 0 にならない。', `m × 9.8 × ${h} = ½mv² + m × 9.8 × ${h1}。`, `位置エネルギーが減ったぶん（下がった高さ ${h} − ${h1} の分）が運動エネルギーになる。`],
+      sol: [[`m × 9.8 × ${h} = ½mv² + m × 9.8 × ${h1}`, '一番下を高さ 0 として、力学的エネルギー保存'], [`½mv² = m × 9.8 × (${h} − ${h1}) = m × 9.8 × ${s3(dh)}`, '位置エネルギーの減ったぶんが運動エネルギー'], [`v² = 2 × 9.8 × ${s3(dh)} = ${s3(19.6 * dh)}`, '両辺を m で割って 2 倍する'], [`v = √${s3(19.6 * dh)} = ${s3(v)} m/s`, '√ をとる']],
+      why: '速さを決めるのは「どれだけ下がったか」。はじめより ' + s3(dh) + ' m 低い所では、その高さのぶんの位置エネルギーが運動エネルギーに変わっている。',
+      trap: '途中の位置でも位置エネルギー mgh₁ が残っていることを忘れやすい。',
+      wrong: [[Math.sqrt(19.6 * h), '一番下での速さになっている。高さ ' + h1 + ' m の所では位置エネルギーが残っている'], [Math.sqrt(19.6 * h1), '高さ ' + h1 + ' m を使っている。使うのは下がった高さ（' + h + ' − ' + h1 + '）'], [Math.sqrt(19.6 * (h + h1)), '高さを足している。下がった高さは引き算'], [19.6 * dh, '√ をとり忘れている']],
+      set: { L, th0, m, vec: false, trail: true } };
+  } },
+  // ---------- k-energy 発展：摩擦のある滑り台の下での速さ（仕事とエネルギー） ----------
+  { id: 'da-en-fric', sim: 'incline', name: '摩擦のある滑り台とエネルギー', gen() {
+    const sn = 0.5, cs = 0.87, x = rnd(2, 5, 0.5), mu = rnd(0.1, 0.4, 0.05), m = rnd(10, 40, 5);
+    const H = x * sn, U = m * 9.8 * H, W = mu * m * 9.8 * cs * x, K = U - W, v = Math.sqrt(2 * K / m);
+    return { q: `傾き 30°、長さ ${x} m の滑り台のてっぺんから、質量 ${m} kg のペンタが静かにすべり下りた。動摩擦係数は ${mu} である。下端での速さは何 m/s か。g = 9.8 m/s²、sin30° = 0.50、cos30° = 0.87。`, ans: v, unit: 'm/s',
+      given: [['m', `${m} kg`], ['x（滑り台の長さ）', `${x} m`], ['θ', '30°'], ["μ'", String(mu)], ['g', '9.8 m/s²']], find: '下端での速さ v',
+      hints: ['摩擦があるので、力学的エネルギーは保存しない。「はじめの位置エネルギー − 摩擦で熱になったぶん = 下端の運動エネルギー」で考える。', `滑り台の高さは H = x sin30°。摩擦で失われるエネルギーは「動摩擦力 × すべった距離」= μ'mg cos30° × ${x}。`, '① mgH　② 摩擦の仕事　③ ①−② = ½mv²　④ v を求める、の順に計算する。'],
+      sol: [[`H = ${x} × 0.50 = ${s3(H)} m`, '滑り台の高さ（斜面の長さ × sinθ）'], [`mgH = ${m} × 9.8 × ${s3(H)} = ${s3(U)} J`, 'てっぺんでの位置エネルギー（下端を高さ 0）'], [`μ'mg cos30° × ${x} = ${mu} × ${m} × 9.8 × 0.87 × ${x} = ${s3(W)} J`, '動摩擦力がした仕事のぶんだけ、エネルギーが熱になる'], [`½ × ${m} × v² = ${s3(U)} − ${s3(W)} = ${s3(K)} J`, '残ったエネルギーが下端での運動エネルギー'], [`v = √(2 × ${s3(K)} ÷ ${m}) = ${s3(v)} m/s`, 'v² = 2K/m を計算して √ をとる']],
+      why: '摩擦力は動く向きと逆向きにはたらくので、マイナスの仕事をする。そのぶん力学的エネルギーが減って熱になる。「はじめのエネルギー − 失ったエネルギー = 後のエネルギー」と考えれば、加速度を求めなくても速さが出る。',
+      trap: '摩擦力を μ\'mg（cos をかけない）にしたり、摩擦の仕事を引き忘れたりしやすい。',
+      wrong: [[Math.sqrt(19.6 * H), '摩擦で失われたエネルギーを引いていない（なめらかなときの答え）'], [Math.sqrt(2 * (U + W) / m), '摩擦の仕事を足している。摩擦でエネルギーは減る'], [Math.sqrt(2 * (U - mu * m * 9.8 * x) / m), '摩擦力を μ\'mg にしている。斜面では N = mg cos30°'], [2 * K / m, '√ をとり忘れている']],
+      set: { th: 30, mu0: mu, mu, m, vec: true, dec: false } };
+  } },
+
+  // ---------- b-plane 応用：けったボールの最高点の高さ ----------
+  { id: 'da-pl-top', sim: 'proj', name: 'けったボールの最高点の高さ', gen() {
+    const T = { 30: 0.50, 45: 0.71, 60: 0.87 }, th = pick([30, 45, 60]), sn = T[th], v0 = rnd(8, 20, 1), vy = v0 * sn, H = vy * vy / 19.6;
+    return { q: `公園の地面から、ボールを初速度 ${v0} m/s・仰角 ${th}° でけり上げた。ボールの最高点の高さは何 m か。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}。`, ans: H, unit: 'm',
+      given: [['v₀', `${v0} m/s`], ['θ', `${th}°`], ['g', '9.8 m/s²'], ['最高点での縦の速さ v_y', '0 m/s（横の速さは残る）']], find: '最高点の高さ H',
+      hints: ['横と縦に分ける。高さに関係するのは「縦」だけ。縦のはじめの速さは v₀sinθ。', '縦は投げ上げと同じ。最高点では縦の速さ v_y = 0。時間がわからないので v² − v₀² = 2ax を使う。', `縦のはじめの速さ = ${v0} × ${sn.toFixed(2)}。0² − (縦の速さ)² = 2 × (−9.8) × H。`],
+      sol: [[`v_y0 = ${v0} × sin${th}° = ${v0} × ${sn.toFixed(2)} = ${s3(vy)} m/s`, '初速度の縦の成分（上向き）'], [`0² − ${s3(vy)}² = 2 × (−9.8) × H`, '縦だけ見ると投げ上げ。最高点で v_y = 0（上向きが正、加速度 −g）'], [`H = ${s3(vy * vy)} ÷ 19.6 = ${s3(H)} m`, '両辺を −19.6 で割る（H = v₀²sin²θ / 2g と同じ）']],
+      why: '横の速さは高さに関係しない。縦の動きだけ取り出すと「初速度 v₀sinθ の投げ上げ」なので、投げ上げの最高点と同じ考え方で求められる。',
+      trap: '初速度 ' + v0 + ' m/s をそのまま縦の速さに使うまちがいが多い。縦の成分は v₀sinθ。最高点で「速さ全体」が 0 になるわけではない。',
+      wrong: [[v0 * v0 / 19.6, '初速度をそのまま使っている。縦の成分 v₀sinθ を使う'], [vy * vy / 9.8, '2g ではなく g で割っている'], [vy / 9.8, 'それは最高点までの「時間」'], [v0 * sn * sn / 19.6, 'v₀ を 2 乗し忘れている。(v₀sinθ)² は v₀ も sinθ も 2 乗する']],
+      set: { v0, th, h0: 0, strobe: true, comp: true, shadow: true, gmode: 'xy' } };
+  } },
+  // ---------- b-plane 発展：屋上から斜めに投げたボールの到達距離 ----------
+  { id: 'da-pl-roof', sim: 'proj', name: '屋上から斜めに投げた到達距離', gen() {
+    const T = { 30: [0.50, 0.87], 45: [0.71, 0.71], 60: [0.87, 0.50] }, th = pick([30, 45, 60]), [sn, cs] = T[th], v0 = rnd(6, 14, 1), h0 = rnd(4, 10, 1);
+    const vx = v0 * cs, vy = v0 * sn, t1 = vy / 9.8, H = h0 + vy * vy / 19.6, t2 = Math.sqrt(2 * H / 9.8), Tt = t1 + t2, X = vx * Tt;
+    return { q: `高さ ${h0} m の校舎の屋上から、ボールを初速度 ${v0} m/s・仰角 ${th}°（ななめ上向き）で投げた。ボールは、校舎の真下から水平に何 m はなれた地面に落ちるか。g = 9.8 m/s²、sin${th}° = ${sn.toFixed(2)}、cos${th}° = ${cs.toFixed(2)}。`, ans: X, unit: 'm',
+      given: [['h₀（屋上の高さ）', `${h0} m`], ['v₀', `${v0} m/s`], ['θ', `${th}°`], ['g', '9.8 m/s²']], find: '落ちた所までの水平距離 X',
+      hints: ['横と縦に分ける。横は等速。縦は投げ上げ。まず「地面に着くまでの時間」を縦の動きから求める。', '縦を「上り（最高点まで）」と「下り（最高点から地面まで、自由落下と同じ）」に分けると、2次方程式を使わずに時間が出せる。', '時間 T がわかったら、X = (横の速さ v₀cosθ) × T。'],
+      sol: [[`横 v_x = ${v0} × ${cs.toFixed(2)} = ${s3(vx)} m/s、縦 v_y0 = ${v0} × ${sn.toFixed(2)} = ${s3(vy)} m/s`, '初速度を横と縦に分ける'], [`上り：t₁ = ${s3(vy)} ÷ 9.8 = ${s3(t1)} s`, '縦の速さが 0 になる（最高点）までの時間'], [`最高点の地面からの高さ H = ${h0} + ${s3(vy)}² ÷ 19.6 = ${s3(H)} m`, '屋上から上がったぶんに、屋上の高さをたす'], [`下り：${s3(H)} = ½ × 9.8 × t₂² → t₂ = ${s3(t2)} s`, '最高点では縦の速さ 0 なので、自由落下と同じ'], [`T = ${s3(t1)} + ${s3(t2)} = ${s3(Tt)} s`, '地面に着くまでの時間'], [`X = ${s3(vx)} × ${s3(Tt)} = ${s3(X)} m`, '横は等速なので、速さ × 時間']],
+      why: '放物運動は「横は等速・縦は投げ上げ」。2つの動きをつなぐのは「時間」だけ。高い所から投げると、地面に着くまでの時間が地面から投げたときより長くなるので、遠くまで飛ぶ。',
+      trap: `地面から投げたときの公式（L = v₀²sin2θ/g）は使えない。あれは「投げた高さにもどってくる」ときの式。ここでは高さ ${h0} m 下まで落ちる。`,
+      wrong: [[vx * 2 * t1, '地面から投げたときと同じ計算（同じ高さにもどるまで）になっている。そこからさらに ' + h0 + ' m 落ちる'], [vx * t2, '下りの時間だけになっている。上りの時間もたす'], [vx * (t1 + Math.sqrt(2 * h0 / 9.8)), '下りの距離を屋上の高さにしている。最高点から落ちるので H'], [v0 * Tt, '横の速さに v₀ をそのまま使っている。横は v₀cosθ']],
+      set: { v0, th, h0, strobe: true, comp: true, shadow: true, gmode: 'xy' } };
+  } },
+);
+
+// 数によっては「まちがい」が正しい答えとほぼ同じになるので、そのときは外す（このファイルの問題だけ）
+(() => {
+  const mine = ['da-vel-v2ax', 'da-vel-back', 'da-fall-top', 'da-fall-land', 'da-force-static', 'da-force-max', 'da-force-push', 'da-law-smooth', 'da-law-rough', 'da-law-back', 'da-en-swing', 'da-en-mid', 'da-en-fric', 'da-pl-top', 'da-pl-roof'];
+  for (const d of DRILLS) if (mine.includes(d.id) && !d.wrongFiltered) {
+    const g = d.gen;
+    d.gen = function () { const P = g.call(this); P.wrong = P.wrong.filter(([w]) => Math.abs(w - P.ans) > Math.abs(P.ans) * 0.03 + 1e-9); return P; };
+    d.wrongFiltered = true;
+  }
+})();
+
+Object.assign(LESSON_PLAN, {
+  'k-vel': { basic: 'd-accel', apply: 'da-vel-v2ax', adv: 'da-vel-back' },
+  'k-fall': { basic: 'd-fall', apply: 'da-fall-top', adv: 'da-fall-land' },
+  'k-force': { basic: 'da-force-static', apply: 'da-force-max', adv: 'da-force-push' },
+  'k-law': { basic: 'da-law-smooth', apply: 'da-law-rough', adv: 'da-law-back' },
+  'k-energy': { basic: 'da-en-swing', apply: 'da-en-mid', adv: 'da-en-fric' },
+  'b-plane': { basic: 'd-range', apply: 'da-pl-top', adv: 'da-pl-roof' },
+});
+
+Object.assign(ASK, {
+  'k-vel': [
+    { q: 'バンパーカー A が B にぶつかる前、A の速さはどうなっている？', pick: ['ずっと同じ速さ', 'だんだん速くなる', 'だんだん遅くなる'] },
+    { q: '右へ進む A と左へ進む B。A から見ると、B が近づく速さはどうなっている？', pick: ['2台の速さの和', '2台の速さの差', 'B の速さと同じ'] },
+    { q: 'ペンタが滑り台をすべり下りるとき、速さはどうなっている？', pick: ['だんだん速くなる', 'ずっと同じ速さ', 'だんだん遅くなる'] },
+    { q: 'ペンタの v–t グラフ。グラフと t 軸の間の面積は何を表している？', pick: ['進んだ距離', '加速度', 'かかった時間'] },
+  ],
+  'k-fall': [
+    { q: 'ベランダから静かにはなしたボール。ストロボの間かくはどうなっている？', pick: ['下へいくほど広がる', 'どこも同じ', '下へいくほどせまい'] },
+    { q: '空気抵抗があると、軽いピンポン球の落ちる速さはどうなっている？', pick: ['一定の速さに近づく', 'どこまでも速くなる', 'すぐに止まる'] },
+    { q: '真上に投げ上げたボール。一番高い所での速さはどうなっている？', pick: ['0 になっている', 'いちばん速い', '投げた速さと同じ'] },
+    { q: '水平に投げたボール。床に映る緑の影はどう動いている？', pick: ['等間かくで進む', 'だんだん速くなる', '止まっている'] },
+    { q: 'ななめに投げたボール。最高点で、横向きの速さはどうなっている？', pick: ['そのまま残っている', '0 になっている', 'いちばん速い'] },
+  ],
+  'k-force': [
+    { q: '水平な台の上のペンタ。上向きの垂直抗力の大きさはどうなっている？', pick: ['重力と同じ大きさ', '重力より大きい', '0'] },
+    { q: '滑り台の上のペンタ。垂直抗力は重力と比べてどうなっている？', pick: ['重力より小さい', '重力と同じ', '重力より大きい'] },
+    { q: '滑り台の途中でペンタが止まっている。何がすべるのを止めている？', pick: ['斜面の上向きの摩擦力', '下向きの重力', '垂直抗力だけ'] },
+    { q: '滑り台の角度を大きくしていくと、ペンタはどうなる？', pick: ['ある角度ですべり出す', 'ずっと止まったまま', '角度に関係なくすべる'] },
+  ],
+  'k-law': [
+    { q: '摩擦のない所を走るバンパーカー。ぶつかる前の速さはどうなっている？', pick: ['変わらない', 'だんだん遅くなる', 'だんだん速くなる'] },
+    { q: 'なめらかな滑り台をすべるペンタ。加速度はどうなっている？', pick: ['一定（g sinθ）', 'だんだん大きくなる', '0'] },
+    { q: '摩擦のある滑り台では、なめらかなときと比べて加速度はどうなっている？', pick: ['小さくなっている', '大きくなっている', '変わらない'] },
+    { q: 'バンパーカー A が B を押すとき、B が A を押し返す力はどうなっている？', pick: ['同じ大きさで逆向き', 'A が押す力より小さい', 'A が押す力より大きい'] },
+  ],
+  'k-energy': [
+    { q: 'ブランコが一番下を通るとき、速さはどうなっている？', pick: ['いちばん速い', 'いちばん遅い', '0 になっている'] },
+    { q: 'ブランコがゆれている間、力学的エネルギーの合計はどうなっている？', pick: ['変わらない', 'だんだん減る', 'だんだん増える'] },
+    { q: 'ばねがいちばんのびたとき、おもりの速さはどうなっている？', pick: ['0 になっている', 'いちばん速い', '半分になっている'] },
+    { q: '摩擦のある滑り台を下りるペンタ。力学的エネルギーはどうなっている？', pick: ['熱になって減っている', '変わらない', '増えている'] },
+  ],
+  'b-plane': [
+    { q: '飛んでいるボール。速度の横の成分 vx はどうなっている？', pick: ['ずっと同じ', 'だんだん大きくなる', '最高点で 0'] },
+    { q: 'かべに映る朱色の影は、どう動いている？', pick: ['上がって下りるだけ', '等間かくで横に進む', '止まっている'] },
+    { q: 'ボールが一番高い所にきたとき、速度の縦の成分 vy はどうなっている？', pick: ['0 になっている', 'いちばん大きい', '横の成分と同じ'] },
+    { q: '高い所から投げたボール。投げた所を原点にすると、着地点の y はいくつ？', pick: ['y = −h', 'y = 0', 'y = h'] },
+  ],
+});
+// 授業データ：熱・波・振動・円運動・万有引力・気体（k-heat, k-wave, k-sound, b-mom, b-circle, b-shm, b-grav, b-gas）
+const pb10 = (x, a, b) => Math.min(b, Math.max(a, Math.round(x / 10) * 10));          // 気体の温度 T（10 K きざみ）
+const pbStep = (x, st, a, b) => Math.min(b, Math.max(a, +(Math.round(x / st) * st).toFixed(6)));
+const pbP = x => (x < 0 ? `(${s3(x)})` : `${s3(x)}`);                                  // 負の数はかっこでかこむ
+const pbW = (ans, list) => list.filter(([w]) => isFinite(w) && Math.abs(w - ans) > Math.abs(ans) * 0.03 + 1e-9);
+
+DRILLS.push(
+  // ---------- 熱と温度 ----------
+  { id: 'db-heatq', sim: 'gas', name: 'お湯をわかす熱量', gen() {
+    const m = rnd(100, 500, 50), t1 = rnd(10, 30, 5), t2 = rnd(40, 80, 10), dT = t2 - t1, Q = m * 4.2 * dT;
+    return { q: `マグカップに ${t1} ℃ の水 ${m} g を入れ、電子レンジで ${t2} ℃ まで温めた。水が受け取った熱量は何 J か。水の比熱は 4.2 J/(g·K) とする。`, ans: Q, unit: 'J',
+      given: [['m（水の質量）', `${m} g`], ['c（水の比熱）', '4.2 J/(g·K)（1 g を 1 K 上げるのに 4.2 J）'], ['温度', `${t1} ℃ → ${t2} ℃`]], find: '水が受け取った熱量 Q',
+      hints: ['熱量は「質量 × 比熱 × 上がった温度」で求める。', '使う式は Q = mcΔT。ΔT は「あと − まえ」の温度の差。', `Q = ${m} × 4.2 × (${t2} − ${t1})。`],
+      sol: [[`ΔT = ${t2} − ${t1} = ${dT} K`, '温度の「差」は ℃ でも K でも同じ数になる'], ['Q = mcΔT', '比熱 c は 1 g を 1 K 上げる熱量。それを質量ぶん・温度差ぶんかける'], [`Q = ${m} × 4.2 × ${dT} = ${s3(Q)} J`, '数を入れて計算する']],
+      why: '比熱 4.2 J/(g·K) は「水 1 g を 1 K 上げるのに 4.2 J いる」という意味。水が ' + m + ' g なら ' + m + ' 倍、' + dT + ' K 上げるならさらに ' + dT + ' 倍の熱がいる。',
+      trap: 'ΔT に「あとの温度」だけを入れてしまうまちがいが多い。上がったぶん（差）を使う。比熱の単位が g なので、質量は g のまま入れる。',
+      wrong: pbW(Q, [[m * 4.2 * t2, 'あとの温度をそのまま使っている。ΔT は温度の差（あと − まえ）'], [m / 1000 * 4.2 * dT, '質量を kg に直している。比熱が J/(g·K) なので g のまま'], [m * dT, '比熱 4.2 をかけ忘れている']]),
+      set: { T: pb10(t2 + 273, 100, 600), V: 10, N: 200, track: true } };
+  } },
+  { id: 'db-heatmix', sim: 'gas', name: 'お湯と水をまぜる', gen() {
+    const m1 = rnd(100, 500, 50); let m2 = rnd(100, 500, 50); while (m2 === m1) m2 = rnd(100, 500, 50);
+    const t1 = rnd(60, 90, 5), t2 = rnd(10, 30, 5), tf = (m1 * t1 + m2 * t2) / (m1 + m2);
+    return { q: `${t1} ℃ のお湯 ${m1} g と、${t2} ℃ の水 ${m2} g をまぜた。しばらくすると全体が同じ温度になった。何 ℃ になったか。熱は外に逃げないものとする。`, ans: tf, unit: '℃',
+      given: [['お湯', `${m1} g、${t1} ℃`], ['水', `${m2} g、${t2} ℃`], ['c（比熱）', 'どちらも水なので同じ（4.2 J/(g·K)）']], find: 'まぜたあとの温度 t',
+      hints: ['熱は温度の高いお湯から低い水へ移る。お湯が失った熱 = 水が得た熱（熱量の保存）。', `お湯が失った熱：${m1} × c × (${t1} − t)、水が得た熱：${m2} × c × (t − ${t2})。`, `c は両辺で同じなので消せる：${m1}(${t1} − t) = ${m2}(t − ${t2})。`],
+      sol: [[`${m1} × c × (${t1} − t) = ${m2} × c × (t − ${t2})`, '熱量の保存：お湯が失った熱 = 水が得た熱'], [`${m1}(${t1} − t) = ${m2}(t − ${t2})`, '同じ水なので比熱 c は両辺で消える'], [`${m1 * t1} + ${m2 * t2} = (${m1} + ${m2})t`, 'かっこを開いて、t を右にまとめる'], [`t = ${m1 * t1 + m2 * t2} ÷ ${m1 + m2} = ${s3(tf)} ℃`, 't について解く']],
+      why: '熱は消えたり生まれたりしない。高温のものが手放した熱を、低温のものがそのまま受け取る。だから「失った熱 = 得た熱」の式を立てればよい。',
+      trap: 'ただの平均（(高い温度 + 低い温度) ÷ 2）にしてはいけない。量が多いほうの温度に近くなる。ΔT はどちらもプラスになるように「高い − 低い」で書く。',
+      wrong: pbW(tf, [[(t1 + t2) / 2, 'ただの平均になっている。質量の多いほうに近くなる（m₁t₁ + m₂t₂）/(m₁ + m₂)'], [(m2 * t1 + m1 * t2) / (m1 + m2), 'お湯と水の質量を入れかえている'], [(m1 * t1 - m2 * t2) / (m1 + m2), '水が得た熱の符号をまちがえている。ΔT は t − ' + t2]]),
+      set: { T: pb10(tf + 273, 100, 600), V: 10, N: 200, track: true } };
+  } },
+  { id: 'db-heatmetal', sim: 'gas', name: '金属の比熱をはかる', gen() {
+    const c0 = pick([0.39, 0.45, 0.9]), mm = rnd(200, 400, 50), mw = rnd(100, 200, 50), tw = rnd(10, 25, 1);
+    const tf = +((mm * c0 * 100 + mw * 4.2 * tw) / (mm * c0 + mw * 4.2)).toFixed(1), c = mw * 4.2 * (tf - tw) / (mm * (100 - tf));
+    return { q: `沸とうしたお湯（100 ℃）で温めた ${mm} g の金属のおもりを、${tw} ℃ の水 ${mw} g の中に入れた。全体の温度が ${tf} ℃ になった。この金属の比熱は何 J/(g·K) か。水の比熱は 4.2 J/(g·K)、熱は外に逃げないものとする。`, ans: c, unit: 'J/(g·K)',
+      given: [['金属', `${mm} g、100 ℃ → ${tf} ℃、比熱 c = ?`], ['水', `${mw} g、${tw} ℃ → ${tf} ℃、比熱 4.2 J/(g·K)`]], find: '金属の比熱 c',
+      hints: ['熱い金属が失った熱を、冷たい水が受け取る（熱量の保存）。', `金属の温度は 100 − ${tf} だけ下がり、水の温度は ${tf} − ${tw} だけ上がる。`, `${mm} × c × (100 − ${tf}) = ${mw} × 4.2 × (${tf} − ${tw}) を c について解く。`],
+      sol: [[`水が得た熱：${mw} × 4.2 × (${tf} − ${tw}) = ${s3(mw * 4.2 * (tf - tw))} J`, 'わかっている数だけで先に計算できる'], [`金属が失った熱：${mm} × c × (100 − ${tf}) = ${s3(mm * (100 - tf))} × c`, '金属の温度は 100 ℃ から ' + tf + ' ℃ に下がった'], [`${s3(mm * (100 - tf))} × c = ${s3(mw * 4.2 * (tf - tw))}`, '熱量の保存：失った熱 = 得た熱'], [`c = ${s3(mw * 4.2 * (tf - tw))} ÷ ${s3(mm * (100 - tf))} = ${s3(c)} J/(g·K)`, 'c について解く']],
+      why: '「失った熱 = 得た熱」の式は、わからないものが温度でも比熱でも同じように使える。金属は水より比熱がずっと小さいので、熱をあまり持てず、温度が大きく下がっても水はあまり温まらない。',
+      trap: '温度の差を取りちがえないこと。金属は 100 − ' + tf + '、水は ' + tf + ' − ' + tw + '。どちらも「最後の温度」との差。',
+      wrong: pbW(c, [[mw * 4.2 * (tf - tw) / (mm * (100 - tw)), '金属の温度差を 100 − ' + tw + ' にしている。金属は ' + tf + ' ℃ まで下がっただけ'], [mw * (tf - tw) / (mm * (100 - tf)), '水の比熱 4.2 をかけ忘れている'], [mm * (100 - tf) / (mw * 4.2 * (tf - tw)), '割る向きが逆になっている']]),
+      set: { T: pb10(tf + 273, 100, 600), V: 10, N: 200, track: true } };
+  } },
+
+  // ---------- 波の性質 ----------
+  { id: 'db-ropewave', sim: 'wave', name: 'なわとびの波の速さ', gen() {
+    const T = pick([1.25, 2, 2.5]), l = rnd(1.4, 3, 0.2), f = 1 / T, v = l / T;
+    return { q: `長いなわとびのロープのはしを持ち、${T} 秒に1回のペースで上下にふった。ロープには、山から次の山まで ${l} m の波ができた。この波の速さは何 m/s か。`, ans: v, unit: 'm/s',
+      given: [['T（周期：1回ふる時間）', `${T} s`], ['λ（波長：山から次の山まで）', `${l} m`]], find: '波の速さ v',
+      hints: ['「1回ふる時間」は周期 T。まず振動数 f = 1/T（1秒に何回ふるか）を出す。', 'そのあと波の式 v = fλ を使う。', `f = 1 ÷ ${T}、v = f × ${l}。`],
+      sol: [[`f = 1/T = 1 ÷ ${T} = ${s3(f)} Hz`, '1秒間に何回ゆれるか（振動数）に直す'], [`v = fλ = ${s3(f)} × ${l} = ${s3(v)} m/s`, '1秒に出る波の数 × 波1つの長さ = 1秒に進む距離']],
+      why: '1回ふる（1周期）の間に、波はちょうど1波長ぶん進む。だから速さは「1波長 ÷ 1周期」= λ/T とも書ける。f = 1/T を使えば v = fλ と同じ。',
+      trap: '周期 T をそのまま振動数として v = T × λ としてしまうまちがいが多い。T と f は逆数の関係。',
+      wrong: pbW(v, [[T * l, '周期 T を振動数と思って T × λ にしている。f = 1/T'], [T / l, 'T ÷ λ になっている。v = λ ÷ T'], [l, '波長をそのまま速さにしている。1周期（' + T + ' 秒）で1波長進むので λ ÷ T']]),
+      set: { type: 'trans', f, v, A: 0.2, curve: true, mark: true, gmode: 'yx' } };
+  } },
+  { id: 'db-springwave', sim: 'wave', name: 'ばねの縦波が届く時間', gen() {
+    const f = pick([0.4, 0.5, 0.8, 1, 1.25]), t10 = +(10 / f).toFixed(2), l = rnd(1.4, 2.4, 0.2), D = rnd(6, 18, 3), v = f * l, t = D / v;
+    return { q: `長いばね（つる巻きばね）のはしを前後にゆらして縦波を送った。ばねの1点が 10 回往復するのに ${t10} 秒かかり、「密」から次の「密」までは ${l} m だった。密の部分が ${D} m 進むのにかかる時間は何秒か。`, ans: t, unit: 's',
+      given: [['10 回往復の時間', `${t10} s`], ['λ（密から密まで＝波長）', `${l} m`], ['進む距離', `${D} m`]], find: `密が ${D} m 進む時間 t`,
+      hints: ['密から次の密までが 1 波長。まず振動数 f（1秒に何回ゆれるか）を出す。', `f = 10 ÷ ${t10}。そのあと v = fλ で波の速さを出す。`, `時間 = 距離 ÷ 速さ = ${D} ÷ v。`],
+      sol: [[`f = 10 ÷ ${t10} = ${s3(f)} Hz`, '10 回ゆれるのに ' + t10 + ' 秒なので、1秒あたりの回数にする'], [`v = fλ = ${s3(f)} × ${l} = ${s3(v)} m/s`, '縦波でも v = fλ は同じ'], [`t = ${D} ÷ ${s3(v)} = ${s3(t)} s`, '密は波の速さで進む。時間 = 距離 ÷ 速さ']],
+      why: '縦波でも横波でも「1回ゆれる間に1波長進む」は同じ。縦波では「密から密」（または「疎から疎」）が1波長になる。',
+      trap: '10 回往復の時間を、そのまま周期と思わないこと。周期は ' + t10 + ' ÷ 10。また、つぶ自身は進まず、進むのは「密」という形。',
+      wrong: pbW(t, [[D / l, '距離 ÷ 波長は「波が何個ぶんか」で、時間ではない'], [D / (l * t10 / 10), '周期と振動数を取りちがえている（f = 10 ÷ ' + t10 + '）'], [D / (l * 10 / t10) * 10, '10 回ぶんの時間のまま計算している']]),
+      set: { type: 'long', f, v, A: 0.2, curve: false, mark: true, gmode: 'yx' } };
+  } },
+
+  // ---------- 弦と気柱の振動 ----------
+  { id: 'db-guitar', sim: 'standing', name: 'ギターの弦の振動数', gen() {
+    const L = rnd(0.5, 1, 0.05), V = rnd(150, 400, 10), n = rnd(2, 5, 1), lam = 2 * L / n, f = V / lam;
+    return { q: `長さ ${L} m のギターの弦をはじいたら、腹が ${n} 個の定常波ができた。弦を伝わる波の速さが ${V} m/s のとき、この音の振動数は何 Hz か。`, ans: f, unit: 'Hz',
+      given: [['L（弦の長さ）', `${L} m`], ['腹の数', `${n} 個`], ['V（弦を伝わる波の速さ）', `${V} m/s`]], find: '振動数 f',
+      hints: ['弦の両はしは節。腹1つぶん（節から節まで）が半波長 λ/2。', `腹が ${n} 個なので、弦の長さに半波長が ${n} 個入る：${L} = ${n} × λ/2。`, 'λ を出してから v = fλ を f について解く。'],
+      sol: [[`${L} = ${n} × λ/2`, '節から節まで（腹1つ）が半波長。それが ' + n + ' 個'], [`λ = 2 × ${L} ÷ ${n} = ${s3(lam)} m`, 'λ について解く'], [`f = V/λ = ${V} ÷ ${s3(lam)} = ${s3(f)} Hz`, 'v = fλ を f について解く']],
+      why: '弦の上の定常波は「両はしが節」という形しか続かない。形を絵にかいて半波長がいくつ入るかを数えると、波長が決まる。',
+      trap: '腹 1 つぶんを 1 波長と思うと、答えが半分になる。腹 1 つ（節と節の間）は半波長。',
+      wrong: pbW(f, [[n * V / L, '腹1つを半波長ではなく1波長にしている（λ/2 が n 個）'], [V / (2 * L), '基本振動（腹1個）の式のまま。腹が ' + n + ' 個なら n 倍'], [V / (2 * n * L), 'λ = 2nL にしている。λ = 2L/n']]),
+      set: { mode: 'string', n, Lr: L, vs: V, split: false } };
+  } },
+  { id: 'db-bottle3', sim: 'standing', name: '閉管の3倍振動から音速', gen() {
+    const L = rnd(0.3, 1.2, 0.05), V0 = pick([330, 335, 340, 345, 350]), f = Math.round(3 * V0 / (4 * L)), V = 4 * L * f / 3;
+    return { q: `長さ ${L} m の細長いびん（片方が閉じた管）に息を吹きこむと、いろいろな高さの音で共鳴した。低いほうから2番目の共鳴の振動数は ${f} Hz だった。音速は何 m/s か。開口端補正は考えない。`, ans: V, unit: 'm/s',
+      given: [['L（管の長さ）', `${L} m`], ['f（低いほうから2番目の共鳴）', `${f} Hz`]], find: '音速 V',
+      hints: ['閉管は、閉じたはしが節、開いたはしが腹。1/4 波長が奇数個（1, 3, 5 …）入る。', '低いほうから2番目は「1/4 波長が 3 個」の3倍振動：L = 3 × λ/4。', `λ = 4 × ${L} ÷ 3。そのあと V = fλ。`],
+      sol: [['1番目：L = λ/4、2番目：L = 3λ/4', '閉管は奇数倍だけ。2番目は 1/4 波長が 3 個'], [`λ = 4 × ${L} ÷ 3 = ${s3(4 * L / 3)} m`, 'L = 3λ/4 を λ について解く'], [`V = fλ = ${f} × ${s3(4 * L / 3)} = ${s3(V)} m/s`, '音速 = 振動数 × 波長']],
+      why: '閉管では偶数倍の振動が起こらないので、基本振動の次は3倍振動になる。形（節・腹の並び）をかけば、管に 1/4 波長が何個入るかがわかる。',
+      trap: '「2番目」だから 2 倍振動、とすると開管の考え方になってしまう。閉管は 1, 3, 5 … 倍。',
+      wrong: pbW(V, [[f * L, '2 倍振動（λ = L、開管の考え方）にしている。閉管は 3 倍振動'], [4 * L * f, '基本振動の λ = 4L を使っている。2番目は λ = 4L/3'], [2 * L * f / 3, '開管の式 L = 3λ/2 を使っている']]),
+      set: { mode: 'closed', n: 2, Lr: L, vs: pbStep(V, 5, 100, 400), split: false } };
+  } },
+
+  // ---------- 運動量 ----------
+  { id: 'db-bump-e', sim: 'collide', name: 'バンパーカー（はねかえり）', gen() {
+    const mA = rnd(100, 300, 50), mB = rnd(100, 300, 50), vA = rnd(1, 3, 0.5), e = pick([0.2, 0.4, 0.5, 0.6, 0.8]);
+    const vB2 = mA * vA * (1 + e) / (mA + mB), vA2 = vB2 - e * vA;
+    return { q: `遊園地のバンパーカー A（人をふくめて ${mA} kg）が ${vA} m/s で、止まっているバンパーカー B（人をふくめて ${mB} kg）に正面からぶつかった。はねかえり係数は ${e} である。ぶつかったあとの B の速さは何 m/s か。床の摩擦は考えない。`, ans: vB2, unit: 'm/s',
+      given: [['m_A, v_A', `${mA} kg、${vA} m/s`], ['m_B, v_B', `${mB} kg、0 m/s（止まっている）`], ['e（はねかえり係数）', `${e}`]], find: 'ぶつかったあとの B の速さ v_B\'',
+      hints: ['わからないのは v_A\' と v_B\' の2つ。式も2つ立てる：運動量保存とはねかえり係数。', `運動量保存：${mA} × ${vA} = ${mA}v_A' + ${mB}v_B'。`, `はねかえり係数：v_B' − v_A' = ${e} × ${vA}（離れる速さ = e × 近づく速さ）。`],
+      sol: [[`${mA} × ${vA} + ${mB} × 0 = ${mA}v_A' + ${mB}v_B'`, '運動量保存（右向きを正）'], [`v_B' − v_A' = ${e} × (${vA} − 0) = ${s3(e * vA)}`, 'はねかえり係数：離れる速さ = e × 近づく速さ'], [`v_A' = v_B' − ${s3(e * vA)} を1つ目の式に入れる`, '2つの式から v_A\' を消す'], [`${mA * vA} = ${mA}(v_B' − ${s3(e * vA)}) + ${mB}v_B' → ${mA + mB}v_B' = ${s3(mA * vA * (1 + e))}`, 'かっこを開いて v_B\' をまとめる'], [`v_B' = ${s3(vB2)} m/s（このとき v_A' = ${s3(vA2)} m/s）`, 'v_B\' について解く']],
+      why: '衝突では、運動量の和はいつも保存される。でも式が1つでは、わからない速度2つは決まらない。「どれだけはね返るか」を表すはねかえり係数の式をもう1つ使う。',
+      trap: 'はねかえり係数の式は「離れる速さ ÷ 近づく速さ」。v_A\' − v_B\' と逆に書くと符号がずれる。',
+      wrong: pbW(vB2, [[mA * vA / (mA + mB), 'くっつく場合（e = 0）の計算になっている。はねかえり係数の式も使う'], [mA * vA / mB, 'A が止まると決めつけている（v_A\' = 0）'], [mA * vA * (1 - e) / (mA + mB), 'はねかえり係数の式の符号が逆（v_B\' − v_A\' = e × 近づく速さ）']]),
+      set: { mA, mB, vA, vB: 0, e } };
+  } },
+  { id: 'db-bump-ke', sim: 'collide', name: 'バンパーカーの正面衝突で減るエネルギー', gen() {
+    const mA = rnd(100, 300, 50), mB = rnd(100, 300, 50), vA = rnd(1, 3, 0.5), vB = rnd(-2, -0.5, 0.5), e = pick([0, 0.2, 0.4, 0.5, 0.6]);
+    const P = mA * vA + mB * vB, d = vA - vB, vB2 = (P + mA * e * d) / (mA + mB), vA2 = vB2 - e * d;
+    const K1 = 0.5 * mA * vA * vA + 0.5 * mB * vB * vB, K2 = 0.5 * mA * vA2 * vA2 + 0.5 * mB * vB2 * vB2, dK = K1 - K2;
+    return { q: `バンパーカー A（${mA} kg）が右向きに ${vA} m/s、バンパーカー B（${mB} kg）が左向きに ${-vB} m/s で走ってきて、正面衝突した。はねかえり係数は ${e} である。この衝突で失われた運動エネルギー（音や熱になったぶん）は何 J か。質量は人をふくむ。摩擦は考えない。`, ans: dK, unit: 'J',
+      given: [['A', `${mA} kg、v_A = +${vA} m/s（右向きを正）`], ['B', `${mB} kg、v_B = ${vB} m/s（左向きなのでマイナス）`], ['e', `${e}`]], find: '失われた運動エネルギー ΔK',
+      hints: ['右向きを正とする。左向きの B の速度はマイナスで入れる。', `まず運動量保存とはねかえり係数で、衝突後の速度 v_A', v_B' を求める（近づく速さ = ${vA} − (${vB}) = ${s3(d)}）。`, '衝突前と衝突後の運動エネルギー ½mv² の合計を比べ、その差を出す。'],
+      sol: [[`${mA} × ${vA} + ${mB} × ${pbP(vB)} = ${mA}v_A' + ${mB}v_B' = ${s3(P)}`, '運動量保存（右向き正、B はマイナス）'], [`v_B' − v_A' = ${e} × (${vA} − ${pbP(vB)}) = ${s3(e * d)}`, 'はねかえり係数：離れる速さ = e × 近づく速さ'], [`v_B' = ${s3(vB2)} m/s、v_A' = ${s3(vA2)} m/s`, '2つの式を連立して解く'], [`前：½ × ${mA} × ${vA}² + ½ × ${mB} × ${pbP(vB)}² = ${s3(K1)} J`, '衝突前の運動エネルギーの合計'], [`後：½ × ${mA} × ${pbP(vA2)}² + ½ × ${mB} × ${pbP(vB2)}² = ${s3(K2)} J`, '衝突後の運動エネルギーの合計'], [`ΔK = ${s3(K1)} − ${s3(K2)} = ${s3(dK)} J`, '減ったぶんが音や熱になった']],
+      why: '運動量はどんな衝突でも保存されるが、運動エネルギーは e = 1 のときしか保存されない。だから「速度は運動量保存＋はねかえり係数」で出し、「エネルギーの減り」はそのあとで ½mv² を比べる。',
+      trap: '向きが逆の B の速度をプラスのまま入れると、近づく速さも運動量もまちがう。必ず向きを決めて符号をつける。',
+      wrong: pbW(dK, (() => { const P2 = mA * vA - mB * vB, d2 = vA + vB, b2 = (P2 + mA * e * d2) / (mA + mB), a2 = b2 - e * d2; return [[K1 - 0.5 * mA * a2 * a2 - 0.5 * mB * b2 * b2, 'B の速度をプラス（右向き）のまま計算している。左向きはマイナス'], [K2, '衝突後の運動エネルギーを答えている。問われているのは減ったぶん（前 − 後）'], [K1, '衝突前の運動エネルギーをそのまま答えている']]; })()),
+      set: { mA, mB, vA, vB, e } };
+  } },
+
+  // ---------- 等速円運動 ----------
+  { id: 'db-circT', sim: 'circle', name: 'ボールを回すひもの張力', gen() {
+    const m = rnd(0.1, 1, 0.1), r = rnd(0.4, 1.6, 0.2), T = pick([0.8, 1, 1.5, 2, 2.5]), w = 2 * 3.14 / T, F = m * r * w * w;
+    return { q: `なめらかな水平の台の上で、質量 ${m} kg のボールをひもにつけ、半径 ${r} m の円をえがくように回した。1周にかかる時間は ${T} 秒だった。ひもがボールを引く力（張力）は何 N か。π = 3.14。`, ans: F, unit: 'N',
+      given: [['m', `${m} kg`], ['r（半径）', `${r} m`], ['T（周期：1周の時間）', `${T} s`], ['π', '3.14']], find: 'ひもの張力 F（＝向心力）',
+      hints: ['ひもの張力が、円運動に必要な向心力になっている。', `まず角速度 ω = 2π/T を出す：ω = 2 × 3.14 ÷ ${T}。`, `向心力 F = mrω² に入れる：F = ${m} × ${r} × ω²。`],
+      sol: [[`ω = 2π/T = 2 × 3.14 ÷ ${T} = ${s3(w)} rad/s`, '1周（2π rad）を T 秒で回るので、1秒あたりの角度'], [`ω² = ${s3(w)}² = ${s3(w * w)}`, '2乗を先に計算する'], [`F = mrω² = ${m} × ${r} × ${s3(w * w)} = ${s3(F)} N`, '中心向きの運動方程式（向心力 = 質量 × 向心加速度）']],
+      why: '速さが一定でも、向きが変わり続けるので中心向きの加速度 rω² がある。それを生む力がひもの張力。F = ma の a に rω² を入れたものが F = mrω²。',
+      trap: 'ω を 2 乗し忘れるまちがいが多い。周期が半分になると力は 4 倍になる。',
+      wrong: pbW(F, [[m * r * w, 'ω を 2 乗し忘れている（F = mrω²）'], [m * r * (2 * 3.14 * T) ** 2, 'ω = 2πT にしている。ω = 2π/T'], [m * w * w / r, 'r で割っている。F = mrω²']]),
+      set: { r, T, m, vec: true, trail: true } };
+  } },
+  { id: 'db-circmax', sim: 'circle', name: 'ひもが切れない周期', gen() {
+    const m = rnd(0.1, 1, 0.1), r = rnd(0.4, 1.6, 0.2), T0 = rnd(0.8, 2, 0.1), Fm = sig(m * r * (2 * Math.PI / T0) ** 2, 2), Tm = 2 * 3.14 * Math.sqrt(m * r / Fm);
+    return { q: `質量 ${m} kg のボールに、${Fm} N より大きな力で引くと切れるひもをつけ、なめらかな水平の台の上で半径 ${r} m の円をえがくように回す。ひもが切れないようにするには、1周にかかる時間（周期）を何秒以上にすればよいか。π = 3.14。`, ans: Tm, unit: 's',
+      given: [['m', `${m} kg`], ['r', `${r} m`], ['F_max（ひもが耐えられる力）', `${Fm} N`], ['π', '3.14']], find: 'ぎりぎり切れない周期 T',
+      hints: ['速く回す（周期が短い）ほど、必要な向心力（張力）は大きくなる。', `ぎりぎりのとき、張力 = ${Fm} N。F = mrω² から ω を求める。`, 'ω がわかったら T = 2π/ω。'],
+      sol: [[`${Fm} = ${m} × ${r} × ω²`, 'ぎりぎりのとき、向心力が耐えられる力に等しい'], [`ω² = ${Fm} ÷ ${s3(m * r)} = ${s3(Fm / (m * r))} → ω = ${s3(Math.sqrt(Fm / (m * r)))} rad/s`, 'ω について解き、√ をとる'], [`T = 2π/ω = 2 × 3.14 ÷ ${s3(Math.sqrt(Fm / (m * r)))} = ${s3(Tm)} s`, '周期は 2π ÷ 角速度'], [`T ≧ ${s3(Tm)} s`, 'これより速く回す（周期を短くする）と張力が足りず切れる']],
+      why: '「何秒以上」と聞かれる問題は、まず「ぎりぎりのとき」を式にする。ここでは張力 = 向心力 = mrω² が限界の力に等しいとき。',
+      trap: '周期が短いほど力が大きいので、答えは「以上」。ω を答えにしてしまうまちがいにも注意。',
+      wrong: pbW(Tm, [[Math.sqrt(Fm / (m * r)), '角速度 ω を答えている。T = 2π/ω'], [2 * 3.14 * m * r / Fm, '√ をとり忘れている'], [Math.sqrt(m * r / Fm), '2π をかけ忘れている']]),
+      set: { r, T: pbStep(Tm, 0.1, 0.6, 4), m, vec: true, trail: true } };
+  } },
+
+  // ---------- 単振動 ----------
+  { id: 'db-shmv', sim: 'spring', name: 'ばねのおもりの最大の速さ', gen() {
+    const m = rnd(0.2, 2, 0.1), k = rnd(5, 60, 5), A = rnd(0.1, 0.4, 0.05), w = Math.sqrt(k / m), v = A * w;
+    return { q: `ばね定数 ${k} N/m のばねにおもり（${m} kg）をつけ、なめらかな床の上でつり合いの位置から ${A} m 引っぱって静かにはなした。おもりがいちばん速くなるときの速さは何 m/s か。`, ans: v, unit: 'm/s',
+      given: [['k', `${k} N/m`], ['m', `${m} kg`], ['A（振幅：引っぱった長さ）', `${A} m`]], find: '最大の速さ v_max',
+      hints: ['静かにはなした位置が振動のはし。だから振幅 A = ' + A + ' m。', `まず角振動数 ω = √(k/m) = √(${k} ÷ ${m}) を出す。`, '最大の速さは振動の中心で v_max = Aω。'],
+      sol: [[`ω = √(k/m) = √(${k} ÷ ${m}) = √${s3(k / m)} = ${s3(w)} rad/s`, 'ばね振り子の角振動数'], [`v_max = Aω = ${A} × ${s3(w)} = ${s3(v)} m/s`, '単振動は等速円運動の影。円の速さ Aω が中心での速さ']],
+      why: '単振動は「半径 A、角速度 ω の等速円運動」を横から見た影。影がいちばん速いのは振動の中心で、そのとき円の速さ Aω そのものになる。',
+      trap: '√ をとり忘れたり、√(m/k)（周期の式の中身）とまちがえたりしやすい。ω = √(k/m)。',
+      wrong: pbW(v, [[A * k / m, '√ をとり忘れている（ω = √(k/m)）'], [A * Math.sqrt(m / k), 'm と k が逆。ω = √(k/m)'], [A * k, '√(k/m) ではなく k をかけている（ω = √(k/m)）']]),
+      set: { m, k, A, circle: true, vec: true } };
+  } },
+  { id: 'db-swingL', sim: 'pend', name: 'ブランコの長さを周期から', gen() {
+    const L0 = rnd(1.5, 3, 0.1), t10 = +(10 * 2 * Math.PI * Math.sqrt(L0 / 9.8)).toFixed(1), T = t10 / 10, L = 9.8 * (T / (2 * 3.14)) ** 2;
+    return { q: `公園のブランコを小さくゆらし、10 往復する時間をはかったら ${t10} 秒だった。ブランコを単振り子とみなすと、ブランコのくさりの長さ（支点からおもりの中心まで）は何 m か。g = 9.8 m/s²、π = 3.14。`, ans: L, unit: 'm',
+      given: [['10 往復の時間', `${t10} s`], ['g', '9.8 m/s²'], ['π', '3.14']], find: 'くさりの長さ L',
+      hints: ['まず1往復の時間（周期）T を出す：T = ' + t10 + ' ÷ 10。', '単振り子の周期 T = 2π√(L/g) を L について解く。', '両辺を 2π で割ってから 2 乗すると √ がはずれる：L = g × (T/2π)²。'],
+      sol: [[`T = ${t10} ÷ 10 = ${s3(T)} s`, '10 往復をはかるのは、1 往復より正確にはかれるから'], [`T/2π = ${s3(T)} ÷ ${s3(2 * 3.14)} = ${s3(T / (2 * 3.14))}`, 'T = 2π√(L/g) の両辺を 2π で割る'], [`L/g = ${s3(T / (2 * 3.14))}² = ${s3((T / (2 * 3.14)) ** 2)}`, '両辺を 2 乗して √ をはずす'], [`L = 9.8 × ${s3((T / (2 * 3.14)) ** 2)} = ${s3(L)} m`, '両辺に g をかける']],
+      why: '単振り子の周期は、長さ L と g だけで決まる（乗っている人の重さによらない）。だから周期をはかれば、逆に長さがわかる。',
+      trap: '10 往復の時間をそのまま T に入れると、答えが 100 倍になる。√ をはずすときは 2 乗するのを忘れずに。',
+      wrong: pbW(L, [[9.8 * (t10 / (2 * 3.14)) ** 2, '10 往復の時間をそのまま周期にしている（T = ' + t10 + ' ÷ 10）'], [9.8 * T / (2 * 3.14), '2 乗するのを忘れている（√ がはずれていない）'], [9.8 * T * T / (2 * 3.14), '2π も 2 乗する：L = gT²/(2π)²']]),
+      set: { L: pbStep(L, 0.01, 0.2, 3), th0: 10, m: 30, g: 9.8, vec: false, trail: true } };
+  } },
+
+  // ---------- 万有引力 ----------
+  { id: 'db-iss', sim: 'orbit', name: '宇宙ステーションの速さ', gen() {
+    const h = rnd(200, 1000, 50), R = 6400e3, r = R + h * 1e3, v = Math.sqrt(9.8 * R * R / r);
+    return { q: `国際宇宙ステーションのような人工衛星が、地上から高さ ${h} km の円軌道を回っている。速さは何 km/s か。地球の半径を 6400 km、地表の重力加速度を 9.8 m/s² とする。`, ans: v / 1000, unit: 'km/s',
+      given: [['R（地球の半径）', '6400 km = 6.4×10⁶ m'], ['h（高さ）', `${h} km`], ['g（地表）', '9.8 m/s²']], find: '円軌道の速さ v',
+      hints: ['円軌道の半径は「地球の中心から」の距離：r = R + h。', '万有引力が向心力：GMm/r² = mv²/r → v = √(GM/r)。GM は地表の式 mg = GMm/R² から GM = gR²。', `v = √(gR²/r) に、m（メートル）にそろえた数を入れる。`],
+      sol: [[`r = 6400 + ${h} = ${6400 + h} km = ${s3(r / 1e6)}×10⁶ m`, '半径は地球の中心から測る'], ['GM = gR² = 9.8 × (6.4×10⁶)² = 4.01×10¹⁴', '地表の重力 mg = GMm/R² から'], ['GMm/r² = mv²/r → v = √(GM/r)', '万有引力が円運動の向心力'], [`v = √(4.01×10¹⁴ ÷ ${s3(r / 1e6)}×10⁶) = ${s3(v)} m/s = ${s3(v / 1000)} km/s`, '数を入れて、1000 で割って km/s にする']],
+      why: '人工衛星は「落ち続けながら地面にとどかない」円運動をしている。円運動に必要な向心力を万有引力がちょうど出している、という式を立てる。G や M がわからなくても、地表の重力から GM = gR² と置きかえられる。',
+      trap: '半径に高さ h だけを入れるまちがいが多い。r は地球の中心からの距離 R + h。',
+      wrong: pbW(v / 1000, [[Math.sqrt(9.8 * R) / 1000, '地表すれすれ（r = R）の速さになっている。r = R + h'], [Math.sqrt(9.8 * R * R / (h * 1e3)) / 1000, '半径を高さ h だけにしている。r = R + h'], [Math.sqrt(9.8 * r) / 1000, 'v = √(gr) にしている。高い所では重力が弱くなるので v = √(gR²/r)']]),
+      set: { v0: pbStep(v / 1000, 0.05, 4, 12), alt: h, area: false } };
+  } },
+  { id: 'db-satT', sim: 'orbit', name: '人工衛星の周期', gen() {
+    const h = rnd(400, 3000, 100), R = 6400e3, r = R + h * 1e3, v = Math.sqrt(9.8 * R * R / r), Ts = 2 * 3.14 * r / v, Tm = Ts / 60;
+    return { q: `人工衛星が、地上から高さ ${h} km の円軌道を回っている。地球を1周するのに何分かかるか。地球の半径を 6400 km、地表の重力加速度を 9.8 m/s²、π = 3.14 とする。`, ans: Tm, unit: '分',
+      given: [['R', '6400 km = 6.4×10⁶ m'], ['h', `${h} km`], ['g（地表）', '9.8 m/s²'], ['π', '3.14']], find: '1周の時間（周期）T [分]',
+      hints: ['まず軌道の半径 r = R + h と、速さ v = √(gR²/r) を出す。', '1周の長さは 2πr。周期 T = 2πr ÷ v。', '秒で出たら、60 で割って分にする。'],
+      sol: [[`r = 6400 + ${h} = ${6400 + h} km = ${s3(r / 1e6)}×10⁶ m`, '地球の中心からの距離'], [`v = √(gR²/r) = √(9.8 × (6.4×10⁶)² ÷ ${s3(r / 1e6)}×10⁶) = ${s3(v)} m/s`, '万有引力が向心力（GM = gR²）'], [`T = 2πr/v = 2 × 3.14 × ${s3(r / 1e6)}×10⁶ ÷ ${s3(v)} = ${s3(Ts)} s`, '1周の長さ ÷ 速さ'], [`T = ${s3(Ts)} ÷ 60 = ${s3(Tm)} 分`, '1 分 = 60 秒']],
+      why: '周期は「1周の道のり ÷ 速さ」。速さは万有引力 = 向心力の式から出す。高い軌道ほど道のりが長く速さも遅いので、周期はずっと長くなる（ケプラーの第3法則 T² ∝ r³）。',
+      trap: '1周の長さに地球の半径 R だけを使わないこと。秒のまま答えないこと。',
+      wrong: pbW(Tm, [[Ts, '秒のまま答えている。60 で割って分にする'], [2 * 3.14 * R / v / 60, '1周の長さを 2πR にしている。軌道の半径は R + h'], [2 * 3.14 * r / Math.sqrt(9.8 * R) / 60, '速さを地表すれすれの √(gR) にしている']]),
+      set: { v0: pbStep(v / 1000, 0.05, 4, 12), alt: h, area: false } };
+  } },
+
+  // ---------- 気体 ----------
+  { id: 'db-tire', sim: 'gas', name: '走ったあとのタイヤの空気', gen() {
+    const P1 = rnd(200, 300, 10), t1 = rnd(5, 20, 5), t2 = rnd(30, 60, 5), T1 = t1 + 273, T2 = t2 + 273, P2 = P1 * T2 / T1;
+    return { q: `朝 ${t1} ℃ のとき、自動車のタイヤの中の空気の圧力は ${P1} kPa だった。しばらく走ったら、タイヤの中の空気が ${t2} ℃ になった。タイヤの体積は変わらないとすると、圧力は何 kPa になったか。`, ans: P2, unit: 'kPa',
+      given: [['前', `P₁ = ${P1} kPa、t₁ = ${t1} ℃`], ['後', `P₂ = ?、t₂ = ${t2} ℃`], ['体積', '変わらない']], find: '走ったあとの圧力 P₂',
+      hints: ['体積が一定なら、圧力は絶対温度に比例する（P/T = 一定）。', `温度は必ず絶対温度 K に直す：T = t + 273。`, `${P1} ÷ ${T1} = P₂ ÷ ${T2}。`],
+      sol: [[`T₁ = ${t1} + 273 = ${T1} K、T₂ = ${t2} + 273 = ${T2} K`, '気体の法則では絶対温度を使う'], [`${P1}/${T1} = P₂/${T2}`, '体積一定なので PV/T = 一定 から P/T = 一定'], [`P₂ = ${P1} × ${T2} ÷ ${T1} = ${s3(P2)} kPa`, 'P₂ について解く']],
+      why: '温度が上がると分子が速くなり、かべに強く・たくさんぶつかるので圧力が上がる。圧力は 0 K からはかった温度（絶対温度）に比例する。',
+      trap: '℃ のまま比を計算すると、圧力が何倍にもなってしまう。必ず K に直す。',
+      wrong: pbW(P2, [[P1 * t2 / t1, '℃ のまま比を計算している。T = t + 273 に直す'], [P1 * T1 / T2, '比が逆。温度が上がると圧力は大きくなる'], [P1 + (t2 - t1), '温度の差をそのまま足している']]),
+      set: { T: pb10(T2, 100, 600), V: 10, N: 200, track: false } };
+  } },
+  { id: 'db-vrms', sim: 'gas', name: '空気の分子の速さ', gen() {
+    const [gn, M] = pick([['ヘリウム', 0.004], ['窒素', 0.028], ['酸素', 0.032]]), T = rnd(250, 350, 10), v2 = 3 * 8.31 * T / M, v = Math.sqrt(v2);
+    return { q: `ペットボトルに入った${gn}が、温度 ${T} K になっている。${gn}分子の速さ（2乗平均速度 √〈v²〉）は何 m/s か。${gn}のモル質量は ${M * 1000} g/mol、気体定数 R = 8.31 J/(mol·K) とする。`, ans: v, unit: 'm/s',
+      given: [['T', `${T} K`], ['M（モル質量）', `${M * 1000} g/mol = ${M} kg/mol`], ['R', '8.31 J/(mol·K)']], find: '2乗平均速度 √〈v²〉',
+      hints: ['分子運動論：分子1個の平均の運動エネルギー ½m〈v²〉 = (3/2)kT。', '1 mol ぶんで考えると（m → M、k → R）：½M〈v²〉 = (3/2)RT → 〈v²〉 = 3RT/M。', 'モル質量は kg/mol に直してから入れる。最後に √ をとる。'],
+      sol: [[`M = ${M * 1000} g/mol = ${M} kg/mol`, 'R は J（kg·m²/s²）の単位なので、質量は kg にそろえる'], ['½M〈v²〉 = (3/2)RT → 〈v²〉 = 3RT/M', '分子の平均の運動エネルギーは絶対温度に比例する（1 mol ぶん）'], [`〈v²〉 = 3 × 8.31 × ${T} ÷ ${M} = ${s3(v2)} m²/s²`, '数を入れる'], [`√〈v²〉 = √${s3(v2)} = ${s3(v)} m/s`, '√ をとって速さにする']],
+      why: '温度は「分子の運動の激しさ」そのもの。½m〈v²〉 = (3/2)kT から、同じ温度なら軽い分子ほど速く動くことがわかる。ふつうの空気の分子は、音より速い 500 m/s ほどで飛び回っている。',
+      trap: 'モル質量を g のまま入れると、速さが約 30 倍小さくなる。√ のとり忘れにも注意。',
+      wrong: pbW(v, [[Math.sqrt(3 * 8.31 * T / (M * 1000)), 'モル質量を g/mol のまま入れている。kg/mol に直す'], [v2, '√ をとり忘れている（それは 〈v²〉）'], [Math.sqrt(8.31 * T / M), '3 をかけ忘れている（〈v²〉 = 3RT/M）']]),
+      set: { T, V: 10, N: 200, track: true } };
+  } },
+);
+
+Object.assign(LESSON_PLAN, {
+  'k-heat': { basic: 'db-heatq', apply: 'db-heatmix', adv: 'db-heatmetal' },
+  'k-wave': { basic: 'd-wave', apply: 'db-ropewave', adv: 'db-springwave' },
+  'k-sound': { basic: 'd-pipe', apply: 'db-guitar', adv: 'db-bottle3' },
+  'b-mom': { basic: 'd-mom', apply: 'db-bump-e', adv: 'db-bump-ke' },
+  'b-circle': { basic: 'd-circ', apply: 'db-circT', adv: 'db-circmax' },
+  'b-shm': { basic: 'd-spring', apply: 'db-shmv', adv: 'db-swingL' },
+  'b-grav': { basic: 'd-orbit', apply: 'db-iss', adv: 'db-satT' },
+  'b-gas': { basic: 'd-gas', apply: 'db-tire', adv: 'db-vrms' },
+});
+
+Object.assign(ASK, {
+  'k-heat': [
+    { q: 'こんなとき、白い分子はどう動いている？', pick: ['かべで向きを変えて飛び回る', 'じっと止まっている', '一方向にまっすぐ進むだけ'] },
+    { q: '温度を上げると、分子はどうなっている？', pick: ['速くなり赤い分子が増える', 'ゆっくりになる', '分子が大きくなる'] },
+    { q: '温度の低い気体では、分子はどうなっている？', pick: ['ゆっくり動いている', '速く動いている', '完全に止まっている'] },
+    { q: 'ピストンで押し縮めたとき、このシミュレーションの温度は？', pick: ['一定に保たれている', 'どんどん上がる', '0 K まで下がる'] },
+  ],
+  'k-wave': [
+    { q: 'こんなとき、赤い点はどう動いている？', pick: ['その場で上下にゆれるだけ', '波といっしょに右へ進む', 'まったく動かない'] },
+    { q: '1回ゆれる間に、波はどれだけ進んでいる？', pick: ['ちょうど1波長', '半波長', '2波長'] },
+    { q: '縦波では、つぶはどの向きにゆれている？', pick: ['波の進む向きと同じ向き', '進む向きに垂直な向き', 'ゆれていない'] },
+    { q: '横波のように表したとき、「密」はどこ？', pick: ['変位0で右下がりの所', '山のいちばん上', '谷のいちばん下'] },
+  ],
+  'k-sound': [
+    { q: '青と赤の波を足すと、どうなっている？', pick: ['その場でゆれる波になる', '波が消えてしまう', '速く進む波になる'] },
+    { q: 'このとき、弦の両はしはどうなっている？', pick: ['ゆれない（節）', 'いちばん大きくゆれる', 'ゆっくり右へ動く'] },
+    { q: '両はしが開いた管の、はしの空気は？', pick: ['大きくゆれる（腹）', 'ゆれない（節）', '片方だけゆれる'] },
+    { q: '片方が閉じた管で、はしの空気は？', pick: ['閉じた側が節、開いた側が腹', '両はしとも節', '両はしとも腹'] },
+  ],
+  'b-mom': [
+    { q: '動いている A の運動量は、どの向き？', pick: ['A の進む向き', '進む向きと逆', '向きはない'] },
+    { q: 'ぶつかったとき、A が受ける力積の向きは？', pick: ['左向き（押し返される）', '右向き', '力積は受けない'] },
+    { q: 'ぶつかる前と後で、運動量の和は？', pick: ['変わらない', '増える', '減る'] },
+    { q: 'e = 0.5 のとき、離れる速さは近づく速さの？', pick: ['半分', '同じ', '2倍'] },
+    { q: 'e = 0 のとき、ぶつかったあとの2台は？', pick: ['くっついて一緒に動く', 'はね返って離れる', '2台とも止まる'] },
+  ],
+  'b-circle': [
+    { q: 'ボールが1周する時間は、どうなっている？', pick: ['毎回同じ（一定）', 'だんだん長くなる', 'だんだん短くなる'] },
+    { q: '朱色の矢印（加速度）は、どこを向いている？', pick: ['いつも円の中心', '進む向き（接線）', '円の外向き'] },
+    { q: '周期を半分にすると、向心力はどうなる？', pick: ['4 倍になる', '2 倍になる', '変わらない'] },
+    { q: 'ひもを切ると、ボールはどう進む？', pick: ['接線方向にまっすぐ', '円の外向きに飛ぶ', '円を回り続ける'] },
+  ],
+  'b-shm': [
+    { q: '円を回る点の影と、おもりの動きは？', pick: ['ぴったり重なる', 'だんだんずれていく', '逆向きに動く'] },
+    { q: '振動の中心を通るとき、おもりの速さは？', pick: ['いちばん速い', '0 になる', 'いちばん遅い'] },
+    { q: 'おもりを 4 倍の重さにすると、周期は？', pick: ['2 倍になる', '4 倍になる', '変わらない'] },
+    { q: '単振り子の周期を決めているのは？', pick: ['ひもの長さと g', 'おもりの質量', 'ふり始めの強さ'] },
+    { q: '70° まで大きく振ると、周期は公式より？', pick: ['約1割長くなる', 'ぴったり同じ', '半分になる'] },
+  ],
+  'b-grav': [
+    { q: '速さが小さいと、撃った玉はどうなる？', pick: ['地球に落ちてくる', '地球を回り続ける', '宇宙へ飛び去る'] },
+    { q: 'この速さで撃つと、玉はどうなる？', pick: ['地球を回り続ける', 'すぐに落ちる', 'まっすぐ飛び去る'] },
+    { q: 'だ円軌道で、地球に近い所の速さは？', pick: ['速い', '遅い', 'どこでも同じ'] },
+    { q: '11.2 km/s で撃つと、玉はどうなる？', pick: ['もう戻ってこない', '1周して戻ってくる', 'すぐに落ちる'] },
+  ],
+  'b-gas': [
+    { q: '圧力計の針は、どうなっている？', pick: ['小さくふるえている', 'ぴたりと止まっている', 'ずっと 0 を指す'] },
+    { q: '温度一定で体積を半分にすると、圧力は？', pick: ['2 倍になる', '半分になる', '変わらない'] },
+    { q: '体積一定で絶対温度を2倍にすると、圧力は？', pick: ['2 倍になる', '4 倍になる', '変わらない'] },
+    { q: '分子の数を 2 倍にすると、圧力は？', pick: ['2 倍になる', '変わらない', '半分になる'] },
+  ],
+});
+// 授業データ：電気・光・原子（k-circuit, k-induct, b-interf, b-doppler, b-refr, b-lens, b-efield, b-lorentz, b-induct, b-photo）
+const pcW = (ans, list) => list.filter(([w]) => isFinite(w) && Math.abs(w - ans) > Math.abs(ans) * 0.03 + 1e-9);   // 正しい答えと同じになる「まちがい」は外す
+const pcStep = (x, st, a, b) => Math.min(b, Math.max(a, +(Math.round(x / st) * st).toFixed(6)));
+const pcSup = n => String(n).replace(/-/g, '⁻').replace(/\d/g, c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]);
+const pcSci = x => { let e = Math.floor(Math.log10(Math.abs(x))), m = s3(x / Math.pow(10, e)); if (Math.abs(m) >= 10) { m = s3(m / 10); e += 1; } return `${m}×10${pcSup(e)}`; };
+const pcQ = q => (q > 0 ? '+' : '−') + Math.abs(q) + '.0';   // 電荷の表示（+2.0、−1.0 など）
+const pcSp = { 0.02: 2.5, 0.05: 2, 0.1: 1.5, 0.2: 1, 0.4: 0.5, 0.5: 0.4 };   // Δt が短いほど速く動かす（3D の速さ）
+
+DRILLS.push(
+  // ---------- 物理基礎 7-1 電流と電気抵抗 ----------
+  { id: 'dc-ohm1', sim: 'circuit', name: 'オームの法則 V = RI', gen() {
+    let R1, R2, I, V;
+    do { R1 = rnd(2, 30, 1); R2 = rnd(2, 30, 1); I = pick([0.1, 0.2, 0.25, 0.3, 0.4, 0.5]); V = +(I * (R1 + R2)).toFixed(2); } while (V < 1.5 || V > 12);
+    const V1 = +(I * R1).toFixed(2), ans = V1 / R1;
+    return { q: `かざり用の豆電球 A（抵抗 ${R1} Ω）と豆電球 B（抵抗 ${R2} Ω）を直列につなぎ、電池につないだ。豆電球 A にかかる電圧を電圧計ではかると ${V1} V だった。豆電球 A に流れる電流は何 A か。`, ans, unit: 'A',
+      given: [['R（豆電球 A の抵抗）', `${R1} Ω（電流の流れにくさ）`], ['V（豆電球 A にかかる電圧）', `${V1} V`]], find: '豆電球 A に流れる電流 I',
+      hints: ['豆電球 A だけに注目する。A の電圧と A の抵抗がわかっている。', 'オームの法則 V = RI を使う。', `${V1} = ${R1} × I を I について解く。`],
+      sol: [['V = RI', 'オームの法則：電圧 = 抵抗 × 電流'], [`${V1} = ${R1} × I`, '豆電球 A の電圧と抵抗を入れる'], [`I = ${V1} ÷ ${R1} = ${s3(ans)} A`, '両辺を抵抗 ' + R1 + ' で割って、I だけにする']],
+      why: '抵抗は「電流の流れにくさ」。同じ電圧なら、抵抗が大きいほど電流は小さい。だから電流 = 電圧 ÷ 抵抗 になる。オームの法則は、1つの豆電球（抵抗）ごとに使える。',
+      trap: 'V = RI を I = V × R とかけ算にしてしまうまちがいが多い。I は V を R で「割る」。',
+      wrong: pcW(ans, [[V1 * R1, 'かけ算している。I = V ÷ R'], [R1 / V1, '割る順番が逆。I = V ÷ R（電圧 ÷ 抵抗）'], [V1 / (R1 + R2), 'A の電圧を全体の抵抗で割っている。A の電圧は A の抵抗で割る']]),
+      set: { V, R1, R2, mode: 'series', flow: 'current' } };
+  } },
+  { id: 'dc-heat', sim: 'circuit', name: '直列回路のジュール熱', gen() {
+    const V = rnd(3, 12, 1.5), R1 = rnd(2, 30, 1), R2 = rnd(2, 30, 1), t = pick([10, 30, 60]);
+    const R = R1 + R2, I = V / R, P1 = I * I * R1, Q = P1 * t;
+    return { q: `ドライヤーの中には、電流を流すと熱くなる電熱線が入っている。電熱線 A（${R1} Ω）と電熱線 B（${R2} Ω）を直列につなぎ、${V} V の電源につないだ。${t} 秒間に電熱線 A で発生する熱（ジュール熱）は何 J か。`, ans: Q, unit: 'J',
+      given: [['V（電源の電圧）', `${V} V`], ['R₁（電熱線 A）', `${R1} Ω`], ['R₂（電熱線 B）', `${R2} Ω`], ['t（時間）', `${t} s`]], find: `電熱線 A で ${t} 秒間に出る熱 Q`,
+      hints: ['まず回路全体の電流を求める。直列の合成抵抗は R₁ + R₂。', '直列では、電流はどこでも同じ。A の電力は P = I²R₁。', '熱 = 電力 × 時間（Q = Pt）。'],
+      sol: [[`R = ${R1} + ${R2} = ${R} Ω`, '直列の合成抵抗は和'], [`I = ${V} ÷ ${R} = ${s3(I)} A`, 'オームの法則で全体の電流。直列なので A にも同じ電流が流れる'], [`P = I²R₁ = ${s3(I)}² × ${R1} = ${s3(P1)} W`, 'A で 1 秒間に出る熱（電力）'], [`Q = Pt = ${s3(P1)} × ${t} = ${s3(Q)} J`, '1 秒あたりの熱 × 時間']],
+      why: '電力 P は「1 秒間に出る熱」。だから t 秒間の熱は P × t。直列では電流が共通なので、P = I²R を使うと A だけの電力が出せる。',
+      trap: 'A の電圧は電源の ' + V + ' V ではない（B と分け合っている）。V²/R₁ に電源の電圧を入れないように。',
+      wrong: pcW(Q, [[V * V / R1 * t, '電源の電圧がそのまま A にかかると考えている（それは並列のとき）。直列では電圧を分け合う'], [I * I * R * t, '回路全体の熱になっている。A だけなら R₁ を使う'], [P1, '時間をかけ忘れている（それは 1 秒間の熱＝電力）']]),
+      set: { V, R1, R2, mode: 'series', flow: 'current' } };
+  } },
+
+  // ---------- 物理基礎 8-1 電磁誘導と発電 ----------
+  { id: 'dc-emf1', sim: 'induct', name: '誘導起電力 V = NΔΦ/Δt', gen() {
+    const N = rnd(10, 30, 5), dP = rnd(0.002, 0.02, 0.002), dt = pick([0.1, 0.2, 0.5]), V = N * dP / dt;
+    return { q: `自転車のライトの発電機の中では、磁石が回ってコイルを貫く磁束が変化している。巻き数 ${N} 回のコイルを貫く磁束が、${dt} 秒間に ${dP} Wb だけ変化した。コイルに生じる誘導起電力の大きさは何 V か。`, ans: V, unit: 'V',
+      given: [['N（巻き数）', `${N} 回`], ['ΔΦ（磁束の変化）', `${dP} Wb`], ['Δt（かかった時間）', `${dt} s`]], find: '誘導起電力の大きさ V',
+      hints: ['起電力は「磁束の変化の速さ」と「巻き数」に比例する。', '使う式は V = N × ΔΦ/Δt（大きさだけなので − は気にしなくてよい）。', `V = ${N} × ${dP} ÷ ${dt}。`],
+      sol: [[`ΔΦ/Δt = ${dP} ÷ ${dt} = ${s3(dP / dt)} Wb/s`, '1 秒あたりに磁束がどれだけ変わるか（変化の速さ）'], [`V = N × ΔΦ/Δt = ${N} × ${s3(dP / dt)} = ${s3(V)} V`, '1 巻きごとに同じ起電力が生じ、それが巻き数ぶんたし合わされる']],
+      why: 'コイルの 1 巻き 1 巻きが小さな電池のようになり、それが直列につながっている。1 巻きの起電力は「磁束の変化の速さ」なので、全体は巻き数 N 倍。',
+      trap: 'ΔΦ を Δt で「割る」のを忘れて、かけてしまうまちがいが多い。速く変化する（Δt が小さい）ほど起電力は大きい。',
+      wrong: pcW(V, [[dP / dt, '巻き数をかけ忘れている'], [N * dP, 'Δt で割り忘れている'], [N * dP * dt, 'Δt をかけている。変化の速さは ΔΦ ÷ Δt']]),
+      set: { auto: true, sp: pcSp[dt], N, pole: 'N' } };
+  } },
+  { id: 'dc-emf2', sim: 'induct', name: '巻き数と速さを変えた起電力', gen() {
+    let N1, N2; do { N1 = rnd(5, 15, 1); N2 = rnd(10, 30, 1); } while (N1 === N2);
+    const V1 = rnd(0.5, 3, 0.5), k = pick([1.5, 2, 2.5, 3]), V2 = V1 * N2 / N1 * k;
+    return { q: `自転車の発電機で、巻き数 ${N1} 回のコイルを使い、ある速さで回したときの起電力は ${V1} V だった。コイルを巻き数 ${N2} 回のものにとりかえ、さらに ${k} 倍の速さで回した。起電力は何 V になるか（磁石は同じものを使う）。`, ans: V2, unit: 'V',
+      given: [['はじめ', `巻き数 ${N1} 回、起電力 ${V1} V`], ['あと', `巻き数 ${N2} 回、速さ ${k} 倍`]], find: 'あとの起電力 V₂',
+      hints: ['V = N × ΔΦ/Δt。起電力は巻き数 N に比例し、変化の速さ ΔΦ/Δt にも比例する。', `${k} 倍の速さで回すと、同じ磁束の変化にかかる時間 Δt が 1/${k} になる → ΔΦ/Δt が ${k} 倍。`, `V₂ = ${V1} × (${N2}/${N1}) × ${k}。`],
+      sol: [[`巻き数：${N2} ÷ ${N1} = ${s3(N2 / N1)} 倍`, 'V は N に比例する'], [`速さ：${k} 倍`, 'Δt が 1/' + k + ' になるので、ΔΦ/Δt は ' + k + ' 倍'], [`V₂ = ${V1} × ${s3(N2 / N1)} × ${k} = ${s3(V2)} V`, '2 つの「何倍」をかけ合わせる']],
+      why: 'V = N ΔΦ/Δt の式の中で、変わったのは N と Δt だけ。磁石が同じなので ΔΦ は同じ。それぞれが何倍になったかを考えて、かけ合わせればよい。',
+      trap: '速さを上げると Δt は「小さく」なるが、Δt は分母にあるので V は「大きく」なる。巻き数だけ、速さだけ、と片方を忘れないように。',
+      wrong: pcW(V2, [[V1 * N2 / N1, '速さを上げた効果（' + k + ' 倍）を忘れている'], [V1 * k, '巻き数を変えた効果を忘れている'], [V1 * N1 / N2 * k, '巻き数の比が逆。巻き数が多いほど起電力は大きい']]),
+      set: { auto: true, sp: k, N: N2, pole: 'N' } };
+  } },
+  { id: 'dc-emf3', sim: 'induct', name: 'コイルに流れる誘導電流', gen() {
+    const N = rnd(10, 30, 5), P1 = rnd(0.002, 0.01, 0.002), P2 = +(P1 + rnd(0.004, 0.02, 0.002)).toFixed(4), dt = pick([0.1, 0.2, 0.4]), R = rnd(2, 10, 1);
+    const dP = +(P2 - P1).toFixed(4), V = N * dP / dt, I = V / R;
+    return { q: `発電機のコイル（巻き数 ${N} 回、抵抗 ${R} Ω）に磁石を近づけると、コイルを貫く磁束が ${dt} 秒間に ${P1} Wb から ${P2} Wb へ一定の割合で増えた。このあいだコイルに流れる電流は何 A か。`, ans: I, unit: 'A',
+      given: [['N（巻き数）', `${N} 回`], ['Φ（磁束）', `${P1} Wb → ${P2} Wb`], ['Δt', `${dt} s`], ['R（コイルの抵抗）', `${R} Ω`]], find: '流れる電流 I',
+      hints: ['磁束の「変化」ΔΦ は、あと − まえ。', '起電力 V = N ΔΦ/Δt を求めてから、オームの法則 I = V/R。', `V = ${N} × ${dP} ÷ ${dt}、I = V ÷ ${R}。`],
+      sol: [[`ΔΦ = ${P2} − ${P1} = ${dP} Wb`, '起電力を決めるのは磁束の大きさではなく変化のぶん'], [`V = ${N} × ${dP} ÷ ${dt} = ${s3(V)} V`, 'ファラデーの電磁誘導の法則（大きさ）'], [`I = ${s3(V)} ÷ ${R} = ${s3(I)} A`, 'コイルが電池の役目をして、自分の抵抗に電流を流す（オームの法則）']],
+      why: '電磁誘導で生じた起電力は、ふつうの電池の電圧と同じように使える。だから「起電力を求める → オームの法則で電流」の 2 段階で考える。',
+      trap: 'ΔΦ に「あとの磁束 ' + P2 + ' Wb」をそのまま入れないように。変化したぶん（差）を使う。',
+      wrong: pcW(I, [[N * P2 / dt / R, 'あとの磁束をそのまま使っている。ΔΦ は差'], [V, 'それは起電力 V。抵抗で割って電流にする'], [V * R, '抵抗をかけている。I = V ÷ R']]),
+      set: { auto: true, sp: pcSp[dt], N, pole: 'N' } };
+  } },
+
+  // ---------- 物理 5-1 波の干渉 ----------
+  { id: 'dc-intf1', sim: 'interf', name: '経路差と強め合い・弱め合い', gen() {
+    let d, lam, k, D; do { d = rnd(3, 5, 0.5); lam = pick([0.8, 1, 1.2, 1.5, 2]); k = pick([0.5, 1, 1.5, 2, 2.5]); D = +(k * lam).toFixed(2); } while (D > d - 0.2);
+    const a = rnd(4, 10, 0.5), b = +(a + D).toFixed(2), strong = Number.isInteger(k);
+    return { q: `池の水面で、2 本の棒 S₁、S₂ を同じリズムで（同位相で）上下させ、波長 ${lam} cm の波を出し続けた。水面上の点 P は、S₁ から ${a} cm、S₂ から ${b} cm の所にある。経路差（距離の差）は波長の何倍か。その答えから、P が強め合う点か弱め合う点かも考えよう。`, ans: k, unit: '倍',
+      given: [['S₁P', `${a} cm`], ['S₂P', `${b} cm`], ['λ（波長）', `${lam} cm`], ['波源', '同位相（同じリズム）']], find: '経路差が波長の何倍か',
+      hints: ['経路差は「2 つの距離の差」：|S₁P − S₂P|。', '経路差 ÷ 波長 で、何倍かがわかる。', '同位相なら、整数倍（0, 1, 2, …）で強め合い、半端（0.5, 1.5, …）で弱め合う。'],
+      sol: [[`|S₁P − S₂P| = ${b} − ${a} = ${D} cm`, '2 つの波が P まで進む道のりの差'], [`${D} ÷ ${lam} = ${k} 倍`, '経路差が波長いくつぶんかを調べる'], [strong ? `${k} は整数 → P は強め合う点` : `${k} は整数 + 0.5 → P は弱め合う点（節線上）`, strong ? '山と山（谷と谷）が重なって、大きくゆれる' : '山と谷が重なって、ほとんどゆれない']],
+      why: '同じリズムで出た波は、道のりの差がちょうど波長の整数倍なら、そろって（山と山で）とどく。波長の半分ずれると、山と谷が重なって打ち消し合う。',
+      trap: '距離そのもの（' + a + ' cm や ' + b + ' cm）ではなく「差」を使う。たし算しないように。',
+      wrong: pcW(k, [[D, '経路差のまま。波長で割って「何倍か」にする'], [lam / D, '割る順番が逆。経路差 ÷ 波長'], [(a + b) / lam, '距離をたしている。使うのは差']]),
+      set: { d, lam, phase: 'same', nodes: true } };
+  } },
+  { id: 'dc-intf2', sim: 'interf', name: '波源の間の節線の数', gen() {
+    let d, lam, X; do { d = rnd(1.5, 5, 0.5); lam = rnd(0.6, 2, 0.2); X = d / lam; } while (X < 0.6 || Math.abs(2 * X - Math.round(2 * X)) < 0.1);
+    const n = Math.floor(X + 0.5), ans = 2 * n;
+    const ms = Array.from({ length: n }, (_, m) => `${m + 0.5}λ = ${s3((m + 0.5) * lam)} cm`).join('、');
+    return { q: `池で、${d} cm はなれた 2 点 S₁、S₂ から、同じリズム（同位相）で波長 ${lam} cm の波を出し続けた。S₁ と S₂ を結ぶ線分の上に、ほとんどゆれない点（弱め合う点）はいくつあるか。（この数が、3D に見える節線の本数と同じになる）`, ans, unit: '個',
+      given: [['d（波源の間）', `${d} cm`], ['λ（波長）', `${lam} cm`], ['波源', '同位相']], find: '線分 S₁S₂ 上の弱め合う点の数',
+      hints: ['線分の上の点では、経路差はまん中で 0、S₁ や S₂ に近づくほど大きくなり、いちばん大きくて d（' + d + ' cm）。', '弱め合う条件は 経路差 = (m + ½)λ。これが ' + d + ' cm より小さくなる m をさがす。', 'まん中の左右（S₁ 側と S₂ 側）に、同じ数ずつある。'],
+      sol: [[`経路差は 0 〜 ${d} cm`, 'まん中で 0、はしに近づくほど大きくなる'], [`(m + ½) × ${lam} < ${d}`, '弱め合う経路差が、線分の上でとれる範囲に入るもの'], [`${ms}`, `m = 0 〜 ${n - 1} の ${n} 個が ${d} cm より小さい`], [`${n} × 2 = ${ans} 個`, '経路差は S₁ 側にずれても S₂ 側にずれても同じになるので、左右に 1 つずつ']],
+      why: '節線は、経路差が (m + ½)λ になる点を結んだ線。どの節線も線分 S₁S₂ を 1 回ずつ横切るので、線分の上の弱め合う点の数 ＝ 節線の本数。',
+      trap: 'S₁ 側だけを数えて ' + n + ' 個としないように。まん中をはさんで左右対称にある。強め合う点（mλ）と取りちがえないように。',
+      wrong: pcW(ans, [[n, '片側だけ数えている。左右に同じ数ある'], [2 * Math.floor(X) + 1, '強め合う点（経路差 mλ）を数えている。弱め合うのは (m + ½)λ']]),
+      set: { d, lam, phase: 'same', nodes: true } };
+  } },
+  { id: 'dc-intf3', sim: 'interf', name: '逆位相の波源と強め合う波長', gen() {
+    const d = rnd(2, 5, 0.5), D = rnd(0.3, 1, 0.1), a = rnd(3, 8, 0.5), b = +(a + D).toFixed(2), lam = +(2 * D).toFixed(2);
+    return { q: `池で 2 本の棒 S₁、S₂ を、片方が上がるとき片方が下がるように（逆位相で）上下させて波を出した。点 P は S₁ から ${a} cm、S₂ から ${b} cm の所にある。P が強め合う点（大きくゆれる点）になるような波長のうち、いちばん長いものは何 cm か。`, ans: lam, unit: 'cm',
+      given: [['S₁P', `${a} cm`], ['S₂P', `${b} cm`], ['波源', '逆位相（はじめから山と谷が逆）']], find: 'P が強め合ういちばん長い波長 λ',
+      hints: ['まず経路差 |S₁P − S₂P| を求める。', '逆位相では、強め合う条件と弱め合う条件が入れかわる。強め合うのは 経路差 = (m + ½)λ。', 'λ = 経路差 ÷ (m + ½)。分母がいちばん小さい m = 0 のとき λ がいちばん長い。'],
+      sol: [[`経路差 = ${b} − ${a} = ${D} cm`, '2 つの波が P までに進む道のりの差'], [`${D} = (m + ½)λ`, '逆位相なので、半波長ずれてちょうどそろう（強め合う）'], [`λ = ${D} ÷ (m + ½)`, 'λ について解く'], [`m = 0：λ = ${D} ÷ 0.5 = ${lam} cm`, 'm が小さいほど λ は長い。いちばん長いのは m = 0']],
+      why: '逆位相の波源は、出たときから山と谷が逆。道のりの差で半波長ずれると、もとのずれと合わせてちょうどそろうので、強め合う。',
+      trap: '同位相の条件（経路差 = mλ）を使うと、答えが ' + D + ' cm になってしまう。波源が逆位相かどうかを必ず確かめよう。',
+      wrong: pcW(lam, [[D, '同位相の条件（経路差 = mλ、m = 1）を使っている。逆位相では (m + ½)λ で強め合う'], [2 * D / 3, 'm = 1 にしている。いちばん長いのは m = 0'], [D / 2, '2 で割っている。λ = 経路差 ÷ 0.5 = 経路差 × 2']]),
+      set: { d, lam, phase: 'anti', nodes: true } };
+  } },
+
+  // ---------- 物理 6-1 ドップラー効果 ----------
+  { id: 'dc-dop2', sim: 'doppler', name: '通りすぎる救急車の音の差', gen() {
+    const f = rnd(400, 1000, 50), vs = rnd(10, 30, 5), f1 = f * 340 / (340 - vs), f2 = f * 340 / (340 + vs), ans = f1 - f2;
+    return { q: `振動数 ${f} Hz のサイレンを鳴らした救急車が、${vs} m/s で目の前を通りすぎた。近づいてくるときと遠ざかっていくときで、聞こえる振動数の差は何 Hz か。音速は 340 m/s とする。`, ans, unit: 'Hz',
+      given: [['f（サイレンの振動数）', `${f} Hz`], ['v_s（救急車の速さ）', `${vs} m/s`], ['V（音速）', '340 m/s'], ['聞く人', '止まっている']], find: '近づくときと遠ざかるときの振動数の差',
+      hints: ['近づくときは f₁ = f × V/(V − v_s)（高く聞こえる）。', '遠ざかるときは f₂ = f × V/(V + v_s)（低く聞こえる）。', '差は f₁ − f₂。'],
+      sol: [[`f₁ = ${f} × 340 ÷ (340 − ${vs}) = ${s3(f1)} Hz`, '近づくとき：前の波長が縮む'], [`f₂ = ${f} × 340 ÷ (340 + ${vs}) = ${s3(f2)} Hz`, '遠ざかるとき：後ろの波長がのびる'], [`f₁ − f₂ = ${s3(f1)} − ${s3(f2)} = ${s3(ans)} Hz`, '通りすぎる瞬間に、音がこれだけ下がる']],
+      why: '救急車が通りすぎるとき「ピーポー」の音がガクンと低くなるのは、前では波面がつまり、後ろでは広がるから。前後で式の符号だけが変わる。',
+      trap: '近づくときは V − v_s、遠ざかるときは V + v_s。「近づくと高い」を思い出して符号を確かめよう。',
+      wrong: pcW(ans, [[f1 - f, '近づくときと元の音の差になっている。遠ざかるときの音との差を求める'], [2 * (f1 - f), '上がる量と下がる量が同じだと考えている。遠ざかるときは別に計算する'], [f1 + f2, 'たしている。差はひき算']]),
+      set: { vs, f0: f, ear: 'front' } };
+  } },
+  { id: 'dc-dop3', sim: 'doppler', name: 'かべで反射した音（2 段階）', gen() {
+    const f = rnd(400, 900, 50), vs = rnd(10, 30, 5), f1 = f * 340 / (340 - vs), f2 = f1 * (340 + vs) / 340;
+    return { q: `振動数 ${f} Hz のサイレンを鳴らした救急車が、${vs} m/s で大きなビルのかべに向かってまっすぐ走っている。かべで反射してもどってきた音を、救急車の運転手が聞く。運転手に聞こえる反射音の振動数は何 Hz か。音速は 340 m/s とする。`, ans: f2, unit: 'Hz',
+      given: [['f', `${f} Hz`], ['v_s（救急車）', `${vs} m/s（かべに近づく）`], ['V（音速）', '340 m/s'], ['かべ', '止まっている']], find: '運転手に聞こえる反射音の振動数 f₂',
+      hints: ['2 段階に分ける。① かべが「止まった観測者」として音を受け取る。② かべが「止まった音源」としてその音をはね返す。', '① 近づく音源：f₁ = f × V/(V − v_s)。', '② 運転手は音源（かべ）に近づく観測者：f₂ = f₁ × (V + v_s)/V。'],
+      sol: [[`f₁ = ${f} × 340 ÷ (340 − ${vs}) = ${s3(f1)} Hz`, '① かべに届く音：音源（救急車）が近づくので高くなる'], [`かべは ${s3(f1)} Hz の音を出す音源`, '反射とは、受けた振動数の音を、かべがそのまま出しなおすこと'], [`f₂ = ${s3(f1)} × (340 + ${vs}) ÷ 340 = ${s3(f2)} Hz`, '② 運転手は音源（かべ）に向かって動く観測者。1 秒間に出会う波の数が (V + v_s)/V 倍になる'], [`まとめると f₂ = f × (340 + ${vs})/(340 − ${vs})`, '（確かめ）2 段階の式を 1 つにした形']],
+      why: '反射板の問題は、反射板を「いったん聞く人 → こんどは音を出す人」と 2 回使うと、ふつうのドップラー効果の式だけで解ける。',
+      trap: '① だけで止めると、かべに届いた音になってしまう。運転手も動いているので、② でもう一度高くなる。',
+      wrong: pcW(f2, [[f1, 'かべに届いた音（① だけ）。運転手も動いているので ② が必要'], [f * (340 + vs) / 340, '② だけ（運転手が動く効果だけ）。① で救急車が音源として動く効果も入れる'], [f * 340 / (340 + vs), '符号が逆。近づくと高くなる']]),
+      set: { vs, f0: f, ear: 'front' } };
+  } },
+
+  // ---------- 物理 7-1 光の屈折と全反射 ----------
+  { id: 'dc-refr2', sim: 'refr', name: '物質から空気へ出る光', gen() {
+    const n = pick([1.33, 1.5, 2.42]), i = pick({ 1.33: [30, 40, 45], 1.5: [20, 30, 40], 2.42: [15, 20] }[n]);
+    const si = { 15: 0.26, 20: 0.34, 30: 0.5, 40: 0.64, 45: 0.71 }[i], sr = n * si, name = { 1.33: '水そうの水', 1.5: 'ガラスのコップ', 2.42: 'ダイヤモンド' }[n];
+    return { q: `${name}（屈折率 ${n}）の中から空気へ、入射角 ${i}° で光が出ていく。空気中での屈折角を r とするとき、sin r の値を求めよ。sin${i}° = ${si.toFixed(2)} とする。`, ans: sr, unit: '',
+      given: [['n₁（光が来る側）', `${n}（${name}）`], ['n₂（光が出る側）', '1（空気）'], ['入射角 i', `${i}°（sin${i}° = ${si.toFixed(2)}）`]], find: 'sin r',
+      hints: ['屈折の法則 n₁ sin i = n₂ sin r。「光が来る側」が n₁。', `${n} × sin${i}° = 1 × sin r。`, `sin r = ${n} × ${si.toFixed(2)}。答えが 1 より小さいことを確かめる（1 をこえたら全反射）。`],
+      sol: [[`${n} × ${si.toFixed(2)} = 1 × sin r`, '屈折の法則。光は物質の中から来るので、左側が物質'], [`sin r = ${s3(sr)}`, 'かけ算するだけ'], [`${s3(sr)} < 1 → 空気へ出られる。sin r > sin i なので r > ${i}°`, '空気へ出るときは、法線から遠ざかる向きに曲がる']],
+      why: '屈折の法則は、光の進む向きが逆でも同じ式。どちらが n₁（来る側）かを決めてから数を入れると、まちがえない。',
+      trap: '空気から入るときの式（sin r = sin i ÷ n）をそのまま使うと、逆になる。物質から出るときは「かける」。',
+      wrong: pcW(sr, [[si / n, '空気から入るときの式になっている。物質の中から出るので、sin r = n × sin i'], [1 / n, 'それは臨界角の sin。入射角 ' + i + '° のときの屈折角を求める']]),
+      set: { th: i, n, dir: 'out' } };
+  } },
+  { id: 'dc-refr3', sim: 'refr', name: 'プールの底のライトと光の円', gen() {
+    const water = Math.random() < 0.6, n = water ? 1.33 : 1.5, h = water ? rnd(1, 3, 0.5) : rnd(2, 6, 1), u = water ? 'm' : 'cm';
+    const sc = 1 / n, cc = Math.sqrt(1 - sc * sc), tc = sc / cc, r = h * tc, th = Math.floor(Math.asin(sc) * 180 / Math.PI * 2) / 2;
+    const where = water ? `プールの底（深さ ${h} m）に小さなライトがある` : `厚さ ${h} cm のガラスの板（屈折率 1.5）の下の面に、小さな光る点がある`;
+    return { q: `${where}。上から見ると、光が出てくるのは光源の真上を中心とする円の中だけで、その外側では光が全反射して出てこない。この円の半径は何 ${u} か。${water ? '水の屈折率は 1.33 とする。' : ''}`, ans: r, unit: u,
+      given: [['h（光源から上の面まで）', `${h} ${u}`], ['n（屈折率）', String(n)], ['外側の空気', '屈折率 1']], find: '光が出てくる円の半径 r',
+      hints: [`円のふちでは、${water ? '水面' : 'ガラスの上の面'}への入射角がちょうど臨界角 θ になっている。`, `sin θ = 1/n = 1/${n}。cos θ = √(1 − sin²θ) で cos も求める。`, '図の直角三角形で、r = h × tan θ（tan θ = sin θ / cos θ）。'],
+      sol: [[`sin θ = 1 ÷ ${n} = ${s3(sc)}`, '臨界角：屈折角がちょうど 90° になる入射角'], [`cos θ = √(1 − ${s3(sc)}²) = ${s3(cc)}`, 'sin² + cos² = 1 を使う'], [`tan θ = ${s3(sc)} ÷ ${s3(cc)} = ${s3(tc)}`, 'tan = sin ÷ cos'], [`r = ${h} × ${s3(tc)} = ${s3(r)} ${u}`, '光源の真上から円のふちまでの横の長さ = 深さ × tan θ']],
+      why: '光源から出た光は、真上に近いほど入射角が小さく外へ出られる。入射角が臨界角をこえると全反射するので、光が出る所は円の形になる。そのふちが「ちょうど臨界角」の光。',
+      trap: 'r = h × sin θ としないように。縦が h、横が r の直角三角形なので、横 ÷ 縦 = tan θ。',
+      wrong: pcW(r, [[h * sc, 'sin θ を使っている。横 ÷ 縦 = tan θ'], [h / tc, '縦と横が逆。r = h × tan θ'], [h * cc, 'cos θ を使っている。r = h × tan θ']]),
+      set: { dir: 'out', n, th } };
+  } },
+
+  // ---------- 物理 7-2 レンズ ----------
+  { id: 'dc-lens2', sim: 'lens', name: '虫めがねの倍率（虚像）', gen() {
+    const f = pick([2, 2.5, 3, 3.5]), a = +(f - pick([0.5, 1, 1.5])).toFixed(2), b = a * f / (a - f), m = f / (f - a);
+    return { q: `虫めがね（焦点距離 ${f} cm の凸レンズ）で、レンズから ${a} cm の所にある小さな文字を見た。文字は何倍の大きさに見えるか。`, ans: m, unit: '倍',
+      given: [['f（焦点距離）', `${f} cm`], ['a（文字の位置）', `${a} cm（焦点より内側）`]], find: '像の倍率 |b/a|',
+      hints: ['文字は焦点の内側にあるので、像は正立の虚像。式では b が負になる。', `レンズの式 1/a + 1/b = 1/f から 1/b = 1/${f} − 1/${a}。`, '倍率 = |b| ÷ a。'],
+      sol: [[`1/${a} + 1/b = 1/${f}`, 'レンズの式に入れる'], [`1/b = 1/${f} − 1/${a} = ${s3(a - f)}/${s3(a * f)}`, '通分すると分子が負になる'], [`b = ${s3(a * f)} ÷ (${s3(a - f)}) = ${s3(b)} cm`, 'b が負 → レンズの前（文字と同じ側）に虚像'], [`倍率 = ${s3(-b)} ÷ ${a} = ${s3(m)} 倍`, '像の大きさは物体の |b|/a 倍']],
+      why: '虫めがねは、焦点の内側の物体から出た光を少しだけ広がりにくくする。目はその光を逆にのばした所（虚像）に大きな文字があるように見る。',
+      trap: 'b が負になってもあわてない。負は「虚像（レンズの前）」の意味。倍率は大きさなので、絶対値を使う。',
+      wrong: pcW(m, [[a * f / (a + f) / a, '1/b = 1/f + 1/a としている。1/b = 1/f − 1/a'], [f / a, '焦点距離 ÷ 物体の位置にしている。倍率は |b| ÷ a'], [-m, '符号がついている。倍率は大きさ（正の数）']]),
+      set: { a, f, kind: 'convex', rays: true } };
+  } },
+  { id: 'dc-lens3', sim: 'lens', name: 'ねらった大きさの像を映す', gen() {
+    const k = pick([0.5, 2, 3]), f = rnd(1, 3, 0.5), a = f * (k + 1) / k, b = k * a;
+    const use = k > 1 ? `小型プロジェクターのように、スクリーンに物体の ${k} 倍の大きさの像を映したい` : `カメラのように、物体の ${k} 倍（半分）の大きさの像をセンサーに写したい`;
+    return { q: `焦点距離 ${f} cm の凸レンズを使って、${use}。物体をレンズの前方何 cm の所に置けばよいか。`, ans: a, unit: 'cm',
+      given: [['f（焦点距離）', `${f} cm`], ['倍率', `${k} 倍（スクリーンに映る＝倒立の実像）`]], find: '物体の位置 a',
+      hints: ['実像の倍率は b/a。倍率が ' + k + ' 倍なので b = ' + k + 'a。', `レンズの式に b = ${k}a を入れる：1/a + 1/(${k}a) = 1/${f}。`, `左辺を通分すると (${k} + 1)/(${k}a)。`],
+      sol: [[`b = ${k}a`, '倍率 b/a = ' + k], [`1/a + 1/(${k}a) = 1/${f}`, 'レンズの式に入れる。わからないのは a だけになる'], [`(${k} + 1)/(${k}a) = 1/${f}`, '通分して左辺を 1 つの分数にする'], [`a = ${f} × ${k + 1} ÷ ${k} = ${s3(a)} cm`, '分母をはらって a について解く'], [`（確かめ）b = ${k} × ${s3(a)} = ${s3(b)} cm`, 'スクリーンはレンズの後方 ' + s3(b) + ' cm']],
+      why: '「倍率がわかっている → b を a で表す」と、未知数が 1 つになってレンズの式が解ける。入試では、ここから「スクリーンまでの距離」なども聞かれる。',
+      trap: '求めた b（スクリーンまでの距離）を答えにしないように。聞かれているのは物体の位置 a。',
+      wrong: pcW(a, [[b, 'それは b（スクリーンまでの距離）。物体の位置は a'], [f * k / (k + 1), '通分の分子と分母が逆。a = f(k + 1)/k'], [f * k, 'b = ka を f に入れてしまっている。レンズの式を使う']]),
+      set: { a: +a.toFixed(2), f, kind: 'convex', rays: true } };
+  } },
+
+  // ---------- 物理 8-1 電場と電位 ----------
+  { id: 'dc-ef1', sim: 'efield', name: '点電荷のつくる電場', gen() {
+    const Q = rnd(1, 3, 1), r = rnd(1, 5, 1), E = 9.0e9 * Q * 1e-6 / (r * r);
+    return { q: `乾燥した日、下じきをこすると静電気がたまる。+${Q}.0×10⁻⁶ C の電気をもった小さな球から ${r} m はなれた点 P の電場の強さは何 N/C か。クーロンの法則の比例定数 k = 9.0×10⁹ N·m²/C² とする。`, ans: E, unit: 'N/C',
+      given: [['Q（球の電気量）', `+${Q}.0×10⁻⁶ C`], ['r（球からの距離）', `${r} m`], ['k', '9.0×10⁹ N·m²/C²']], find: '点 P の電場の強さ E',
+      hints: ['電場の強さは「+1 C の電荷を置いたら受ける力」。', '点電荷のつくる電場：E = kQ/r²（距離の 2 乗に反比例）。', `E = 9.0×10⁹ × ${Q}.0×10⁻⁶ ÷ ${r}²。`],
+      sol: [['E = kQ/r²', '点電荷のまわりの電場の式'], [`kQ = 9.0×10⁹ × ${Q}.0×10⁻⁶ = ${s3(9000 * Q)}`, '10 の何乗は 10⁹ × 10⁻⁶ = 10³ とまとめる'], [`E = ${s3(9000 * Q)} ÷ ${r * r} = ${s3(E)} N/C`, `r² = ${r}² = ${r * r}`]],
+      why: '電気力線は電荷から四方八方に広がる。距離が 2 倍になると、線が広がる球の表面積は 4 倍になり、線の混みぐあい（電場の強さ）は 1/4。だから r² に反比例する。',
+      trap: 'r² の 2 乗を忘れて r で割るまちがいが多い（それは電位 V = kQ/r の式）。',
+      wrong: pcW(E, [[9.0e9 * Q * 1e-6 / r, 'r で割っている（電位の式）。電場は r² で割る'], [9.0e9 * Q * 1e-6 * r * r, 'r² をかけている。距離が大きいほど電場は弱い']]),
+      set: { q1: Q, q2: 0, d: r, surf: false, lines: true } };
+  } },
+  { id: 'dc-ef2', sim: 'efield', name: '2 つの電荷のまん中の電場', gen() {
+    const nz = [-3, -2, -1, 1, 2, 3]; let q1, q2; do { q1 = pick(nz); q2 = pick(nz); } while (q1 === q2);
+    const d = pick([2, 3, 4]), r = d / 2, kk = 9000 / (r * r), E1 = kk * Math.abs(q1), E2 = kk * Math.abs(q2), E = kk * Math.abs(q1 - q2), same = q1 * q2 < 0;
+    const dirA = q1 > 0 ? 'A から遠ざかる向き（B の方）' : 'A に近づく向き（A の方）', dirB = q2 > 0 ? 'B から遠ざかる向き（A の方）' : 'B に近づく向き（B の方）';
+    return { q: `静電気の実験で、電気をもった小さな球 A（${pcQ(q1)}×10⁻⁶ C）と球 B（${pcQ(q2)}×10⁻⁶ C）を ${d} m はなして置いた。AB のまん中の点 M の電場の強さは何 N/C か。k = 9.0×10⁹ N·m²/C² とする。`, ans: E, unit: 'N/C',
+      given: [['A', `${pcQ(q1)}×10⁻⁶ C`], ['B', `${pcQ(q2)}×10⁻⁶ C`], ['M までの距離', `どちらからも ${r} m（${d} m の半分）`]], find: 'M の電場の強さ E',
+      hints: ['A がつくる電場と B がつくる電場を、別々に E = kQ/r² で求める。', '向きに注意：正の電荷の電場は「遠ざかる向き」、負の電荷の電場は「近づく向き」。', '同じ向きならたし算、逆向きならひき算（ベクトルの和）。'],
+      sol: [[`E_A = 9.0×10⁹ × ${Math.abs(q1)}.0×10⁻⁶ ÷ ${r}² = ${s3(E1)} N/C`, '向きは ' + dirA], [`E_B = 9.0×10⁹ × ${Math.abs(q2)}.0×10⁻⁶ ÷ ${r}² = ${s3(E2)} N/C`, '向きは ' + dirB], [same ? `E = ${s3(E1)} + ${s3(E2)} = ${s3(E)} N/C` : `E = |${s3(E1)} − ${s3(E2)}| = ${s3(E)} N/C`, same ? '2 つとも同じ向き（B の方か A の方か同じ）なので、たし算' : '向きが逆なので、打ち消し合ってひき算']],
+      why: '電場は「向きをもつ量（ベクトル）」。2 つの電荷があるときは、それぞれの電場を矢印でかいて、矢印をたし合わせる。',
+      trap: '正と負の電荷の間では、電場は同じ向きになって強め合う（電気力線が + から − へまっすぐ通る）。符号を見ないで、いつもたしたりひいたりしないように。',
+      wrong: pcW(E, [[same ? kk * Math.abs(Math.abs(q1) - Math.abs(q2)) : kk * (Math.abs(q1) + Math.abs(q2)), same ? '逆向きと考えてひき算している。正と負の間では同じ向き' : '同じ向きと考えてたし算している。同じ符号の電荷の間では逆向き'], [9000 * Math.abs(q1 - q2) / (d * d), '距離に ' + d + ' m を使っている。M までは半分の ' + r + ' m']]),
+      set: { q1, q2, d, surf: false, lines: true } };
+  } },
+  { id: 'dc-ef3', sim: 'efield', name: 'まん中の電位と仕事', gen() {
+    const nz = [-3, -2, -1, 1, 2, 3]; let q1, q2; do { q1 = pick(nz); q2 = pick(nz); } while (q1 + q2 <= 0);
+    const d = pick([2, 3, 4]), r = d / 2, qt = rnd(1, 3, 1), V1 = 9000 * q1 / r, V2 = 9000 * q2 / r, V = V1 + V2, W = qt * 1e-6 * V;
+    return { q: `静電気をおびた小さな球 A（${pcQ(q1)}×10⁻⁶ C）と球 B（${pcQ(q2)}×10⁻⁶ C）が ${d} m はなれて置いてある。とても遠い所（電位 0）から、+${qt}.0×10⁻⁶ C の小さな電荷を、AB のまん中の点 M までゆっくり運ぶ。外から加える仕事は何 J か。k = 9.0×10⁹ N·m²/C² とする。`, ans: W, unit: 'J',
+      given: [['A', `${pcQ(q1)}×10⁻⁶ C`], ['B', `${pcQ(q2)}×10⁻⁶ C`], ['M までの距離', `${r} m`], ['運ぶ電荷 q', `+${qt}.0×10⁻⁶ C`]], find: '外から加える仕事 W',
+      hints: ['点電荷のまわりの電位は V = kQ/r（r の 1 乗。符号もつけたまま使う）。', '電位は「向きのない量（スカラー）」なので、A と B の電位をそのままたす。', '電位 0 の所から電位 V の所へ q を運ぶ仕事は W = qV。'],
+      sol: [[`V_A = 9.0×10⁹ × (${pcQ(q1)}×10⁻⁶) ÷ ${r} = ${s3(V1)} V`, 'A がつくる M の電位（負の電荷なら負の電位）'], [`V_B = 9.0×10⁹ × (${pcQ(q2)}×10⁻⁶) ÷ ${r} = ${s3(V2)} V`, 'B がつくる M の電位'], [`V = ${s3(V1)} + (${s3(V2)}) = ${s3(V)} V`, '電位はスカラーなので、符号ごとたすだけ'], [`W = qV = ${qt}.0×10⁻⁶ × ${s3(V)} = ${pcSci(W)} J`, '電位は「+1 C あたりの位置エネルギー」。q 倍すると運ぶのに必要な仕事']],
+      why: '電位は高さのようなもの。電荷を高い所へ運ぶには仕事がいる。電場（ベクトル）とちがって、電位は向きを考えずに符号つきの数としてたし算できるのが楽な所。',
+      trap: '電場の式 kQ/r² を使わないように（電位は r で割る）。また負の電荷の電位はマイナスをつけたままたす。',
+      wrong: pcW(W, [[qt * 1e-6 * 9000 * (Math.abs(q1) + Math.abs(q2)) / r, '負の電荷の電位もプラスとしてたしている。電位は符号つきでたす'], [qt * 1e-6 * 9000 * (q1 + q2) / (r * r), 'r² で割っている（電場の式）。電位は r で割る'], [V, 'それは電位 V。q をかけて仕事にする']]),
+      set: { q1, q2, d, surf: true, lines: true } };
+  } },
+
+  // ---------- 物理 9-1 磁場と荷電粒子 ----------
+  { id: 'dc-lor2', sim: 'lorentz', name: '加速器で半周する時間', gen() {
+    const B = rnd(0.5, 2, 0.25), v = rnd(1, 5, 1), t = 3.14 * 1.67 / (1.6 * B);   // ×10⁻⁸ s
+    return { q: `加速器（サイクロトロン）の中で、陽子（質量 1.67×10⁻²⁷ kg、電気量 1.6×10⁻¹⁹ C）が、磁束密度 ${B} T の一様な磁場に垂直に、速さ ${v}×10⁶ m/s で入り、半円をえがいてもどってきた。半周にかかる時間は何 ×10⁻⁸ s か。π = 3.14 とする。`, ans: t, unit: '×10⁻⁸ s',
+      given: [['m（陽子）', '1.67×10⁻²⁷ kg'], ['q', '1.6×10⁻¹⁹ C'], ['B', `${B} T`], ['v', `${v}×10⁶ m/s`]], find: '半周の時間 t',
+      hints: ['半径は mv²/r = qvB から r = mv/(qB)。', '1 周の時間 T = 2πr/v。r を入れると v が消えて T = 2πm/(qB)。', '半周なので t = T/2 = πm/(qB)。'],
+      sol: [['r = mv/(qB)', 'ローレンツ力 qvB が向心力 mv²/r になる'], ['T = 2πr/v = 2πm/(qB)', '円周 ÷ 速さ。v が約分されて消える'], ['t = T/2 = πm/(qB)', '半周なので半分'], [`t = 3.14 × 1.67×10⁻²⁷ ÷ (1.6×10⁻¹⁹ × ${B}) = ${s3(t)}×10⁻⁸ s`, '10 の何乗は 10⁻²⁷ ÷ 10⁻¹⁹ = 10⁻⁸']],
+      why: '速い粒子は大きな円をえがくが、そのぶん長い道のりを速く進むので、1 周の時間は同じ。だからサイクロトロンは、決まったリズムで電圧を切りかえるだけで粒子を加速し続けられる。',
+      trap: '速さ ' + v + '×10⁶ m/s は、時間を求めるのには使わない（v が消える）。また 1 周の時間 T で止めないように。',
+      wrong: pcW(t, [[2 * t, '1 周の時間 T。半周なので T/2'], [t / 3.14, 'π をかけ忘れている（t = πm/(qB)）']]),
+      set: { B, v: +(v * 0.5).toFixed(1), al: 90, m: 1, q: 1, vec: true } };
+  } },
+  { id: 'dc-lor3', sim: 'lorentz', name: 'オーロラの電子のらせん', gen() {
+    const v = rnd(1, 5, 1), B = rnd(2, 6, 1), al = pick([30, 45, 60]), c = { 30: 0.87, 45: 0.71, 60: 0.5 }[al], s = { 30: 0.5, 45: 0.71, 60: 0.87 }[al];
+    const T = 2 * 3.14 * 9.1e-31 / (1.6e-19 * B * 1e-5), vp = v * 1e7 * c, p = vp * T;
+    return { q: `オーロラは、宇宙から来た電子が地球の磁場にまきつくように進み、空気にぶつかって光る現象。電子（質量 9.1×10⁻³¹ kg、電気量 1.6×10⁻¹⁹ C）が、磁束密度 ${B}×10⁻⁵ T の一様な磁場と ${al}° の角をなす向きに、速さ ${v}×10⁷ m/s で進んでいる。電子はらせんをえがく。らせんを 1 周する間に、磁場の向きに進む距離は何 m か。π = 3.14、cos${al}° = ${c.toFixed(2)} とする。`, ans: p, unit: 'm',
+      given: [['m', '9.1×10⁻³¹ kg'], ['e', '1.6×10⁻¹⁹ C'], ['B', `${B}×10⁻⁵ T`], ['v', `${v}×10⁷ m/s（磁場と ${al}°）`]], find: '1 周で磁場の向きに進む距離（ピッチ）',
+      hints: ['速度を「磁場に平行な成分 v cosα」と「磁場に垂直な成分 v sinα」に分ける。', '垂直な成分で円運動する。1 周の時間は T = 2πm/(eB)（速さによらない）。', '平行な成分はそのまま一定。進む距離 = v cosα × T。'],
+      sol: [[`v cos${al}° = ${v}×10⁷ × ${c.toFixed(2)} = ${pcSci(vp)} m/s`, '磁場に平行な成分は、力を受けないので一定'], [`T = 2 × 3.14 × 9.1×10⁻³¹ ÷ (1.6×10⁻¹⁹ × ${B}×10⁻⁵) = ${pcSci(T)} s`, '垂直な成分による円運動の 1 周の時間'], [`距離 = ${pcSci(vp)} × ${pcSci(T)} = ${s3(p)} m`, '1 周する間に、平行な向きには「速さ × 時間」だけ進む']],
+      why: '磁場に平行に動くぶんにはローレンツ力がはたらかない。垂直なぶんだけが円運動になるので、全体は「円をえがきながら前に進む」らせんになる。',
+      trap: '平行な成分は cos、垂直な成分は sin。逆にしないように。また v cosα ではなく v をそのまま使うまちがいが多い。',
+      wrong: pcW(p, [[v * 1e7 * s * T, 'sin を使っている。磁場に平行な成分は v cosα'], [v * 1e7 * T, 'cos をかけ忘れている。磁場に平行な成分だけが前に進む'], [p / 3.14 / 2, '2π をかけ忘れている（T = 2πm/(eB)）']]),
+      set: { B: 1, v: 2, al, m: 1, q: -1, vec: true } };
+  } },
+
+  // ---------- 物理 10-1 電磁誘導の法則 ----------
+  { id: 'dc-far1', sim: 'induct', name: '磁束密度が変わるときの起電力', gen() {
+    const N = rnd(10, 30, 5), S = rnd(2, 8, 1), Bm = rnd(0.1, 0.5, 0.1), dt = pick([0.02, 0.05, 0.1]), dP = Bm * S * 1e-3, V = N * dP / dt;
+    return { q: `IH 調理器のように、磁場を変化させてコイルに電流を流す実験をした。巻き数 ${N} 回、断面積 ${S}.0×10⁻³ m² のコイルを貫く磁場（コイルの軸の向き）の磁束密度が、${dt} 秒間に 0 から ${Bm} T まで一定の割合で増えた。コイルに生じる誘導起電力の大きさは何 V か。`, ans: V, unit: 'V',
+      given: [['N（巻き数）', `${N} 回`], ['S（断面積）', `${S}.0×10⁻³ m²`], ['B（磁束密度）', `0 → ${Bm} T`], ['Δt', `${dt} s`]], find: '誘導起電力の大きさ V',
+      hints: ['磁束 Φ = 磁束密度 B × 面積 S。', `磁束の変化 ΔΦ = ${Bm} × ${S}.0×10⁻³。`, 'ファラデーの法則 V = N ΔΦ/Δt。'],
+      sol: [[`ΔΦ = ΔB × S = ${Bm} × ${S}.0×10⁻³ = ${pcSci(dP)} Wb`, '磁束は「磁場の線が面を通る量」＝ B × S'], [`ΔΦ/Δt = ${pcSci(dP)} ÷ ${dt} = ${s3(dP / dt)} Wb/s`, '磁束の変化の速さ'], [`V = ${N} × ${s3(dP / dt)} = ${s3(V)} V`, '巻き数ぶん起電力がたし合わされる']],
+      why: '磁束密度 B は「1 m² あたりの磁場の線の数」。コイルの面積をかけると、コイルを通る線の数（磁束 Φ）になる。それが速く変わるほど、大きな起電力が生じる。',
+      trap: '面積 S をかけ忘れて B のまま使うまちがいが多い。式に入れるのは磁束 Φ = BS。',
+      wrong: pcW(V, [[N * Bm / dt, '面積 S をかけ忘れている。磁束は Φ = BS'], [dP / dt, '巻き数をかけ忘れている'], [N * dP, 'Δt で割り忘れている']]),
+      set: { auto: true, sp: pcSp[dt], N, pole: 'N' } };
+  } },
+  { id: 'dc-far2', sim: 'induct', name: '磁場が弱まるときの誘導電流', gen() {
+    const N = rnd(10, 30, 5), S = rnd(2, 8, 1), B1 = rnd(0.4, 1, 0.1), B2 = +(B1 - rnd(0.1, 0.3, 0.1)).toFixed(2), dt = pick([0.05, 0.1, 0.2]), R = rnd(2, 10, 1);
+    const dB = +(B1 - B2).toFixed(2), dP = dB * S * 1e-3, V = N * dP / dt, I = V / R;
+    return { q: `巻き数 ${N} 回、断面積 ${S}.0×10⁻³ m²、抵抗 ${R} Ω のコイルがある。コイルを貫く磁場の磁束密度が、${dt} 秒間に ${B1} T から ${B2} T へ一定の割合で減った。このあいだコイルに流れる電流は何 A か。`, ans: I, unit: 'A',
+      given: [['N', `${N} 回`], ['S', `${S}.0×10⁻³ m²`], ['B', `${B1} T → ${B2} T`], ['Δt', `${dt} s`], ['R', `${R} Ω`]], find: '流れる電流 I',
+      hints: ['磁束密度の変化 ΔB = ' + B1 + ' − ' + B2 + '。ΔΦ = ΔB × S。', '起電力 V = N ΔΦ/Δt。', 'コイルが電池の役目。I = V/R。'],
+      sol: [[`ΔB = ${B1} − ${B2} = ${dB} T`, '減ったぶん（大きさ）'], [`ΔΦ = ${dB} × ${S}.0×10⁻³ = ${pcSci(dP)} Wb`, '磁束 Φ = BS'], [`V = ${N} × ${pcSci(dP)} ÷ ${dt} = ${s3(V)} V`, 'ファラデーの法則'], [`I = ${s3(V)} ÷ ${R} = ${pcSci(I)} A`, 'オームの法則。向きは、減る磁束をおぎなう向き（レンツの法則）']],
+      why: '磁場が弱まっても、変化していれば電流は流れる。レンツの法則で、電流は「減っていく磁束をおぎなう向き」に流れる。大きさは変化のぶんだけで決まる。',
+      trap: 'B に ' + B1 + ' T をそのまま入れないように。使うのは変化のぶん ΔB。',
+      wrong: pcW(I, [[N * B1 * S * 1e-3 / dt / R, 'はじめの磁束密度をそのまま使っている。ΔB（差）を使う'], [V, 'それは起電力 V。抵抗で割って電流にする'], [N * dB / dt / R, '面積 S をかけ忘れている']]),
+      set: { auto: true, sp: pcSp[dt], N, pole: 'N' } };
+  } },
+  { id: 'dc-far3', sim: 'induct', name: '流れる電気量は速さによらない', gen() {
+    const N = rnd(10, 30, 5), P = rnd(0.002, 0.01, 0.001), R = rnd(2, 10, 1), t1 = pick([0.5, 1, 2]), t2 = pick([0.05, 0.1, 0.2]);
+    const V = N * P / t2, I = V / R, Q = N * P / R;
+    return { q: `巻き数 ${N} 回、抵抗 ${R} Ω のコイルに強い磁石を近づけて、コイルを貫く磁束を 0 から ${P} Wb まで増やす。1 回目はゆっくり ${t1} 秒かけて、2 回目はすばやく ${t2} 秒で近づけた。2 回目にコイルを流れた電気量（電流 × 時間）は何 C か。ただし、磁束は一定の割合で増えたとする。`, ans: Q, unit: 'C',
+      given: [['N', `${N} 回`], ['R', `${R} Ω`], ['ΔΦ', `0 → ${P} Wb`], ['2 回目の時間 Δt', `${t2} s`]], find: '2 回目に流れた電気量 Q',
+      hints: ['まず起電力 V = N ΔΦ/Δt、電流 I = V/R を求める。', '電気量は Q = I × Δt。', '文字のまま計算すると、Q = N ΔΦ/R となって Δt が消える。'],
+      sol: [[`V = ${N} × ${P} ÷ ${t2} = ${s3(V)} V`, 'ファラデーの法則（Δt = ' + t2 + ' s）'], [`I = ${s3(V)} ÷ ${R} = ${s3(I)} A`, 'オームの法則'], [`Q = I × Δt = ${s3(I)} × ${t2} = ${s3(Q)} C`, '電流は 1 秒あたりに流れる電気量。時間をかけると全体の量'], [`文字では Q = NΔΦ/R = ${N} × ${P} ÷ ${R}`, 'Δt が約分で消える → 1 回目（' + t1 + ' 秒）も同じ電気量']],
+      why: '速く動かすと電流は大きくなるが、流れる時間は短くなる。2 つの効果がちょうど打ち消し合って、電気量は「磁束がどれだけ変わったか」だけで決まる。入試でよく出る大事な結果。',
+      trap: '「速く動かしたほうがたくさん流れる」と思いがち。大きくなるのは電流（と針のふれ）で、電気量は変わらない。',
+      wrong: pcW(Q, [[I, 'それは電流 I。時間をかけて電気量にする'], [Q * t1 / t2, '速いほど電気量が多いと考えている。電流は増えるが時間が短くなるので、電気量は同じ'], [N * P * R, '抵抗をかけている。I = V/R なので割る']]),
+      set: { auto: true, sp: 2.5, N, pole: 'N' } };
+  } },
+
+  // ---------- 物理 11-1 光電効果 ----------
+  { id: 'dc-ph2', sim: 'photo', name: '阻止電圧', gen() {
+    const ms = [['Cs', 'セシウム', 1.9], ['Na', 'ナトリウム', 2.3], ['Zn', '亜鉛', 4.3]];
+    let mt, nm, E, K; do { mt = pick(ms); nm = rnd(200, 500, 10); E = 1240 / nm; K = E - mt[2]; } while (K < 0.3 || K > 2.95);
+    const W = mt[2];
+    return { q: `光センサーの陰極の金属（${mt[1]}、仕事関数 ${W} eV）に、波長 ${nm} nm の光を当てる。陽極の電圧をだんだんマイナスにしていくと、ある電圧で電流が 0 になった。この阻止電圧の大きさは何 V か。光子のエネルギーは E [eV] = 1240 / λ [nm] で求めてよい。`, ans: K, unit: 'V',
+      given: [['λ', `${nm} nm`], ['W（仕事関数）', `${W} eV（${mt[1]}）`]], find: '阻止電圧の大きさ V₀',
+      hints: ['光子 1 個のエネルギー E = 1240 ÷ λ。', '飛び出す電子の最大の運動エネルギー K₀ = E − W。', 'いちばん速い電子も押しもどす電圧が阻止電圧：eV₀ = K₀。K₀ を eV で表すと、その数がそのまま V₀ [V]。'],
+      sol: [[`E = 1240 ÷ ${nm} = ${s3(E)} eV`, '光子 1 個のエネルギー'], [`K₀ = ${s3(E)} − ${W} = ${s3(K)} eV`, '外に出るのに W を使った残り'], [`eV₀ = K₀ → V₀ = ${s3(K)} V`, '1 eV は「電子を 1 V で加速したときのエネルギー」なので、eV の数がそのまま V になる']],
+      why: '陽極をマイナスにすると、電子は坂を上るように押しもどされる。いちばん勢いのある電子でも上りきれなくなる電圧が阻止電圧。だから阻止電圧は「いちばん速い電子の運動エネルギー」を表している。',
+      trap: '仕事関数 W を引き忘れるまちがいが多い。光子のエネルギーの全部が運動エネルギーになるわけではない。',
+      wrong: pcW(K, [[E, 'W を引き忘れている'], [E + W, 'たしている。外に出るのに W を使うので引き算'], [K * 1.6e-19, 'J に直している。V₀ は eV の数そのもの']]),
+      set: { nm, I: 0.5, U: pcStep(-K, 0.05, -3, 3), metal: mt[0] } };
+  } },
+  { id: 'dc-ph3', sim: 'photo', name: '光子の数と光電流', gen() {
+    const nm = rnd(400, 600, 50), P = rnd(0.2, 2, 0.2), Ep = 6.6e-34 * 3.0e8 / (nm * 1e-9), N = P * 1e-3 / Ep, I = N * 1.6e-19 * 1e3;   // I は mA
+    return { q: `太陽電池や光センサーは、光電効果で電流をつくる。陰極がセシウムの光センサーに、波長 ${nm} nm、出力 ${P} mW（1 秒間に ${P}×10⁻³ J のエネルギー）の光を当てた。光子 1 個につき電子が 1 個飛び出して、全部が陽極に届くとすると、流れる電流は何 mA か。h = 6.6×10⁻³⁴ J·s、c = 3.0×10⁸ m/s、e = 1.6×10⁻¹⁹ C とする。`, ans: I, unit: 'mA',
+      given: [['λ', `${nm} nm = ${nm}×10⁻⁹ m`], ['P（光の出力）', `${P}×10⁻³ J/s`], ['h, c, e', '6.6×10⁻³⁴ J·s、3.0×10⁸ m/s、1.6×10⁻¹⁹ C']], find: '流れる電流 I（mA）',
+      hints: ['光子 1 個のエネルギー E = hc/λ（λ は m に直す）。', '1 秒間に当たる光子の数 = 1 秒間の光のエネルギー ÷ 光子 1 個のエネルギー。', '電流 = 1 秒間に流れる電気量 = 電子の数 × e。最後に A を mA（× 1000）に直す。'],
+      sol: [[`E = 6.6×10⁻³⁴ × 3.0×10⁸ ÷ (${nm}×10⁻⁹) = ${pcSci(Ep)} J`, '光子 1 個のエネルギー'], [`n = ${P}×10⁻³ ÷ ${pcSci(Ep)} = ${pcSci(N)} 個/s`, '1 秒間に当たる光子の数（＝ 飛び出す電子の数）'], [`I = ${pcSci(N)} × 1.6×10⁻¹⁹ = ${pcSci(I / 1e3)} A`, '電流は 1 秒間に流れる電気量'], [`= ${s3(I)} mA`, '1 A = 1000 mA']],
+      why: '光の強さ（出力）は「光子の数 × 光子 1 個のエネルギー」。光子 1 個が電子 1 個を出すので、光子の数がわかれば電流がわかる。光を強くすると電流が増えるのはこのため。',
+      trap: 'nm を m に直し忘れる（×10⁻⁹）と、けたが大きくずれる。最後の A → mA も忘れずに。',
+      wrong: pcW(I, [[I / 1e3, 'A のまま答えている。1 A = 1000 mA'], [N * 1e-15, '電子の数のまま（×10¹⁵ 個）。e をかけて電流にする']]),
+      set: { nm, I: pcStep(P / 2, 0.05, 0.1, 1), U: 1, metal: 'Cs' } };
+  } },
+);
+
+Object.assign(LESSON_PLAN, {
+  'k-circuit': { basic: 'dc-ohm1', apply: 'd-ohm', adv: 'dc-heat' },
+  'k-induct': { basic: 'dc-emf1', apply: 'dc-emf2', adv: 'dc-emf3' },
+  'b-interf': { basic: 'dc-intf1', apply: 'dc-intf2', adv: 'dc-intf3' },
+  'b-doppler': { basic: 'd-dop', apply: 'dc-dop2', adv: 'dc-dop3' },
+  'b-refr': { basic: 'd-refr', apply: 'dc-refr2', adv: 'dc-refr3' },
+  'b-lens': { basic: 'd-lens', apply: 'dc-lens2', adv: 'dc-lens3' },
+  'b-efield': { basic: 'dc-ef1', apply: 'dc-ef2', adv: 'dc-ef3' },
+  'b-lorentz': { basic: 'd-lor', apply: 'dc-lor2', adv: 'dc-lor3' },
+  'b-induct': { basic: 'dc-far1', apply: 'dc-far2', adv: 'dc-far3' },
+  'b-photo': { basic: 'd-photo', apply: 'dc-ph2', adv: 'dc-ph3' },
+});
+
+Object.assign(ASK, {
+  'k-circuit': [
+    { q: 'こんなとき、導線の中の電子（青い粒）はどちら向きに動いている？', pick: ['－極側から＋極側へ', '＋極側から－極側へ', 'その場で止まっている'] },
+    { q: 'こんなとき、電池の電圧を上げると、電流と豆電球はどうなっている？', pick: ['電流が増えて明るくなる', '電流が減って暗くなる', 'どちらも変わらない'] },
+    { q: 'こんなとき、直列の 5 Ω と 20 Ω で、大きな電圧がかかっているのは？', pick: ['20 Ω の方', '5 Ω の方', 'どちらも同じ'] },
+    { q: 'こんなとき、並列にした豆電球の明るさは、直列のときと比べてどうなっている？', pick: ['明るくなる', '暗くなる', '変わらない'] },
+    { q: 'こんなとき、並列の 5 Ω と 20 Ω で、明るく光っているのは？', pick: ['5 Ω の方', '20 Ω の方', 'どちらも同じ明るさ'] },
+  ],
+  'k-induct': [
+    { q: 'こんなとき、磁石をコイルに近づけると、コイルを貫く磁束はどうなっている？', pick: ['大きくなる', '小さくなる', '変わらない'] },
+    { q: 'こんなとき、往復する磁石が止まった瞬間、電流はどうなっている？', pick: ['流れていない', 'いちばん大きい', '同じ向きに流れ続ける'] },
+    { q: 'こんなとき、N極を近づけていると、コイルの左はし（磁石側）は何極になっている？', pick: ['N極', 'S極', '極はできない'] },
+    { q: 'こんなとき、速く動かし巻き数を増やすと、検流計の針のふれはどうなっている？', pick: ['大きくなる', '小さくなる', '変わらない'] },
+  ],
+  'b-interf': [
+    { q: 'こんなとき、山と谷が重なった所の水面はどうなっている？', pick: ['ほとんどゆれない', '高い山になる', '深い谷になる'] },
+    { q: 'こんなとき、白い点線（節線）の上の水面はどうなっている？', pick: ['ほとんどゆれない', '大きくゆれている', '波が速く進む'] },
+    { q: 'こんなとき、波長を短くし波源の間を広げると、節線の数はどうなっている？', pick: ['増える', '減る', '変わらない'] },
+    { q: 'こんなとき、波源を逆位相にすると、まん中の線はどうなっている？', pick: ['節線（ゆれない線）', '大きくゆれる線', '線が消えて波もない'] },
+  ],
+  'b-doppler': [
+    { q: 'こんなとき、止まった救急車の前と後ろで、聞こえる音の高さはどうなっている？', pick: ['前も後ろも同じ', '前の方が高い', '後ろの方が高い'] },
+    { q: 'こんなとき、走る救急車の前では、波面の間かくはどうなっている？', pick: ['つまって短い', '広がって長い', '後ろと同じ'] },
+    { q: 'こんなとき、人が救急車に向かって走ると、聞こえる音はどうなっている？', pick: ['高く聞こえる', '低く聞こえる', '変わらない'] },
+    { q: 'こんなとき、音源が音速より速いと、波面はどうなっている？', pick: ['重なって円すい形になる', 'きれいな同心円', '波面が消える'] },
+  ],
+  'b-refr': [
+    { q: 'こんなとき、空気からガラスに入った光は、どちらに曲がっている？', pick: ['法線に近づく向き', '法線から遠ざかる向き', '曲がらずまっすぐ'] },
+    { q: 'こんなとき、入射角を大きくすると、屈折角はどうなっている？', pick: ['大きくなる', '小さくなる', '変わらない'] },
+    { q: 'こんなとき、ガラスから空気へ出る光の屈折角は、入射角と比べてどうなっている？', pick: ['入射角より大きい', '入射角より小さい', '入射角と同じ'] },
+    { q: 'こんなとき、ガラスの中から入射角 50° で当たった光はどうなっている？', pick: ['全部反射している', 'そのまま空気へ出る', '半分だけ空気へ出る'] },
+    { q: 'こんなとき、ダイヤの中から入射角 30° で当たった光はどうなっている？', pick: ['全反射している', '空気へ出ていく', '吸収されて消える'] },
+  ],
+  'b-lens': [
+    { q: 'こんなとき、光軸に平行な光は、凸レンズを通ったあとどうなっている？', pick: ['焦点に集まる', '広がっていく', 'まっすぐ進む'] },
+    { q: 'こんなとき、焦点より外の物体の像は、どんな像になっている？', pick: ['さかさまの実像', '正立の虚像', '像はできない'] },
+    { q: 'こんなとき、焦点距離の 2 倍の位置の物体の像は、どんな大きさになっている？', pick: ['物体と同じ大きさ', '物体の 2 倍', '物体の半分'] },
+    { q: 'こんなとき、焦点の内側の物体を見ると、どんな像が見えている？', pick: ['正立で大きい虚像', 'さかさまの実像', '像は見えない'] },
+    { q: 'こんなとき、凹レンズで見える像はどんな像になっている？', pick: ['正立で小さい虚像', 'さかさまの大きい実像', '正立で大きい実像'] },
+  ],
+  'b-efield': [
+    { q: 'こんなとき、正の電荷のまわりの電気力線はどうなっている？', pick: ['外向きに放射状に出る', '電荷に向かって入る', '電荷のまわりを回る'] },
+    { q: 'こんなとき、正と負の電荷の間の電気力線はどうなっている？', pick: ['正から出て負に入る', '負から出て正に入る', 'つながっていない'] },
+    { q: 'こんなとき、電位を高さで表すと、負の電荷の所はどうなっている？', pick: ['谷になっている', '山になっている', '平らになっている'] },
+    { q: 'こんなとき、＋の試験電荷はどちらへ動いている？', pick: ['電位の低い負の電荷の方', '電位の高い正の電荷の方', '動かない'] },
+    { q: 'こんなとき、同じ符号の 2 つの電荷のまん中の電場はどうなっている？', pick: ['0 になっている', '2 倍の強さ', '片方の電荷と同じ強さ'] },
+  ],
+  'b-lorentz': [
+    { q: 'こんなとき、磁場の中に入った粒子はどんな動きをしている？', pick: ['円をえがいている', 'まっすぐ進んでいる', 'その場で止まる'] },
+    { q: 'こんなとき、磁場を強くすると、円の半径はどうなっている？', pick: ['小さくなる', '大きくなる', '変わらない'] },
+    { q: 'こんなとき、負の電荷にすると、回る向きはどうなっている？', pick: ['逆向きになる', '同じ向き', '回らなくなる'] },
+    { q: 'こんなとき、速度が磁場と斜めだと、粒子の通り道はどうなっている？', pick: ['らせんになる', '平らな円になる', 'まっすぐな線になる'] },
+  ],
+  'b-induct': [
+    { q: 'こんなとき、磁束（緑）が増えている間、起電力（朱色）の符号はどうなっている？', pick: ['負（マイナス）', '正（プラス）', 'ずっと 0'] },
+    { q: 'こんなとき、S極を近づけると、電流の向きは N極のときと比べてどうなっている？', pick: ['逆向き', '同じ向き', '電流は流れない'] },
+    { q: 'こんなとき、速さ 2.5 倍・巻き数 30 回にすると、起電力はどうなっている？', pick: ['大きくなる', '小さくなる', '変わらない'] },
+    { q: 'こんなとき、磁石をコイルの中で止めると、起電力はどうなっている？', pick: ['0 になる', 'いちばん大きくなる', '一定の値が続く'] },
+  ],
+  'b-photo': [
+    { q: 'こんなとき、光が当たった金属からは何が飛び出している？', pick: ['電子', '陽子', '原子そのもの'] },
+    { q: 'こんなとき、赤い光をいちばん強くすると、電子はどうなっている？', pick: ['1 個も出ない', 'たくさん出る', 'ゆっくり出てくる'] },
+    { q: 'こんなとき、電子 1 個はエネルギーをどこからもらっている？', pick: ['光子 1 個から', '光全体から少しずつ', '金属の熱から'] },
+    { q: 'こんなとき、陽極を −1 V にすると、電子はどうなっている？', pick: ['速い電子だけ届く', '全部の電子が届く', '1 個も飛び出さない'] },
+    { q: 'こんなとき、光を強くすると、増えているのは何？', pick: ['飛び出す電子の数', '電子 1 個の速さ', '金属の仕事関数'] },
+  ],
+});
 
 // ======================= 授業モード（教科書の順） =======================
 // 授業 = { id, course, part, chap, no, name, drills, exam:[], steps:[{ sim, set, title, text, f }], quiz:[[問題, 正解, [まちがい3つ], 解説]] }
@@ -4140,8 +5149,8 @@ const LESSONS = [
   // ===================== 物理基礎 =====================
   { id: 'k-vel', course: 'kiso', part: 0, chap: 0, no: '1-1', name: '速度と加速度', drills: ['d-accel'],
     steps: [
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1, vB: 0, e: 1 }, title: '速さと速度', text: '台車 A は（B にぶつかる前は）、同じ時間に同じ距離だけ進んでいる。これが<b>等速直線運動</b>。速さに「向き」をつけたものを<b>速度</b>という。右向きを正とすると、左へ進む物体の速度はマイナスになる。', f: '<var>v</var> = <var>x</var>/<var>t</var>　　<var>x</var> = <var>vt</var>' },
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1.5, vB: -1, e: 1 }, title: '相対速度', text: 'A は右へ、B は左へ動いている。A から見た B の速度（相対速度）は「B の速度 − A の速度」。近づく速さは 1.5 + 1 = 2.5 m/s になる。', f: '<var>v</var><sub>AB</sub> = <var>v</var><sub>B</sub> − <var>v</var><sub>A</sub>' },
+      { sim: 'collide', set: { mA: 100, mB: 100, vA: 1, vB: 0, e: 1 }, title: '速さと速度', text: 'バンパーカー A は（B にぶつかる前は）、同じ時間に同じ距離だけ進んでいる。これが<b>等速直線運動</b>。速さに「向き」をつけたものを<b>速度</b>という。右向きを正とすると、左へ進む物体の速度はマイナスになる。', f: '<var>v</var> = <var>x</var>/<var>t</var>　　<var>x</var> = <var>vt</var>' },
+      { sim: 'collide', set: { mA: 100, mB: 100, vA: 1.5, vB: -1, e: 1 }, title: '相対速度', text: 'A は右へ、B は左へ動いている。A から見た B の速度（相対速度）は「B の速度 − A の速度」。近づく速さは 1.5 + 1 = 2.5 m/s になる。', f: '<var>v</var><sub>AB</sub> = <var>v</var><sub>B</sub> − <var>v</var><sub>A</sub>' },
       { sim: 'incline', set: { th: 20, mu0: 0, mu: 0, m: 2, vec: false, dec: false }, title: '加速度', text: 'なめらかな斜面を下る物体は、だんだん速くなる。1 秒あたりの速度の変化を<b>加速度</b>という。「自分で試す」の v–t グラフが直線になっていることを確かめよう。', f: '<var>a</var> = (<var>v</var> − <var>v</var><sub>0</sub>)/<var>t</var>　［m/s²］' },
       { sim: 'incline', set: { th: 30, mu0: 0, mu: 0, m: 2, vec: false, dec: false }, title: '等加速度直線運動の式', text: '加速度が一定の運動では、次の3つの式が使える。v–t グラフの<b>傾きが加速度</b>、グラフと t 軸の間の<b>面積が移動距離</b>。', f: '<var>v</var> = <var>v</var><sub>0</sub> + <var>at</var><br><var>x</var> = <var>v</var><sub>0</sub><var>t</var> + ½<var>at</var><sup>2</sup><br><var>v</var><sup>2</sup> − <var>v</var><sub>0</sub><sup>2</sup> = 2<var>ax</var>' },
     ],
@@ -4183,10 +5192,10 @@ const LESSONS = [
     ] },
   { id: 'k-law', course: 'kiso', part: 0, chap: 1, no: '2-2', name: '運動の法則（運動方程式）', drills: ['d-incline'],
     steps: [
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1, vB: -1, e: 1 }, title: '慣性の法則', text: '力がはたらかない（またはつり合っている）物体は、止まっていれば止まり続け、動いていれば<b>等速直線運動</b>を続ける。エアトラックの台車は、摩擦がほぼないので速さが変わらない。' },
+      { sim: 'collide', set: { mA: 100, mB: 100, vA: 1, vB: -1, e: 1 }, title: '慣性の法則', text: '力がはたらかない（またはつり合っている）物体は、止まっていれば止まり続け、動いていれば<b>等速直線運動</b>を続ける。バンパーカーの床はすべりやすく、摩擦がほぼないので速さが変わらない。' },
       { sim: 'incline', set: { th: 30, mu0: 0, mu: 0, m: 2, vec: true, dec: true }, title: '運動方程式', text: '物体にはたらく力の合力 <var>F</var> と加速度 <var>a</var> の関係が<b>運動方程式</b>。なめらかな斜面では <var>ma</var> = <var>mg</var>sin<var>θ</var> なので <var>a</var> = <var>g</var>sin<var>θ</var>。', f: '<var>ma</var> = <var>F</var>　（運動の第2法則）' },
       { sim: 'incline', set: { th: 35, mu0: 0.4, mu: 0.25, m: 2, vec: true, dec: true }, title: '摩擦があるとき', text: 'すべっている間は、動摩擦力 <var>μ\'N</var> が運動と逆向きにはたらく。斜面方向の運動方程式は <var>ma</var> = <var>mg</var>sin<var>θ</var> − <var>μ\'mg</var>cos<var>θ</var>。', f: '<var>a</var> = <var>g</var>(sin<var>θ</var> − <var>μ\'</var>cos<var>θ</var>)' },
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1.5, vB: 0, e: 1 }, title: '作用・反作用の法則', text: 'A が B を押すと、B も A を同じ大きさで逆向きに押し返す。だから衝突で A は遅くなり、B は動き出す。2つの力は<b>別々の物体</b>にはたらく。' },
+      { sim: 'collide', set: { mA: 100, mB: 100, vA: 1.5, vB: 0, e: 1 }, title: '作用・反作用の法則', text: 'A が B を押すと、B も A を同じ大きさで逆向きに押し返す。だから衝突で A は遅くなり、B は動き出す。2つの力は<b>別々の物体</b>にはたらく。' },
     ],
     exam: ['運動方程式は「注目する物体」にはたらく力だけで立てる', 'つり合いの2力（同じ物体）と作用・反作用（別の物体）を区別する', '加速度は質量によらないことが多い（斜面・自由落下）'],
     quiz: [
@@ -4298,11 +5307,11 @@ const LESSONS = [
     ] },
   { id: 'b-mom', course: 'butsuri', part: 0, chap: 1, no: '2-1', name: '運動量と力積・運動量保存', drills: ['d-mom'],
     steps: [
-      { sim: 'collide', set: { mA: 2, mB: 1, vA: 1, vB: 0, e: 1 }, title: '運動量', text: '質量と速度の積を<b>運動量</b>という。向きをもつ量（ベクトル）。重いほど、速いほど、止めにくい。', f: '<var>p</var> = <var>mv</var>　［kg·m/s］' },
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1.5, vB: 0, e: 1 }, title: '力積と運動量の変化', text: '物体が受けた<b>力積</b>（力 × 時間）だけ、運動量が変化する。衝突で A は B から左向きの力積を受け、B は A から右向きの力積を受ける。', f: '<var>mv</var>\' − <var>mv</var> = <var>F</var>Δ<var>t</var>' },
-      { sim: 'collide', set: { mA: 1, mB: 2, vA: 2, vB: -0.5, e: 1 }, title: '運動量保存の法則', text: '作用・反作用で、2つが受ける力積は同じ大きさ・逆向き。だから<b>運動量の和は変わらない</b>。「自分で試す」のバーの「前」と「今」が同じことを確かめよう。', f: '<var>m</var><sub>A</sub><var>v</var><sub>A</sub> + <var>m</var><sub>B</sub><var>v</var><sub>B</sub> = <var>m</var><sub>A</sub><var>v</var><sub>A</sub>\' + <var>m</var><sub>B</sub><var>v</var><sub>B</sub>\'' },
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1.5, vB: 0, e: 0.5 }, title: 'はねかえり係数', text: '離れる速さ ÷ 近づく速さが<b>はねかえり係数</b> <var>e</var>。<var>e</var> = 1 なら弾性衝突、<var>e</var> ＜ 1 では運動エネルギーが減る（熱や音になる）。', f: '<var>e</var> = −(<var>v</var><sub>A</sub>\' − <var>v</var><sub>B</sub>\')/(<var>v</var><sub>A</sub> − <var>v</var><sub>B</sub>)' },
-      { sim: 'collide', set: { mA: 1, mB: 1, vA: 1.5, vB: 0, e: 0 }, title: '完全非弾性衝突', text: '<var>e</var> = 0 では2つがくっついて一緒に動く。運動量は保存されるが、運動エネルギーは大きく減る。' },
+      { sim: 'collide', set: { mA: 200, mB: 100, vA: 1, vB: 0, e: 1 }, title: '運動量', text: '質量と速度の積を<b>運動量</b>という。向きをもつ量（ベクトル）。重いほど、速いほど、止めにくい。', f: '<var>p</var> = <var>mv</var>　［kg·m/s］' },
+      { sim: 'collide', set: { mA: 100, mB: 100, vA: 1.5, vB: 0, e: 1 }, title: '力積と運動量の変化', text: '物体が受けた<b>力積</b>（力 × 時間）だけ、運動量が変化する。衝突で A は B から左向きの力積を受け、B は A から右向きの力積を受ける。', f: '<var>mv</var>\' − <var>mv</var> = <var>F</var>Δ<var>t</var>' },
+      { sim: 'collide', set: { mA: 100, mB: 200, vA: 2, vB: -0.5, e: 1 }, title: '運動量保存の法則', text: '作用・反作用で、2つが受ける力積は同じ大きさ・逆向き。だから<b>運動量の和は変わらない</b>。「自分で試す」のバーの「前」と「今」が同じことを確かめよう。', f: '<var>m</var><sub>A</sub><var>v</var><sub>A</sub> + <var>m</var><sub>B</sub><var>v</var><sub>B</sub> = <var>m</var><sub>A</sub><var>v</var><sub>A</sub>\' + <var>m</var><sub>B</sub><var>v</var><sub>B</sub>\'' },
+      { sim: 'collide', set: { mA: 100, mB: 100, vA: 1.5, vB: 0, e: 0.5 }, title: 'はねかえり係数', text: '離れる速さ ÷ 近づく速さが<b>はねかえり係数</b> <var>e</var>。<var>e</var> = 1 なら弾性衝突、<var>e</var> ＜ 1 では運動エネルギーが減る（熱や音になる）。', f: '<var>e</var> = −(<var>v</var><sub>A</sub>\' − <var>v</var><sub>B</sub>\')/(<var>v</var><sub>A</sub> − <var>v</var><sub>B</sub>)' },
+      { sim: 'collide', set: { mA: 100, mB: 100, vA: 1.5, vB: 0, e: 0 }, title: '完全非弾性衝突', text: '<var>e</var> = 0 では2つがくっついて一緒に動く。運動量は保存されるが、運動エネルギーは大きく減る。' },
     ],
     exam: ['運動量保存とはねかえり係数の式を連立して衝突後の速度を求める', '運動エネルギーは e = 1 のときだけ保存', '分裂（爆発）も運動量保存で考える'],
     quiz: [
@@ -4493,59 +5502,103 @@ const lessonOf = id => LESSONS.find(l => l.id === id);
 const courseName = c => COURSES.find(x => x[0] === c)[1];
 
 // ===== 授業を進める =====
-// 教科書の手順：① 見て、わかる（1画面に1つのこと。式はボタンで出す）→ ② 例題（1手順ずつ）→ ③ 練習 → ④ 確認テスト
-function lsPages(l) { return l.steps.map((_, i) => ({ k: 'learn', i })).concat(l.drills.length ? [{ k: 'example' }, { k: 'practice' }] : []); }
+// 教科書の手順（スモールステップ）：
+// ① 観察「こんなとき、どうなる？」（予想 → 答え → 式）→ ② 例題「公式にしてみよう」→ ③ 類題「計算してみよう」→ ④ 応用問題 → ⑤ 発展問題（チャレンジ）→ 確認テスト
+// 問題のページでは、3D をその問題の数字どおりに作り直す（図示）
+const lsPlan = l => LESSON_PLAN[l.id] || (l.drills.length ? { basic: l.drills[0], apply: l.drills[1] || l.drills[0] } : null);
+const DPAGE = { example: ['例題', '例題：公式にしてみよう'], similar: ['類題', '類題：計算してみよう'], apply: ['応用', '応用問題'], adv: ['発展', '発展問題（チャレンジ）'] };
+function lsPages(l) {
+  const pl = lsPlan(l), pg = l.steps.map((_, i) => ({ k: 'learn', i }));
+  if (pl) { pg.push({ k: 'example', d: pl.basic }, { k: 'similar', d: pl.basic }, { k: 'apply', d: pl.apply }); if (pl.adv) pg.push({ k: 'adv', d: pl.adv }); }
+  return pg;
+}
 function lessonOpen(id, i) {
   const l = lessonOf(id);
   setModeUI('lesson');
   document.body.classList.add('present');
   state.lessonCourse = l.course;
-  state.lesson = { l, i: i || 0, tab: 'learn', quiz: null, drill: null, rev: false, easy: false, ex: null, exam: false };
+  state.lesson = { l, i: i || 0, tab: 'learn', quiz: null, drill: null, dr: {}, rev: false, easy: false, ex: null, exam: false, pick: null, choices: null };
   lessonStep();
   renderLib();
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* 無視 */ }
 }
+// 問題の数字どおりに 3D を作る
+function showFig(D) {
+  const d = DRILLS.find(x => x.id === D.id), def = simOf(d.sim), set = Object.assign({}, D.P.set || {});
+  (def.params || []).forEach(q => { if (typeof set[q.k] === 'number') set[q.k] = clamp(set[q.k], q.min, q.max); });
+  PARAMS[d.sim] = Object.assign(defaults(def), set);
+  const prev = state.s;
+  if (prev && prev.def.id !== d.sim && prev.def.leave) prev.def.leave(prev);
+  state.id = d.sim;
+  if (R) loadSim(d.sim);
+  figCap(D.P);
+}
+// 3D の左上に「この問題の数字」を出す
+function figCap(P) {
+  const el = $('figcap'); if (!el) return;
+  if (!P) { el.hidden = true; return; }
+  const strip = t => String(t).replace(/（[^）]*）/g, '').replace(/\(.*?\)/g, '').trim();
+  el.innerHTML = `<b>図：この問題の数字</b>${P.given.filter(([, v]) => /\d/.test(v)).slice(0, 4).map(([k, v]) => `<span>${esc(strip(k))} = ${esc(strip(v))}</span>`).join('')}${P.figNote ? `<small>${esc(P.figNote)}</small>` : ''}`;
+  el.hidden = false;
+}
 function lessonStep() {
   const L = state.lesson, pg = lsPages(L.l)[L.i];
-  L.tab = 'learn'; L.rev = false; L.easy = false; L.exam = false;
-  const simId = pg.k === 'learn' ? L.l.steps[pg.i].sim : DRILLS.find(d => d.id === L.l.drills[0]).sim;
-  if (pg.k === 'learn' || !state.s || state.s.def.id !== simId) {
-    const st = pg.k === 'learn' ? L.l.steps[pg.i] : L.l.steps.find(x => x.sim === simId) || { sim: simId };
-    const def = simOf(st.sim);
+  L.tab = 'learn'; L.rev = false; L.easy = false; L.exam = false; L.pick = null; L.choices = null;
+  if (pg.k === 'learn') {
+    figCap(null);
+    const st = L.l.steps[pg.i], def = simOf(st.sim);
     PARAMS[st.sim] = Object.assign(defaults(def), st.set || {});
     const prev = state.s;
     if (prev && prev.def.id !== st.sim && prev.def.leave) prev.def.leave(prev);
     state.id = st.sim;
     if (R) loadSim(st.sim);
+    const a = ASK[L.l.id] && ASK[L.l.id][pg.i];
+    if (a) L.choices = shuffle(a.pick);
+  } else if (pg.k === 'example') {
+    if (!L.ex || L.ex.id !== pg.d) L.ex = { id: pg.d, P: DRILLS.find(x => x.id === pg.d).gen(), shown: 0 };
+    showFig(L.ex);
+  } else {
+    if (!L.dr[pg.k] || L.dr[pg.k].id !== pg.d) L.dr[pg.k] = drillNew(pg.d);
+    L.drill = L.dr[pg.k];
+    showFig(L.drill);
   }
-  if (pg.k === 'example' && (!L.ex || L.ex.id !== L.l.drills[0])) { const d = DRILLS.find(x => x.id === L.l.drills[0]); L.ex = { id: d.id, P: d.gen(), shown: 0 }; }
-  if (pg.k === 'practice' && (!L.drill || !L.l.drills.includes(L.drill.id))) L.drill = drillNew(pick(L.l.drills));
   if (L.i === lsPages(L.l).length - 1 && !lessonDone.has(L.l.id)) { lessonDone.add(L.l.id); saveSet(LS_DONE_KEY, lessonDone); }
   renderCard();
   const b = $('card').querySelector('.body'); if (b) b.scrollTop = 0;
+}
+// 授業の中で「次の問題（数字が変わる）」：図も新しい数字で作り直す
+function lessonDrillNext() {
+  const L = state.lesson, pg = lsPages(L.l)[L.i];
+  L.drill = drillNew(L.drill.id, L.drill); if (L.dr) L.dr[pg.k] = L.drill;
+  showFig(L.drill); renderCard();
 }
 function lessonMove(d) {
   const L = state.lesson; if (!L || L.quiz) return;
   const k = L.i + d; if (k < 0 || k >= lsPages(L.l).length) return;
   L.i = k; lessonStep();
 }
-// 「次へ」キー：まず式を出す・例題を1手順すすめる、それから次の画面へ
+// 大きいボタン：予想の答えを見る → 式を出す → 例題を1手順すすめる → 次の画面へ
 function lessonPrimary() {
   const L = state.lesson; if (!L || L.quiz) return;
   const pg = lsPages(L.l)[L.i];
-  if (pg.k === 'learn' && L.l.steps[pg.i].f && !L.rev) { L.rev = true; renderCard(); return; }
-  if (pg.k === 'example' && L.ex.shown < exItems(L.ex.P).length) { L.ex.shown++; renderCard(); const b = $('card').querySelector('.body'), last = b && b.querySelectorAll('.exstep'); if (last && last.length) last[last.length - 1].scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
+  if (pg.k === 'learn') {
+    const st = L.l.steps[pg.i];
+    if (L.choices && L.pick === null) { L.pick = -1; renderCard(); lsScrollTo('.ls-ans'); return; }
+    if (st.f && !L.rev) { L.rev = true; renderCard(); lsScrollTo('.ls-fbox'); return; }
+  }
+  if (pg.k === 'example' && L.ex.shown < exItems(L.ex.P).length) { L.ex.shown++; renderCard(); lsScrollTo('.exstep:last-child'); return; }
   if (L.i === lsPages(L.l).length - 1) { lsQuizStart(); renderCard(); return; }
   lessonMove(1);
 }
+function lsScrollTo(sel) { const el = $('card').querySelector(sel); if (el) el.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); }
 function lessonExit() {
-  state.lesson = null;
+  state.lesson = null; figCap(null);
   document.body.classList.remove('present');
   renderLib(); renderCard();
 }
 function lessonNext() { const L = state.lesson, list = LESSONS.filter(x => x.course === L.l.course); return list[list.indexOf(L.l) + 1] || null; }
 function lsQuizStart() {
-  const L = state.lesson;
+  const L = state.lesson; figCap(null);
   L.quiz = { i: 0, score: 0, picked: null, qs: shuffle(L.l.quiz).map(([q, a, w, ex]) => ({ q, a, ex, choices: shuffle([a].concat(w)) })) };
 }
 // 例題を1手順ずつ見せるための部品
@@ -4573,42 +5626,52 @@ function lessonCardHTML() {
   const L = state.lesson, l = L.l;
   if (L.quiz) return lsQuizHTML();
   const pages = lsPages(l), pg = pages[L.i], last = L.i === pages.length - 1, next = lessonNext();
-  const phase = pg.k === 'learn' ? 0 : pg.k === 'example' ? 1 : 2;
-  const names = l.drills.length ? ['見て、わかる', '例題', '練習', 'テスト'] : ['見て、わかる', 'テスト'];
+  const kinds = ['learn'].concat(['example', 'similar', 'apply', 'adv'].filter(k => pages.some(x => x.k === k)));
+  const names = kinds.map(k => k === 'learn' ? '観察' : DPAGE[k][0]).concat(['テスト']);
+  const phase = kinds.indexOf(pg.k);
   const flow = `<ol class="ls-flow">${names.map((n, k) => `<li class="${k === phase ? 'on' : k < phase ? 'done' : ''}">${n}</li>`).join('')}</ol>`;
-  let title, body, primary;
+  const toTest = `確認テストへ（${l.quiz.length}問）`;
+  const nextName = !last ? (pages[L.i + 1].k === 'learn' ? '次の観察へ →' : DPAGE[pages[L.i + 1].k][0] + (pages[L.i + 1].k === 'adv' ? '問題へ（チャレンジ） →' : pages[L.i + 1].k === 'apply' ? '問題へ →' : 'へ →')) : toTest;
+  let title, body, primary, extra = '';
   if (pg.k === 'learn') {
-    const st = l.steps[pg.i];
+    const st = l.steps[pg.i], a = ASK[l.id] && ASK[l.id][pg.i], open = !L.choices || L.pick !== null;
     title = st.title;
     if (L.tab === 'try') {
       body = `<button type="button" class="btn ghost" data-a="lsback">← 説明にもどる</button>${state.s ? state.s.def.html(state.s) : ''}`;
     } else {
       const easy = EASY[l.id] && EASY[l.id][pg.i];
-      body = `<p class="ls-text">${st.text}</p>
-        ${easy ? (L.easy ? `<div class="easy"><b>かみくだくと</b>${easy}</div>` : '<button type="button" class="ls-easybtn" data-a="lseasy">むずかしい？ かみくだいた説明を読む</button>') : ''}
-        ${st.f && L.rev ? `<div class="ls-fbox"><div class="ls-fh">式にすると</div><div class="formula">${st.f}</div></div>` : ''}
-        <button type="button" class="ls-trybtn" data-a="lstry">▶ 3D で自分で条件を変えてみる</button>
-        ${last ? lsExamHTML(l) : ''}`;
+      const good = a && L.pick >= 0 && L.choices[L.pick] === a.pick[0];
+      body = (a ? `<div class="ls-ask"><div class="ls-askh">こんなとき、どうなる？</div><p class="ls-q">${esc(a.q)}</p>
+          ${L.pick === null ? '<p class="note">まず 3D をよく見て、予想してから選ぼう。</p>' : ''}
+          <div class="ls-choices">${L.choices.map((c, k) => `<button type="button" class="qc${L.pick !== null ? (c === a.pick[0] ? ' right' : k === L.pick ? ' wrong' : ' dim') : ''}" data-a="lspick" data-k="${k}" ${L.pick !== null ? 'disabled' : ''}>${esc(c)}</button>`).join('')}</div>
+          ${L.pick !== null ? `<div class="verdict ${good ? 'ok' : L.pick >= 0 ? 'ng' : ''}">${good ? '予想どおり！' : '答え：' + esc(a.pick[0])}</div>` : ''}</div>` : '')
+        + (open ? `<div class="ls-ans"><div class="ls-fh">${a ? 'なぜ？（3D で起きていること）' : '3D で起きていること'}</div><p class="ls-text">${st.text}</p></div>
+          ${easy ? (L.easy ? `<div class="easy"><b>かみくだくと</b>${easy}</div>` : '<button type="button" class="ls-easybtn" data-a="lseasy">むずかしい？ かみくだいた説明を読む</button>') : ''}
+          ${st.f && L.rev ? `<div class="ls-fbox"><div class="ls-fh">式にすると</div><div class="formula">${st.f}</div></div>` : ''}
+          <button type="button" class="ls-trybtn" data-a="lstry">▶ 3D で自分で条件を変えてみる</button>
+          ${last ? lsExamHTML(l) : ''}` : '');
     }
-    primary = st.f && !L.rev ? '式にすると？ →' : last ? `確認テストへ（${l.quiz.length}問）` : pages[L.i + 1].k === 'example' ? '例題へ →' : '次へ →';
+    primary = !open ? '答えを見る →' : st.f && !L.rev ? '式にすると？ →' : nextName;
   } else if (pg.k === 'example') {
     const P = L.ex.P, items = exItems(P);
-    title = '例題をいっしょに解こう';
-    body = `<p class="qtext">${P.q}</p><div class="exsteps">${items.slice(0, L.ex.shown).map(x => `<div class="exstep">${x}</div>`).join('')}</div>
-      ${L.ex.shown < items.length ? `<p class="note">ボタンを押すと、解き方が 1 手順ずつ出る（${L.ex.shown} / ${items.length}）。自分で考えてから押そう。</p>` : ''}`;
-    primary = L.ex.shown < items.length ? (L.ex.shown === 0 ? 'まず、わかっていることは？ →' : '次の手順を見る →') : '自分で解いてみる →';
+    title = DPAGE.example[1];
+    body = `<p class="note">観察したことを、式で表して計算してみよう。<b>3D はこの例題の数字どおり</b>に動いている。</p><p class="qtext">${P.q}</p><div class="exsteps">${items.slice(0, L.ex.shown).map(x => `<div class="exstep">${x}</div>`).join('')}</div>
+      ${L.ex.shown < items.length ? `<p class="note">ボタンを押すと、解き方が 1 手順ずつ出る（${L.ex.shown} / ${items.length}）。自分で考えてから押そう。</p>` : ''}${last ? lsExamHTML(l) : ''}`;
+    primary = L.ex.shown < items.length ? (L.ex.shown === 0 ? 'まず、わかっていることは？ →' : '次の手順を見る →') : nextName;
   } else {
-    title = '自分で解いてみよう';
-    body = `<p class="note">例題と同じ手順で解こう。こまったらヒントを 1 つずつ見られる。</p>${drillBodyHTML(L.drill)}${lsExamHTML(l)}`;
-    primary = `確認テストへ（${l.quiz.length}問）`;
+    const note = { similar: '例題と同じ手順で解こう。数字だけが変わっている。こまったらヒントを 1 つずつ見られる。', apply: '例題より一歩すすんだ問題。① わかっていること → ② 使う式 → ③ 計算、の順に。ヒントを見ながらでよい。', adv: '入試に近いチャレンジ問題。むずかしければ、とばしてテストへ進んでよい。' }[pg.k];
+    title = DPAGE[pg.k][1];
+    body = `<p class="note">${note}<b>3D はこの問題の数字どおり</b>に動いている。</p>${drillBodyHTML(L.drill)}${last ? lsExamHTML(l) : ''}`;
+    primary = nextName;
+    if (pg.k === 'apply' && !last) extra = `<p class="note"><button type="button" class="linkbtn" data-a="lsquiz">発展問題をとばしてテストへ →</button></p>`;
   }
   return `<div class="card-head"><div><div class="eyebrow">${courseName(l.course)} ・ 授業 ${esc(l.no)} ・ ${esc(l.name)}</div>${flow}<h2 class="ls-title">${esc(title)}</h2></div></div>
     <div class="body">${body}
     <div class="ls-foot">
     <div class="ls-dots">${pages.map((_, k) => `<i class="${k === L.i ? 'on' : k < L.i ? 'done' : ''}"></i>`).join('')}<span>${L.i + 1} / ${pages.length}</span></div>
     <div class="ls-nav"><button type="button" class="btn" data-a="lsprev" ${L.i === 0 ? 'disabled' : ''}>← 前へ</button>
-    <button type="button" class="btn main big" data-a="lsprimary">${primary}${last && lessonPass.has(l.id) && primary.startsWith('確認') ? ' ・ 合格ずみ' : ''}</button></div>
-    ${last ? `<p class="note"><button type="button" class="linkbtn" data-a="lsskip">テストをとばして${next ? `次の授業 ${esc(next.no)} へ` : '終わる'} →</button></p>` : ''}
+    <button type="button" class="btn main big" data-a="lsprimary">${primary}${last && lessonPass.has(l.id) && primary === toTest ? ' ・ 合格ずみ' : ''}</button></div>
+    ${extra}${last ? `<p class="note"><button type="button" class="linkbtn" data-a="lsskip">テストをとばして${next ? `次の授業 ${esc(next.no)} へ` : '終わる'} →</button></p>` : ''}
     <button type="button" class="btn ghost" data-a="lsexit">授業モードをやめる</button></div></div>`;
 }
 function lsExamHTML(l) {
@@ -4664,12 +5727,13 @@ function lessonClick(t) {
   if (k === 'lsnext') { lessonMove(1); return true; }
   if (k === 'lsprimary') { lessonPrimary(); return true; }
   if (k === 'lseasy') { L.easy = true; renderCard(); return true; }
+  if (k === 'lspick') { L.pick = +a.dataset.k; renderCard(); lsScrollTo('.ls-ans'); return true; }
   if (k === 'lsexam') { L.exam = true; renderCard(); return true; }
   if (k === 'lstry') { L.tab = 'try'; renderCard(); const b = $('card').querySelector('.body'); if (b) b.scrollTop = 0; return true; }
   if (k === 'lsback') { L.tab = 'learn'; renderCard(); return true; }
   if (k === 'lsprev') { lessonMove(-1); return true; }
   if (k === 'lsexit') { lessonExit(); return true; }
-  if (k === 'lsquiz' || k === 'lsqretry') { lsQuizStart(); renderCard(); return true; }
+  if (k === 'lsquiz' || k === 'lsqretry') { lsQuizStart(); figCap(null); renderCard(); return true; }
   if (k === 'lsqback') { L.quiz = null; L.i = 0; lessonStep(); return true; }
   if (k === 'lsskip') { const nx = lessonNext(); if (nx) lessonOpen(nx.id); else lessonExit(); return true; }
   if (k === 'lsqpick') { const q = L.quiz.qs[L.quiz.i]; L.quiz.picked = q.choices[+a.dataset.k]; if (L.quiz.picked === q.a) L.quiz.score++; renderCard(); return true; }
@@ -4861,7 +5925,7 @@ function renderCard() {
   const nb = card.querySelector('.body'); if (nb) nb.scrollTop = y;
   renderLive(true);
 }
-function setModeUI(mode) { if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
+function setModeUI(mode) { figCap(null); if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
 function go(id) {
   setModeUI('sim');
   const prev = state.s;
@@ -4875,8 +5939,7 @@ function go(id) {
 function goDrill(id) {
   setModeUI('drill'); state.libCat = null;
   const d = DRILLS.find(x => x.id === id);
-  if (R && (!state.s || state.s.def.id !== d.sim)) { const prev = state.s; if (prev && prev.def.leave) prev.def.leave(prev); state.id = d.sim; loadSim(d.sim); }
-  drillStart(id); renderLib(); renderCard(); renderLegend();
+  drillStart(id); showFig(state.drill); renderLib(); renderCard(); renderLegend();
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* 無視 */ }
 }
 function setMode(mode) {
@@ -4913,7 +5976,7 @@ document.addEventListener('click', ev => {
     if (k === 'judge') { drillJudge(); return; }
     if (k === 'dskip') { const D = curDrill(); if (!D.tries) D.n++; D.tries = Math.max(D.tries, 1); D.result = 'skip'; renderCard(); return; }
     if (k === 'dhint') { const D = curDrill(), x = $('dAns'); if (x) D.input = x.value; D.hint = Math.min(D.hint + 1, D.P.hints.length); renderCard(); return; }
-    if (k === 'dnext') { if (state.mode === 'lesson') { const L = state.lesson; L.drill = drillNew(pick(L.l.drills), L.drill); } else drillStart(state.drill.id); renderCard(); const el = $('dAns'); if (el) el.focus(); return; }
+    if (k === 'dnext') { if (state.mode === 'lesson') { lessonDrillNext(); } else { drillStart(state.drill.id); showFig(state.drill); renderCard(); } const el = $('dAns'); if (el) el.focus(); return; }
   }
   if (!s) return;
   const sg = t.closest('[data-seg]');
