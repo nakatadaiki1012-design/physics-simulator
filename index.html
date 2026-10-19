@@ -181,7 +181,14 @@ ol.sol li { margin-bottom: 4px; }
 .stamp { display: inline-grid; place-items: center; font-family: var(--font-display); font-weight: 800; color: var(--stamp); border: 3px solid var(--stamp); border-radius: 50%; line-height: 1; transform: rotate(-12deg); width: 72px; height: 72px; font-size: 21px; margin: 4px 0 10px; box-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 4.5px var(--stamp); }
 .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
 /* 3Dのそばの「いまの式」 */
-.eqbox { position: absolute; left: 0; top: 0; z-index: 3; max-width: min(360px, calc(100% - 16px)); background: var(--glass); border: 1px solid var(--ink); border-radius: 3px; padding: 6px 10px 7px; font-size: 13px; line-height: 1.55; box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 18%, transparent); pointer-events: none; transition: transform .12s linear; }
+.eqbox { position: absolute; left: 8px; bottom: 54px; z-index: 3; max-width: min(340px, calc(100% - 16px)); background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--ink); border-radius: 3px; padding: 5px 9px 6px; font-size: 12.5px; line-height: 1.5; box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 18%, transparent); pointer-events: none; }
+.eqbox .eq-t { display: none; }
+.eqbox.compact { pointer-events: auto; cursor: pointer; bottom: 50px; max-width: calc(100% - 16px); font-size: 11.5px; padding: 3px 8px; }
+.eqbox.compact .eq-t { display: inline; margin-left: 6px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.eqbox.compact.open .eq-t { display: none; }
+.eqbox.compact:not(.open) b, .eqbox.compact:not(.open) div + div, .eqbox.compact:not(.open) .sm { display: none; }
+.eqbox.compact:not(.open) div:not(.eq-h) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eqbox.compact .eq-h { display: flex; align-items: baseline; }
 .eqbox .eq-h { font-size: 10.5px; letter-spacing: .12em; color: var(--warm); font-weight: 700; }
 .eqbox b { display: block; font-family: var(--font-display); font-size: 13.5px; margin-bottom: 1px; }
 .eqbox div { white-space: normal; }
@@ -189,8 +196,8 @@ ol.sol li { margin-bottom: 4px; }
 .eqbox .sm { font-size: 12px; color: var(--muted); }
 body.present .eqbox { font-size: 14.5px; max-width: 420px; }
 .eqbtn { font-family: var(--font-display); font-weight: 800; font-size: 15px; }
-@media (max-width: 900px) { .eqbox { font-size: 11.5px; max-width: calc(100% - 16px); padding: 4px 8px; } .eqbox b { font-size: 12px; } }
-@media (prefers-reduced-motion: reduce) { .eqbox { transition: none; } }
+
+
 /* かみくだいた説明・計算のヒント */
 .easy { background: color-mix(in srgb, var(--ke) 12%, var(--panel)); border-left: 3px solid var(--ke); border-radius: 2px; padding: 8px 12px; margin: 8px 0; font-size: 15.5px; line-height: 1.8; }
 .easy > b:first-child { display: block; font-size: 12px; color: var(--ink); letter-spacing: .06em; font-family: var(--font-display); }
@@ -210,6 +217,27 @@ ol.sol2 .w { font-size: 13px; color: var(--muted); line-height: 1.6; }
 ol.sol2 .w::before { content: "なぜ？ "; color: var(--accent); font-weight: 700; }
 .trap { background: color-mix(in srgb, var(--warm) 10%, var(--panel)); border-left: 3px solid var(--warm); border-radius: 2px; padding: 8px 10px; font-size: 14px; line-height: 1.65; }
 .trap > b:first-child { display: block; font-size: 12px; color: var(--warm); }
+/* 授業の流れ（教科書の手順） */
+.ls-flow { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px; padding: 0; counter-reset: f; }
+.ls-flow li { counter-increment: f; font-size: 11.5px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px 1px 6px; }
+.ls-flow li::before { content: counter(f); display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 4px; border-radius: 50%; background: var(--chip); font-size: 10px; }
+.ls-flow li.on { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.ls-flow li.on::before { background: var(--accent-ink); color: var(--accent); }
+.ls-flow li.done { color: var(--accent); border-color: var(--accent); }
+.ls-easybtn { display: block; width: 100%; text-align: left; border: 1px dashed var(--ke); background: transparent; color: var(--ink); border-radius: 4px; padding: 7px 12px; font-size: 14px; font-weight: 700; margin: 2px 0 8px; }
+.ls-fbox { margin: 8px 0; animation: lsIn .35s ease; }
+.ls-fh { font-size: 12px; font-weight: 700; color: var(--warm); letter-spacing: .06em; }
+.exsteps { display: grid; gap: 8px; margin: 6px 0; }
+.exstep { border-left: 3px solid var(--accent); background: var(--chip); border-radius: 2px; padding: 6px 12px; animation: lsIn .35s ease; }
+.exstep h4 { margin: 0 0 2px; font-size: 13px; color: var(--accent); font-family: var(--font-display); }
+.exstep p { margin: 2px 0; font-size: 14.5px; line-height: 1.7; }
+.exg { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: 14px; }
+.exg dt { color: var(--muted); } .exg dd { margin: 0; font-family: var(--font-data); }
+.exf { font-family: var(--font-data); font-size: 15.5px; font-weight: 600; overflow-x: auto; }
+.exw { color: var(--muted); font-size: 13.5px !important; }
+.exans { font: 700 22px var(--font-data); color: var(--accent); }
+@keyframes lsIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ls-fbox, .exstep { animation: none; } }
 /* 授業モード：左の一覧を消して、大きな文字の説明パネルにする */
 body.present .app { grid-template-columns: minmax(0, 1fr) 460px; }
 body.present .lib { display: none; }
@@ -896,25 +924,16 @@ function renderEq(s) {
   if (!on) { box.hidden = true; return; }
   const o = EQ[s.def.id](s);
   s.eqAt = o.at || null;
-  const h = '<div class="eq-h">いまの式</div>' + o.html;
+  const h = '<div class="eq-h">いまの式<span class="eq-t">タップで全部</span></div>' + o.html;
   if (box._v !== h) { box._v = h; box.innerHTML = h; }
   box.hidden = false;
 }
 function placeEq() {
-  const box = $('eqbox'), s = state.s;
-  if (box.hidden || !s) return;
-  const st = $('stage'), W = st.clientWidth, H = st.clientHeight, bw = box.offsetWidth, bh = box.offsetHeight;
-  let x = 10, y = H - bh - 58;
-  if (s.eqAt) {
-    const v = s.eqAt.clone().project(R.camera);
-    const px = (v.x + 1) / 2 * W, py = (1 - v.y) / 2 * H;
-    if (v.z < 1 && px > -20 && px < W + 20 && py > -20 && py < H + 20) {
-      x = px + 26 + bw > W - 8 ? px - 26 - bw : px + 26;
-      y = py - bh / 2;
-      x = clamp(x, 8, W - bw - 8); y = clamp(y, 52, H - bh - 58);
-    }
-  }
-  box.style.transform = `translate(${x.toFixed(0)}px, ${y.toFixed(0)}px)`;
+  // 3D の左下に置く（動く物の上には重ねない）。せまい画面では1行にたたむ
+  const box = $('eqbox'); if (box.hidden) return;
+  const narrow = $('stage').clientWidth < 640;
+  box.classList.toggle('compact', narrow);
+  box.classList.toggle('open', narrow && !!state.eqOpen);
 }
 
 // ======================= 力学 =======================
@@ -3013,8 +3032,8 @@ function featherTex() {
   if (FEATHER_TEX) return FEATHER_TEX;
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 900; i++) { const x = Math.random() * 128, y = Math.random() * 128, v = 225 + Math.random() * 30; g.fillStyle = `rgb(${v},${v},${v})`; g.beginPath(); g.ellipse(x, y, 1.2 + Math.random() * 2, 3 + Math.random() * 4, 0, 0, 6.28); g.fill(); }
-  FEATHER_TEX = new THREE.CanvasTexture(c); FEATHER_TEX.wrapS = FEATHER_TEX.wrapT = THREE.RepeatWrapping; FEATHER_TEX.repeat.set(3, 2);
+  for (let i = 0; i < 900; i++) { const x = Math.random() * 128, y = Math.random() * 128, v = 238 + Math.random() * 17; g.fillStyle = `rgb(${v},${v},${v})`; g.beginPath(); g.ellipse(x, y, 0.8 + Math.random() * 1.2, 2 + Math.random() * 2.5, 0, 0, 6.28); g.fill(); }
+  FEATHER_TEX = new THREE.CanvasTexture(c); FEATHER_TEX.wrapS = FEATHER_TEX.wrapT = THREE.RepeatWrapping; FEATHER_TEX.repeat.set(4, 3);
   return FEATHER_TEX;
 }
 function charMats(color, ghost) {
@@ -3025,7 +3044,8 @@ function charMats(color, ghost) {
     plumage: new THREE.MeshPhongMaterial({ vertexColors: true, map: featherTex(), shininess: 22, specular: 0x262c33 }),
     black: new THREE.MeshPhongMaterial({ color: 0x161d24, map: featherTex(), shininess: 26, specular: 0x2a323b }),
     white: new THREE.MeshPhongMaterial({ color: 0xfdfbf6, map: featherTex(), shininess: 20, specular: 0x222222 }),
-    beak: new THREE.MeshPhongMaterial({ color: 0xf29a3a, shininess: 90, specular: 0x775533 }),
+    beak: new THREE.MeshPhongMaterial({ color: 0x2b2624, shininess: 110, specular: 0x887766 }),
+    beakBase: new THREE.MeshPhongMaterial({ color: 0xe0703a, shininess: 60, specular: 0x553322 }),
     feet: new THREE.MeshPhongMaterial({ color: 0xf2a7a0, shininess: 40, specular: 0x553333 }),
     claw: new THREE.MeshPhongMaterial({ color: 0x3a2e2e, shininess: 60 }),
     cheek: new THREE.MeshPhongMaterial({ color: 0xf08a8a, transparent: true, opacity: 0.55, shininess: 5, depthWrite: false }),
@@ -3115,15 +3135,17 @@ function makeChar(opts) {
   const eyes = [];
   [-1, 1].forEach(q => {
     const eg = new THREE.Group(); eg.position.set(q * 0.105, 0.2, 0.185); eg.rotation.y = q * 0.45; head.add(eg);
-    add(eg, new THREE.SphereGeometry(0.06, 24, 16), M.white, [0, 0, 0]).scale.set(1, 1.08, 0.38);
+    add(eg, new THREE.SphereGeometry(0.05, 24, 16), M.white, [0, 0, 0]).scale.set(1, 1.08, 0.38);
     const ball = new THREE.Group(); ball.position.z = 0.016; eg.add(ball); eyes.push(ball);
-    add(ball, new THREE.SphereGeometry(0.04, 20, 16), M.eye).scale.set(1, 1.12, 0.6);
+    add(ball, new THREE.SphereGeometry(0.036, 20, 16), M.eye).scale.set(1, 1.12, 0.6);
     add(ball, new THREE.SphereGeometry(0.013, 10, 8), M.shine, [0.012, 0.016, 0.022]);
     add(ball, new THREE.SphereGeometry(0.006, 8, 6), M.shine, [-0.012, -0.012, 0.022]);
     add(head, new THREE.SphereGeometry(0.03, 14, 10), M.cheek, [q * 0.14, 0.11, 0.165], [0, q * 0.6, 0]).scale.set(1.2, 0.7, 0.3);
   });
   // くちばし：小さく、少し下向き
-  const bk = add(head, new THREE.ConeGeometry(0.042, 0.1, 18), M.beak, [0, 0.12, 0.25], [Math.PI / 2 + 0.25, 0, 0]); bk.scale.set(1, 1, 0.75);
+  const bk = add(head, new THREE.ConeGeometry(0.036, 0.115, 18), M.beak, [0, 0.118, 0.262], [Math.PI / 2 + 0.22, 0, 0]); bk.scale.set(1, 1, 0.72);
+  // 下のくちばしはオレンジ（上は黒）
+  const bl = add(head, new THREE.ConeGeometry(0.03, 0.1, 16), M.beakBase, [0, 0.104, 0.252], [Math.PI / 2 + 0.38, 0, 0]); bl.scale.set(0.92, 1, 0.55);
   // つばさ：平たく、上は黒・内側は白
   ['L', 'R'].forEach(sd => {
     const sx = sd === 'L' ? 1 : -1;
@@ -3152,6 +3174,7 @@ function makeChar(opts) {
   JOINTS.forEach(k => { cur[k] = V3(); vel[k] = V3(); tgt[k] = V3(); });
   const C = { root, J, eyes, blinkAt: 1 + Math.random() * 3, tilt: 0, sc, cur, tgt, k: opts.stiff || 140, ik: { L: null, R: null }, lookAt: null, sway: V3(), lastPos: null, lastVel: null, extra: null };
   C.pose = (p, extra) => {
+    C.poseName = typeof p === 'string' ? p : 'custom';
     const P = typeof p === 'string' ? POSES[p] : p;
     JOINTS.forEach(k => { const a = (P && P[k]) || (POSES.idle[k] && p !== 'stand' ? POSES.idle[k] : null); tgt[k].set(...(a || [0, 0, 0]).map(x => x * DEG)); });
     if (extra) Object.keys(extra).forEach(k => tgt[k].set(...extra[k].map(x => x * DEG)));
@@ -3159,7 +3182,7 @@ function makeChar(opts) {
     return C;
   };
   C.add = (k, a) => { tgt[k].x += a[0] * DEG; tgt[k].y += a[1] * DEG; tgt[k].z += a[2] * DEG; return C; };
-  C.snap = () => { JOINTS.forEach(k => { cur[k].copy(tgt[k]); vel[k].set(0, 0, 0); }); J.hips.position.y = CH.hipH - (C.drop || 0); return C; };
+  C.snap = () => { JOINTS.forEach(k => { cur[k].copy(tgt[k]); vel[k].set(0, 0, 0); }); J.hips.position.y = C.baseY = CH.hipH - (C.drop || 0); return C; };
   C.look = p => { C.lookAt = p; return C; };
   C.reach = (side, p) => { C.ik[side] = p; return C; };
   C.hand = side => { const v = V3(0, -0.06, 0); J['wr' + side].localToWorld(v); return v; };
@@ -3224,19 +3247,26 @@ function makeChar(opts) {
         cv.addScaledVector(vv, dt);
       }
     });
-    J.hips.position.y = lerp(J.hips.position.y, CH.hipH - (C.drop || 0), dt > 0 ? 1 - Math.exp(-dt * 10) : 0);
+    C.baseY = lerp(C.baseY === undefined ? J.hips.position.y : C.baseY, CH.hipH - (C.drop || 0), dt > 0 ? 1 - Math.exp(-dt * 10) : 0);
     // まばたき（ときどき目を閉じる）と、首を少しかしげる
     const tt = t || 0;
     if (tt > C.blinkAt + 0.14) C.blinkAt = tt + 2 + Math.random() * 3.5;
     const bl = tt > C.blinkAt && tt < C.blinkAt + 0.14 ? 0.12 : 1;
     eyes.forEach(e => { e.scale.y = lerp(e.scale.y, bl, 0.6); });
     const tilt = C.lookAt ? 0 : Math.sin(tt * 0.7 + C.blinkAt) * 0.07;
+    const free = ['idle', 'stand', 'watch', 'cheer', 'ear', 'point'].includes(C.poseName) && !C.ik.L && !C.ik.R;
+    if (!C.beh || tt > C.beh.t0 + C.beh.d + C.beh.wait) C.beh = { type: free ? pick(['flap', 'look', 'hop', 'flap', 'look']) : 'none', t0: tt, d: 0.9, wait: 2.5 + Math.random() * 3 };
+    const bp = (tt - C.beh.t0) / C.beh.d, on = free && bp >= 0 && bp <= 1, env = on ? Math.sin(bp * Math.PI) : 0;
+    const flap = on && C.beh.type === 'flap' ? env * (0.5 + 0.35 * Math.sin(bp * Math.PI * 6)) : 0;
+    const lookY = on && C.beh.type === 'look' && !C.lookAt ? Math.sin(bp * Math.PI * 2) * 0.6 : 0;
+    const hop = on && C.beh.type === 'hop' ? Math.max(0, Math.sin(bp * Math.PI * 2)) * 0.05 : 0;
+    J.hips.position.y = C.baseY + hop;
     // 呼吸（ほんの少し）
     const br = Math.sin((t || 0) * 2.2) * 0.012;
     JOINTS.forEach(j => {
       if ((j === 'shL' || j === 'elL') && C.ik.L) return;
       if ((j === 'shR' || j === 'elR') && C.ik.R) return;
-      J[j].rotation.set(cur[j].x + (j === 'chest' ? br : 0), cur[j].y, cur[j].z + (j === 'head' ? tilt : 0));
+      J[j].rotation.set(cur[j].x + (j === 'chest' ? br : 0), cur[j].y + (j === 'head' ? lookY : 0), cur[j].z + (j === 'head' ? tilt : 0) + (j === 'shL' ? flap : j === 'shR' ? -flap : 0));
     });
     // 頭を見たい物に向ける
     if (C.lookAt) {
@@ -3850,6 +3880,16 @@ const SIM_EASY = {
 // gen() → { q, ans, unit, given:[[記号, 値]], find, hints:[…], sol:[[式, なぜ]], why, trap, wrong:[[まちがえたときの値, 原因]] }
 const s3 = x => sig(x, 3);
 const DRILLS = [
+  { id: 'd-accel', sim: 'incline', name: '等加速度運動の速さ', gen() {
+    const a = rnd(0.5, 4, 0.5), t = rnd(2, 8, 1), v = a * t;
+    return { q: `止まっていた台車が、加速度 ${a} m/s² で一直線に動き出した。${t} 秒後の速さは何 m/s か。`, ans: v, unit: 'm/s',
+      given: [['v₀（はじめの速さ）', '0 m/s（止まっていた）'], ['a（加速度）', `${a} m/s²（1秒ごとに ${a} m/s ずつ速くなる）`], ['t（時間）', `${t} s`]], find: `${t} 秒後の速さ v`,
+      hints: ['加速度 ' + a + ' m/s² は「1 秒ごとに ' + a + ' m/s ずつ速くなる」という意味。', '速さの式 v = v₀ + at を使う。', `v₀ = 0 なので、v = ${a} × ${t}。`],
+      sol: [['v = v₀ + at', '等加速度運動の速さの式。はじめの速さに「増えたぶん（加速度 × 時間）」をたす'], [`v = 0 + ${a} × ${t} = ${s3(v)} m/s`, '止まっていたので v₀ = 0']],
+      why: '加速度は「1 秒あたりに速さがどれだけ増えるか」。だから t 秒間では a × t だけ速くなる。はじめの速さ v₀ にそれをたしたものが、いまの速さ。',
+      trap: '距離の式（x = ½at²）とまちがえないように。問われているのは「速さ」。',
+      wrong: [[0.5 * a * t * t, 'それは進んだ距離（x = ½at²）。速さは v = at'], [a / t, 'a ÷ t になっている。速さは a × t']] };
+  } },
   { id: 'd-fall', sim: 'fall', name: '自由落下の時間', gen() {
     const h = rnd(5, 80, 5), t = Math.sqrt(2 * h / 9.8);
     return { q: `高さ ${h} m の所から小球を静かにはなした。地面に着くまでの時間は何秒か。g = 9.8 m/s² とする。`, ans: t, unit: 's',
@@ -4098,7 +4138,7 @@ const LESSON_PARTS = {
 };
 const LESSONS = [
   // ===================== 物理基礎 =====================
-  { id: 'k-vel', course: 'kiso', part: 0, chap: 0, no: '1-1', name: '速度と加速度', drills: ['d-fall'],
+  { id: 'k-vel', course: 'kiso', part: 0, chap: 0, no: '1-1', name: '速度と加速度', drills: ['d-accel'],
     steps: [
       { sim: 'collide', set: { mA: 1, mB: 1, vA: 1, vB: 0, e: 1 }, title: '速さと速度', text: '台車 A は（B にぶつかる前は）、同じ時間に同じ距離だけ進んでいる。これが<b>等速直線運動</b>。速さに「向き」をつけたものを<b>速度</b>という。右向きを正とすると、左へ進む物体の速度はマイナスになる。', f: '<var>v</var> = <var>x</var>/<var>t</var>　　<var>x</var> = <var>vt</var>' },
       { sim: 'collide', set: { mA: 1, mB: 1, vA: 1.5, vB: -1, e: 1 }, title: '相対速度', text: 'A は右へ、B は左へ動いている。A から見た B の速度（相対速度）は「B の速度 − A の速度」。近づく速さは 1.5 + 1 = 2.5 m/s になる。', f: '<var>v</var><sub>AB</sub> = <var>v</var><sub>B</sub> − <var>v</var><sub>A</sub>' },
@@ -4453,32 +4493,50 @@ const lessonOf = id => LESSONS.find(l => l.id === id);
 const courseName = c => COURSES.find(x => x[0] === c)[1];
 
 // ===== 授業を進める =====
+// 教科書の手順：① 見て、わかる（1画面に1つのこと。式はボタンで出す）→ ② 例題（1手順ずつ）→ ③ 練習 → ④ 確認テスト
+function lsPages(l) { return l.steps.map((_, i) => ({ k: 'learn', i })).concat(l.drills.length ? [{ k: 'example' }, { k: 'practice' }] : []); }
 function lessonOpen(id, i) {
   const l = lessonOf(id);
   setModeUI('lesson');
   document.body.classList.add('present');
   state.lessonCourse = l.course;
-  state.lesson = { l, i: i || 0, tab: 'learn', quiz: null, drill: null };
+  state.lesson = { l, i: i || 0, tab: 'learn', quiz: null, drill: null, rev: false, easy: false, ex: null, exam: false };
   lessonStep();
   renderLib();
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* 無視 */ }
 }
 function lessonStep() {
-  const L = state.lesson, st = L.l.steps[L.i];
-  const def = simOf(st.sim);
-  PARAMS[st.sim] = Object.assign(defaults(def), st.set || {});
-  const prev = state.s;
-  if (prev && prev.def.id !== st.sim && prev.def.leave) prev.def.leave(prev);
-  state.id = st.sim;
-  if (R) loadSim(st.sim);
-  L.tab = 'learn';
-  if (L.i === L.l.steps.length - 1 && !lessonDone.has(L.l.id)) { lessonDone.add(L.l.id); saveSet(LS_DONE_KEY, lessonDone); }
+  const L = state.lesson, pg = lsPages(L.l)[L.i];
+  L.tab = 'learn'; L.rev = false; L.easy = false; L.exam = false;
+  const simId = pg.k === 'learn' ? L.l.steps[pg.i].sim : DRILLS.find(d => d.id === L.l.drills[0]).sim;
+  if (pg.k === 'learn' || !state.s || state.s.def.id !== simId) {
+    const st = pg.k === 'learn' ? L.l.steps[pg.i] : L.l.steps.find(x => x.sim === simId) || { sim: simId };
+    const def = simOf(st.sim);
+    PARAMS[st.sim] = Object.assign(defaults(def), st.set || {});
+    const prev = state.s;
+    if (prev && prev.def.id !== st.sim && prev.def.leave) prev.def.leave(prev);
+    state.id = st.sim;
+    if (R) loadSim(st.sim);
+  }
+  if (pg.k === 'example' && (!L.ex || L.ex.id !== L.l.drills[0])) { const d = DRILLS.find(x => x.id === L.l.drills[0]); L.ex = { id: d.id, P: d.gen(), shown: 0 }; }
+  if (pg.k === 'practice' && (!L.drill || !L.l.drills.includes(L.drill.id))) L.drill = drillNew(pick(L.l.drills));
+  if (L.i === lsPages(L.l).length - 1 && !lessonDone.has(L.l.id)) { lessonDone.add(L.l.id); saveSet(LS_DONE_KEY, lessonDone); }
   renderCard();
+  const b = $('card').querySelector('.body'); if (b) b.scrollTop = 0;
 }
 function lessonMove(d) {
   const L = state.lesson; if (!L || L.quiz) return;
-  const k = L.i + d; if (k < 0 || k >= L.l.steps.length) return;
+  const k = L.i + d; if (k < 0 || k >= lsPages(L.l).length) return;
   L.i = k; lessonStep();
+}
+// 「次へ」キー：まず式を出す・例題を1手順すすめる、それから次の画面へ
+function lessonPrimary() {
+  const L = state.lesson; if (!L || L.quiz) return;
+  const pg = lsPages(L.l)[L.i];
+  if (pg.k === 'learn' && L.l.steps[pg.i].f && !L.rev) { L.rev = true; renderCard(); return; }
+  if (pg.k === 'example' && L.ex.shown < exItems(L.ex.P).length) { L.ex.shown++; renderCard(); const b = $('card').querySelector('.body'), last = b && b.querySelectorAll('.exstep'); if (last && last.length) last[last.length - 1].scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
+  if (L.i === lsPages(L.l).length - 1) { lsQuizStart(); renderCard(); return; }
+  lessonMove(1);
 }
 function lessonExit() {
   state.lesson = null;
@@ -4489,6 +4547,14 @@ function lessonNext() { const L = state.lesson, list = LESSONS.filter(x => x.cou
 function lsQuizStart() {
   const L = state.lesson;
   L.quiz = { i: 0, score: 0, picked: null, qs: shuffle(L.l.quiz).map(([q, a, w, ex]) => ({ q, a, ex, choices: shuffle([a].concat(w)) })) };
+}
+// 例題を1手順ずつ見せるための部品
+function exItems(P) {
+  return [
+    `<h4>① わかっていることを書き出す</h4><dl class="exg">${P.given.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl><p>求めるもの：<b>${esc(P.find)}</b></p>`,
+    `<h4>② 使う式を決める</h4><p>${P.why}</p>`,
+  ].concat(P.sol.map(([f, w], i) => `<h4>③ 計算する（${i + 1}）</h4><div class="exf">${f}</div><p class="exw">なぜ？ ${w}</p>`))
+    .concat([`<h4>答え</h4><div class="exans">${Math.abs(P.ans) >= 0.01 && Math.abs(P.ans) < 1e4 ? +P.ans.toPrecision(3) : sci(P.ans, 2)} ${esc(P.unit)}</div><p class="exw">気をつけよう：${P.trap}</p>`]);
 }
 
 // ===== 授業の画面 =====
@@ -4506,25 +4572,48 @@ function lessonMenuHTML() {
 function lessonCardHTML() {
   const L = state.lesson, l = L.l;
   if (L.quiz) return lsQuizHTML();
-  const st = l.steps[L.i], last = L.i === l.steps.length - 1, next = lessonNext();
-  const tabs = [['learn', '説明'], ['try', '自分で試す']].concat(l.drills.length ? [['calc', '計算練習']] : []);
-  const tab = tabs.some(t => t[0] === L.tab) ? L.tab : 'learn';
-  let body;
-  if (tab === 'try') body = state.s ? state.s.def.html(state.s) : '';
-  else if (tab === 'calc') { if (!L.drill || !l.drills.includes(L.drill.id)) L.drill = drillNew(pick(l.drills)); body = drillBodyHTML(L.drill); }
-  else body = `<p class="ls-text">${st.text}</p>${st.f ? `<div class="formula">${st.f}</div>` : ''}
-    ${EASY[l.id] && EASY[l.id][L.i] ? `<div class="easy"><b>かみくだくと</b>${EASY[l.id][L.i]}</div>` : ''}
-    <button type="button" class="ls-trybtn" data-ltab="try">▶ 自分で条件を変えて試してみよう</button>
-    ${last ? `<div class="ls-exam"><h3>テスト・入試に出るポイント</h3><ul>${l.exam.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}`;
-  return `<div class="card-head"><div><div class="eyebrow">${courseName(l.course)} ・ 授業 ${esc(l.no)} ・ ${esc(l.name)}</div><h2 class="ls-title">${esc(st.title)}</h2></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([k, n]) => `<button type="button" role="tab" data-ltab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
+  const pages = lsPages(l), pg = pages[L.i], last = L.i === pages.length - 1, next = lessonNext();
+  const phase = pg.k === 'learn' ? 0 : pg.k === 'example' ? 1 : 2;
+  const names = l.drills.length ? ['見て、わかる', '例題', '練習', 'テスト'] : ['見て、わかる', 'テスト'];
+  const flow = `<ol class="ls-flow">${names.map((n, k) => `<li class="${k === phase ? 'on' : k < phase ? 'done' : ''}">${n}</li>`).join('')}</ol>`;
+  let title, body, primary;
+  if (pg.k === 'learn') {
+    const st = l.steps[pg.i];
+    title = st.title;
+    if (L.tab === 'try') {
+      body = `<button type="button" class="btn ghost" data-a="lsback">← 説明にもどる</button>${state.s ? state.s.def.html(state.s) : ''}`;
+    } else {
+      const easy = EASY[l.id] && EASY[l.id][pg.i];
+      body = `<p class="ls-text">${st.text}</p>
+        ${easy ? (L.easy ? `<div class="easy"><b>かみくだくと</b>${easy}</div>` : '<button type="button" class="ls-easybtn" data-a="lseasy">むずかしい？ かみくだいた説明を読む</button>') : ''}
+        ${st.f && L.rev ? `<div class="ls-fbox"><div class="ls-fh">式にすると</div><div class="formula">${st.f}</div></div>` : ''}
+        <button type="button" class="ls-trybtn" data-a="lstry">▶ 3D で自分で条件を変えてみる</button>
+        ${last ? lsExamHTML(l) : ''}`;
+    }
+    primary = st.f && !L.rev ? '式にすると？ →' : last ? `確認テストへ（${l.quiz.length}問）` : pages[L.i + 1].k === 'example' ? '例題へ →' : '次へ →';
+  } else if (pg.k === 'example') {
+    const P = L.ex.P, items = exItems(P);
+    title = '例題をいっしょに解こう';
+    body = `<p class="qtext">${P.q}</p><div class="exsteps">${items.slice(0, L.ex.shown).map(x => `<div class="exstep">${x}</div>`).join('')}</div>
+      ${L.ex.shown < items.length ? `<p class="note">ボタンを押すと、解き方が 1 手順ずつ出る（${L.ex.shown} / ${items.length}）。自分で考えてから押そう。</p>` : ''}`;
+    primary = L.ex.shown < items.length ? (L.ex.shown === 0 ? 'まず、わかっていることは？ →' : '次の手順を見る →') : '自分で解いてみる →';
+  } else {
+    title = '自分で解いてみよう';
+    body = `<p class="note">例題と同じ手順で解こう。こまったらヒントを 1 つずつ見られる。</p>${drillBodyHTML(L.drill)}${lsExamHTML(l)}`;
+    primary = `確認テストへ（${l.quiz.length}問）`;
+  }
+  return `<div class="card-head"><div><div class="eyebrow">${courseName(l.course)} ・ 授業 ${esc(l.no)} ・ ${esc(l.name)}</div>${flow}<h2 class="ls-title">${esc(title)}</h2></div></div>
     <div class="body">${body}
     <div class="ls-foot">
-    <div class="ls-dots">${l.steps.map((_, k) => `<i class="${k === L.i ? 'on' : k < L.i ? 'done' : ''}"></i>`).join('')}<span>${L.i + 1} / ${l.steps.length}</span></div>
+    <div class="ls-dots">${pages.map((_, k) => `<i class="${k === L.i ? 'on' : k < L.i ? 'done' : ''}"></i>`).join('')}<span>${L.i + 1} / ${pages.length}</span></div>
     <div class="ls-nav"><button type="button" class="btn" data-a="lsprev" ${L.i === 0 ? 'disabled' : ''}>← 前へ</button>
-    ${!last ? '<button type="button" class="btn main big" data-a="lsnext">次へ →</button>' : `<button type="button" class="btn main big" data-a="lsquiz">確認テストへ（${l.quiz.length}問）${lessonPass.has(l.id) ? ' ・ 合格ずみ' : ''}</button>`}</div>
+    <button type="button" class="btn main big" data-a="lsprimary">${primary}${last && lessonPass.has(l.id) && primary.startsWith('確認') ? ' ・ 合格ずみ' : ''}</button></div>
     ${last ? `<p class="note"><button type="button" class="linkbtn" data-a="lsskip">テストをとばして${next ? `次の授業 ${esc(next.no)} へ` : '終わる'} →</button></p>` : ''}
     <button type="button" class="btn ghost" data-a="lsexit">授業モードをやめる</button></div></div>`;
+}
+function lsExamHTML(l) {
+  const L = state.lesson;
+  return L.exam ? `<div class="ls-exam"><h3>テスト・入試に出るポイント</h3><ul>${l.exam.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '<button type="button" class="linkbtn" data-a="lsexam">テスト・入試に出るポイントを見る</button>';
 }
 function lsQuizHTML() {
   const L = state.lesson, l = L.l, qz = L.quiz, n = qz.qs.length;
@@ -4557,7 +4646,7 @@ function lessonClick(t) {
   const lo = t.closest('[data-lesson]');
   if (lo) { lessonOpen(lo.dataset.lesson); return true; }
   const lt = t.closest('[data-lstest]');
-  if (lt) { lessonOpen(lt.dataset.lstest, lessonOf(lt.dataset.lstest).steps.length - 1); lsQuizStart(); renderCard(); return true; }
+  if (lt) { const l2 = lessonOf(lt.dataset.lstest); lessonOpen(l2.id, lsPages(l2).length - 1); lsQuizStart(); renderCard(); return true; }
   const tb = t.closest('[data-ltab]');
   if (tb && state.lesson) { state.lesson.tab = tb.dataset.ltab; renderCard(); const b = $('card').querySelector('.body'); if (b) b.scrollTop = 0; return true; }
   const a = t.closest('[data-a]');
@@ -4573,6 +4662,11 @@ function lessonClick(t) {
   if (!a || !state.lesson) return false;
   const L = state.lesson, k = a.dataset.a;
   if (k === 'lsnext') { lessonMove(1); return true; }
+  if (k === 'lsprimary') { lessonPrimary(); return true; }
+  if (k === 'lseasy') { L.easy = true; renderCard(); return true; }
+  if (k === 'lsexam') { L.exam = true; renderCard(); return true; }
+  if (k === 'lstry') { L.tab = 'try'; renderCard(); const b = $('card').querySelector('.body'); if (b) b.scrollTop = 0; return true; }
+  if (k === 'lsback') { L.tab = 'learn'; renderCard(); return true; }
   if (k === 'lsprev') { lessonMove(-1); return true; }
   if (k === 'lsexit') { lessonExit(); return true; }
   if (k === 'lsquiz' || k === 'lsqretry') { lsQuizStart(); renderCard(); return true; }
@@ -4849,7 +4943,7 @@ document.addEventListener('keydown', ev => {
   if (ev.target.id === 'dAns' && ev.key === 'Enter') { drillJudge(); return; }
   const tag = (ev.target.tagName || '').toLowerCase();
   if (tag === 'input' && ev.target.type !== 'range' || tag === 'textarea' || ev.ctrlKey || ev.metaKey || ev.altKey) return;
-  if (state.lesson && !state.lesson.quiz && tag !== 'input' && (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft')) { ev.preventDefault(); lessonMove(ev.key === 'ArrowRight' ? 1 : -1); return; }
+  if (state.lesson && !state.lesson.quiz && tag !== 'input' && (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft')) { ev.preventDefault(); if (ev.key === 'ArrowRight') lessonPrimary(); else lessonMove(-1); return; }
   if (ev.key === ' ' && tag !== 'button') { ev.preventDefault(); togglePlay(); }
   else if (ev.key === 'r' || ev.key === 'R') { restart(); state.running = true; updatePlay(); }
 });
@@ -4857,6 +4951,7 @@ $('btnPlay').addEventListener('click', togglePlay);
 $('btnRestart').addEventListener('click', () => { restart(); state.running = true; updatePlay(); });
 $('btnStep').addEventListener('click', () => { const s = state.s; if (!s || s.ended) return; state.running = false; updatePlay(); advance(s, 0.05 * (s.def.timeScale || 1)); renderLive(true); });
 $('speed').addEventListener('click', ev => { const b = ev.target.closest('[data-sp]'); if (!b) return; state.speed = +b.dataset.sp; document.querySelectorAll('#speed [data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+$('eqbox').addEventListener('click', () => { state.eqOpen = !state.eqOpen; placeEq(); });
 $('btnEq').addEventListener('click', () => { showEq = !showEq; try { localStorage.setItem('physics-3d:eq', showEq ? '1' : '0'); } catch (e) { /* 無視 */ } if (state.s) renderEq(state.s); });
 $('btnReset').addEventListener('click', () => { if (R && R.lastView) view(...R.lastView); });
 $('btnFull').addEventListener('click', () => {
