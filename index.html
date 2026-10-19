@@ -14,8 +14,10 @@
 :root {
   --bg: #f1ede4; --panel: #fbf9f4; --glass: rgba(251, 249, 244, 0.95); --ink: #24282b; --muted: #6d6b63; --line: #d6d0c2; --chip: #ebe6da;
   --accent: #2c6352; --accent-ink: #fbf9f4; --warm: #b8502c; --ok: #2c6352; --ng: #b8502c; --stamp: #c0392b;
+  --kn: #c06400; --ask: #1c74d0;
   --vel: #2f5f9e; --force: #b8502c; --acc: #7a4fa0; --ke: #d08a1e; --pe: #2f7f9e;
   --bench-1: #faf8f2; --bench-2: #e4dfd3;
+  --sky-top: #e6e1d6; --sky-hz: #f1ede4; --sky-top-o: #a9cdec; --sky-hz-o: #e9efe2;
   --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
   --font-data: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
@@ -25,8 +27,12 @@
   :root:not([data-theme="light"]) {
     --bg: #18201c; --panel: #1f2924; --glass: rgba(31, 41, 36, 0.95); --ink: #ebe8dd; --muted: #a3a89b; --line: #36443c; --chip: #28342e;
     --accent: #8cc5a6; --accent-ink: #18201c; --warm: #eda26b; --ok: #8cc5a6; --ng: #eda26b; --stamp: #f07a6a;
-    --vel: #8fb5e8; --force: #f0906a; --acc: #c9a2ea; --ke: #f0c060; --pe: #7fc6e0;
+    --kn: #f5b04f; --ask: #6fb2ff;
+    --kn: #f5b04f; --ask: #6fb2ff;
+  --vel: #8fb5e8; --force: #f0906a; --acc: #c9a2ea; --ke: #f0c060; --pe: #7fc6e0;
     --bench-1: #26332d; --bench-2: #121915; color-scheme: dark;
+  --sky-top: #24302b; --sky-hz: #151d19; --sky-top-o: #12243a; --sky-hz-o: #1a2a24;
+    --sky-top: #24302b; --sky-hz: #151d19; --sky-top-o: #12243a; --sky-hz-o: #1a2a24;
   }
 }
 :root[data-theme="dark"] {
@@ -70,7 +76,8 @@ var { font-family: var(--font-display); font-style: italic; font-weight: 700; }
 .item .ic { width: 24px; height: 22px; border-radius: 4px; background: var(--chip); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--accent); flex: none; font-family: var(--font-display); }
 .item[aria-current="true"] .ic { background: var(--accent); color: var(--accent-ink); }
 .item .done { margin-left: auto; color: var(--ok); font-weight: 700; }
-.stage-wrap { position: relative; border-radius: var(--r); overflow: hidden; min-height: 0; border: 1px solid var(--line); background: radial-gradient(120% 90% at 40% 30%, var(--bench-1), var(--bench-2)); }
+.stage-wrap { position: relative; border-radius: var(--r); overflow: hidden; min-height: 0; border: 1px solid var(--line); background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-hz) 62%, var(--sky-hz) 100%); }
+.stage-wrap.outdoor { --sky-top: var(--sky-top-o); --sky-hz: var(--sky-hz-o); }
 .stage-wrap.space { background: radial-gradient(120% 90% at 40% 30%, #1d2a35, #05080c); }
 .stage-wrap.is-max { position: fixed; inset: 0; z-index: 50; border-radius: 0; }
 #stage { position: absolute; inset: 0; touch-action: none; }
@@ -251,6 +258,39 @@ ol.sol2 .w::before { content: "なぜ？ "; color: var(--accent); font-weight: 7
 .exans { font: 700 22px var(--font-data); color: var(--accent); }
 @keyframes lsIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .ls-fbox, .exstep, .ls-ans { animation: none; } }
+/* 文章題 → 図 → 式 → 確かめる（オレンジ = わかっている数字、青 = 求めるもの） */
+.stepbox { border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px 10px; background: var(--panel); animation: lsIn .3s ease; }
+.stepbox + .stepbox, .stepbox + .ansbig, .ansbig + .stepbox { margin-top: 8px; }
+.stepbox .sh { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .06em; margin-bottom: 4px; }
+.prob { font-size: 16.5px; line-height: 1.85; font-weight: 600; }
+.prob .kn { color: var(--kn); font-weight: 800; background: color-mix(in srgb, var(--kn) 13%, transparent); border-radius: 3px; padding: 0 3px; white-space: nowrap; }
+.prob .ask { color: var(--ask); font-weight: 800; text-decoration: underline 2px; text-underline-offset: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { display: inline-flex; flex-direction: column; border-radius: 6px; padding: 3px 10px 4px; font: 700 15px var(--font-data); line-height: 1.35; border: 1.5px solid; }
+.chip b { font-style: italic; font-family: var(--font-display); }
+.chip small { font: 500 11px var(--font-body, inherit); color: var(--muted); }
+.chip.kn { color: var(--kn); border-color: var(--kn); background: color-mix(in srgb, var(--kn) 8%, var(--panel)); }
+.chip.ask { color: var(--ask); border-color: var(--ask); border-style: dashed; background: color-mix(in srgb, var(--ask) 8%, var(--panel)); }
+.stepbox .exf { font-size: 18px; margin: 2px 0; }
+.ansbig { display: flex; align-items: baseline; gap: 12px; border-radius: 4px; padding: 8px 14px; background: color-mix(in srgb, var(--ask) 10%, var(--panel)); border: 2px solid var(--ask); animation: lsIn .3s ease; }
+.ansbig span { font-weight: 700; font-size: 14px; color: var(--ask); }
+.ansbig b { font: 800 26px var(--font-data); color: var(--ask); }
+ol.sol3 { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+ol.sol3 .f { font: 600 16px var(--font-data); overflow-x: auto; }
+ol.sol3 .w { font-size: 13px; color: var(--muted); }
+.checkit { margin: 10px 0 4px; font-size: 14px; color: var(--muted); }
+.checkit b { display: block; color: var(--accent); font-size: 15px; }
+details.more { margin-top: 6px; font-size: 14px; }
+details.more summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+details.more p { margin: 6px 0; line-height: 1.7; }
+.trapline b { display: block; color: var(--warm); font-size: 12px; }
+.linkbtn.exitlink { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+/* 3D：問題の数字の名札。図にしている間はほかの名札・式・凡例をかくす */
+.lbl.kn { color: var(--panel); background: var(--kn); border-color: var(--kn); font-size: 13.5px; line-height: 22px; box-shadow: 0 2px 6px rgb(0 0 0 / .18); }
+.lbl.kn var { font-family: var(--font-display); }
+.figmode .lbl:not(.kn), .figmode #ovTL, .figmode .eqbox { display: none !important; }
+body.present .prob { font-size: 19px; }
+body.present .chip { font-size: 17px; }
 /* 授業モード：左の一覧を消して、大きな文字の説明パネルにする */
 body.present .app { grid-template-columns: minmax(0, 1fr) 460px; }
 body.present .lib { display: none; }
@@ -571,13 +611,14 @@ function ruler(h, step, labelEvery, unit, ls) {
   return g;
 }
 // 方眼紙の床（1マス = 1目盛り）
-function floorTex(dark) {
+function floorTex(dark, out) {
   const N = 1024, c = document.createElement('canvas'); c.width = c.height = N;
   const g = c.getContext('2d');
-  g.fillStyle = dark ? '#1e2a24' : '#ece6d9'; g.fillRect(0, 0, N, N);
+  g.fillStyle = out ? (dark ? '#1d3123' : '#a9bf8a') : dark ? '#1e2a24' : '#e2dbcc'; g.fillRect(0, 0, N, N);
+  if (out) { for (let i = 0; i < 9000; i++) { g.fillStyle = dark ? `rgba(120,170,120,${Math.random() * 0.12})` : `rgba(${60 + Math.random() * 50},${100 + Math.random() * 50},45,${Math.random() * 0.22})`; g.fillRect(Math.random() * N, Math.random() * N, 2 + Math.random() * 3, 2 + Math.random() * 6); } }
   const ln = (w, col) => { g.fillStyle = col; for (let i = 0; i < 10; i++) { const x = i * N / 10; if (i === 0) { g.fillRect(0, 0, w, N); g.fillRect(N - w, 0, w, N); g.fillRect(0, 0, N, w); g.fillRect(0, N - w, N, w); } else if (w < 2) { g.fillRect(x - w / 2, 0, w, N); g.fillRect(0, x - w / 2, N, w); } } };
-  ln(1.5, dark ? 'rgba(160,190,170,0.16)' : 'rgba(80,70,50,0.13)');
-  ln(2, dark ? 'rgba(160,190,170,0.34)' : 'rgba(80,70,50,0.28)');
+  ln(1.5, dark ? 'rgba(160,190,170,0.16)' : out ? 'rgba(60,80,30,0.10)' : 'rgba(80,70,50,0.13)');
+  ln(2, dark ? 'rgba(160,190,170,0.34)' : out ? 'rgba(60,80,30,0.22)' : 'rgba(80,70,50,0.28)');
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
@@ -588,8 +629,37 @@ function setFloor(on, cell, y) {
   if (!R) return;
   R.floor.visible = on !== false;
   const k = cell || 1;
-  R.floor.material.map.repeat.set(80 / (k * 10), 80 / (k * 10));
+  R.floor.material.map.repeat.set(400 / (k * 10), 400 / (k * 10));
   R.floor.position.y = y || 0;
+}
+// ===== 背景・地面・影（実験ごと） =====
+// 外の実験（校舎・公園）は空と草地、ほかは実験室。床は遠くで背景の色にとけこむ（霧）
+const OUTDOOR = new Set(['fall', 'proj', 'incline', 'pend']);
+function applyEnv(def) {
+  const out = OUTDOOR.has(def.id), wrap = $('stageWrap'), key = (out ? 'o' : 'l') + (isDark() ? 'd' : '');
+  wrap.classList.toggle('outdoor', out);
+  if (R.envKey !== key) {
+    R.envKey = key;
+    const t = R.floor.material.map, rp = t.repeat.clone();
+    R.floor.material.map = floorTex(isDark(), out); R.floor.material.map.repeat.copy(rp); t.dispose(); R.floor.material.needsUpdate = true;
+  }
+  const cs = getComputedStyle(wrap), hz = cs.getPropertyValue('--sky-hz').trim() || '#e9e4d8';
+  R.sky.visible = !def.space;
+  R.sky.material.uniforms.hz.value.set(hz); R.sky.material.uniforms.top.value.set(cs.getPropertyValue('--sky-top').trim() || '#e6e1d6');
+  if (def.space) R.scene.fog = null;
+  else { if (!R.scene.fog) R.scene.fog = new THREE.Fog(hz, 20, 200); R.scene.fog.color.set(hz); }
+}
+// 太陽の影：いまの実験の大きさに合わせる
+const _box = new THREE.Box3();
+function fitShadows(def) {
+  const sun = R.sun, on = !def.space && R.floor.visible && !R.lowQ;
+  sun.castShadow = on;
+  if (!on) return;
+  R.group.traverse(o => { if (!o.isMesh) return; const tr = !Array.isArray(o.material) && o.material && (o.material.transparent || o.material.blending === THREE.AdditiveBlending); o.castShadow = !tr; o.receiveShadow = !tr; });
+  _box.setFromObject(R.group); if (_box.isEmpty()) return;
+  const c = _box.getCenter(V3()), r = clamp(_box.getSize(V3()).length() / 2, 1, 60);
+  sun.target.position.copy(c); sun.position.copy(c).addScaledVector(V3(-0.45, 1, 0.55).normalize(), r * 3);
+  const cam = sun.shadow.camera; cam.left = cam.bottom = -r * 1.15; cam.right = cam.top = r * 1.15; cam.near = r * 0.5; cam.far = r * 6; cam.updateProjectionMatrix();
 }
 // ===== three.js の準備 =====
 const _ray = new THREE.Raycaster();
@@ -637,16 +707,27 @@ function initThree() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(36, 1, 0.02, 4000);
     scene.add(camera);
-    const key = new THREE.DirectionalLight(0xffffff, 0.75); key.position.set(3, 5, 4); camera.add(key);
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x8a96a8, 0.55); scene.add(hemi);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.18));
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshPhongMaterial({ map: floorTex(isDark()), shininess: 8, specular: 0x111111 }));
-    floor.rotation.x = -Math.PI / 2; floor.userData.noFit = true; scene.add(floor);
+    // 光：カメラについた弱い正面光 ＋ 影を落とす太陽 ＋ 空と地面の照り返し
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const key = new THREE.DirectionalLight(0xffffff, 0.3); key.position.set(3, 5, 4); camera.add(key);
+    const sun = new THREE.DirectionalLight(0xfff1dc, 0.62); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 3;
+    scene.add(sun, sun.target);
+    const hemi = new THREE.HemisphereLight(0xe4ecf7, 0x9c8f74, 0.5); scene.add(hemi);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.08));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshPhongMaterial({ map: floorTex(isDark()), shininess: 8, specular: 0x111111 }));
+    floor.rotation.x = -Math.PI / 2; floor.userData.noFit = true; floor.receiveShadow = true; scene.add(floor);
+    // 空：地平線の色（霧と同じ）から上の色へのグラデーション。カメラといっしょに動く大きな球
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.ShaderMaterial({
+      uniforms: { top: { value: new THREE.Color(0xa9cdec) }, hz: { value: new THREE.Color(0xe9efe2) } },
+      vertexShader: 'varying vec3 vP; void main() { vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 top; uniform vec3 hz; varying vec3 vP; void main() { float h = smoothstep(0.0, 0.55, vP.y); gl_FragColor = vec4(mix(hz, top, h), 1.0); }',
+      side: THREE.BackSide, depthWrite: false }));
+    sky.scale.setScalar(1500); sky.renderOrder = -1; sky.frustumCulled = false; scene.add(sky);
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.dampingFactor = 0.09; controls.minDistance = 0.3; controls.maxDistance = 600;
     controls.enableZoom = false; controls.screenSpacePanning = true;
     const group = new THREE.Group(); scene.add(group);
-    R = { renderer, scene, camera, controls, group, floor, hemi, labels: [], chars: [] };
+    R = { renderer, scene, camera, controls, group, floor, hemi, sun, sky, labels: [], chars: [] };
     setupZoomToPoint(renderer.domElement);
     const resize = () => {
       const w = stage.clientWidth, h = stage.clientHeight;
@@ -662,7 +743,7 @@ function initThree() {
     // 明るい／暗い表示が変わったら床の色も合わせる
     if (window.matchMedia) {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      const re = () => { const t = floor.material.map; const rp = t.repeat.clone(); floor.material.map = floorTex(isDark()); floor.material.map.repeat.copy(rp); t.dispose(); floor.material.needsUpdate = true; };
+      const re = () => { R.envKey = null; if (state.s) applyEnv(state.s.def); };
       if (mq.addEventListener) mq.addEventListener('change', re);
       new MutationObserver(re).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     }
@@ -719,6 +800,7 @@ function view(target, radius, dir) {
   const d = (dir ? V3(...dir) : V3(0.35, 0.35, 1)).normalize();
   R.controls.target.set(...target);
   cam.position.copy(d.multiplyScalar(dist)).add(R.controls.target);
+  if (R.scene.fog) { R.scene.fog.near = dist * 1.7; R.scene.fog.far = dist * 5; }
   R.controls.update();
 }
 
@@ -801,9 +883,11 @@ function loadSim(id, keep) {
   state.s = s;
   def.init(s);
   if (typeof ACTORS !== 'undefined' && ACTORS[id]) ACTORS[id].init(s);
+  applyEnv(def); fitShadows(def);
   s.eqAt = null; $('eqbox').innerHTML = ''; $('eqbox').hidden = true;
   if (!keep) view(...def.view(s));
   state.running = def.autoplay !== false;
+  if (state.fig) { figCapShow(state.fig, figMarks(s, state.fig)); if (!state.figLive) state.running = false; }
   updatePlay();
   renderLegend();
 }
@@ -840,6 +924,7 @@ function loop(now) {
   const ad = realDt * (state.running && s && !s.ended ? state.speed : 1);
   R.chars.forEach(c => c.update(ad, now / 1000));
   R.controls.update();
+  R.sky.position.copy(R.camera.position);
   R.renderer.render(R.scene, R.camera);
   layoutLabels();
   placeEq();
@@ -855,6 +940,7 @@ function adaptQuality(now) {
   const fps = AQ.n * 1000 / (now - AQ.t0);
   AQ.t0 = now; AQ.n = 0;
   if (fps < 28 && R.renderer.getPixelRatio() > 1) { R.renderer.setPixelRatio(1); R.resize(); }
+  else if (fps < 28 && !R.lowQ) { R.lowQ = true; R.sun.castShadow = false; } // まだ重いときは影をやめる
   else if (fps >= 28) AQ.done = true;
 }
 function clockText(s) { return s.def.clock ? s.def.clock(s) : 't = ' + fmt(s.t, 2) + ' s'; }
@@ -933,7 +1019,9 @@ function renderLegend() {
 let showEq = true;
 try { showEq = localStorage.getItem('physics-3d:eq') !== '0'; } catch (e) { /* 無視 */ }
 function renderEq(s) {
-  const box = $('eqbox'), on = showEq && EQ[s.def.id] && (state.mode === 'sim' || state.mode === 'lesson' && state.lesson && !state.lesson.quiz);
+  const L = state.lesson, pg = L && !L.quiz ? lsPages(L.l)[L.i] : null;
+  // 授業の観察では「式にすると？」を押すまで式を出さない（先に現象を見る）
+  const box = $('eqbox'), on = showEq && EQ[s.def.id] && (state.mode !== 'lesson' || L && !L.quiz && !(pg.k === 'learn' && !L.rev && L.tab !== 'try')) && state.mode !== 'quiz';
   $('btnEq').setAttribute('aria-pressed', String(showEq));
   if (!on) { box.hidden = true; return; }
   const o = EQ[s.def.id](s);
@@ -1303,7 +1391,7 @@ sim({
     <p class="txt">加速度は質量 <var>m</var> によらない。質量を変えても、力はすべて <var>m</var> 倍になるだけで、v–t グラフは同じになる。</p>`,
   points: [['o', '静止摩擦力は「つり合う大きさ」。いつも μN ではない'], ['o', 'すべり出す角度 θ₀ は tanθ₀ = μ（摩擦角）'], ['x', '垂直抗力はいつも mg、はまちがい（斜面では mg cosθ）'], ['o', '動摩擦係数 μ\' はふつう μ より小さい']],
   exam: '運動方程式を斜面方向に立てる問題、静止摩擦力の大きさ（最大摩擦力と区別）、糸でつながった2物体がよく出る。',
-  view() { return [[0, 1.2, 0], 3.8, [0.2, 0.55, 1]]; },
+  view(s) { return [[-0.9, 1.3, 0], 4.5, [0.3, 0.33, 1]]; },
 });
 
 // ---------- 運動量保存と衝突 ----------
@@ -1575,7 +1663,7 @@ sim({
     <p class="txt">最下点で速さが最大になり、張力は <var>mg</var> より大きくなる（円運動の向心力が必要なため）：<var>T</var> = <var>mg</var> + <var>mv</var><sup>2</sup>/<var>L</var>。</p>`,
   points: [['o', '周期は長さの平方根に比例。4 倍の長さで 2 倍'], ['o', '月では g が約 1/6 なので、周期は約 2.4 倍'], ['x', '重いおもりほど速く振れる、はまちがい'], ['o', '最高点で速さ 0、最下点で速さ最大（エネルギー保存）']],
   exam: '周期の計算、最下点の速さ v = √(2gL(1−cosθ))、最下点の張力、エレベーター内の振り子（見かけの重力）がよく出る。',
-  view(s) { const H = Math.max(2.4, s.p.L + 0.6); return [[0, H - s.p.L * 0.6, 0], 1.3 + s.p.L * 0.9, [0.75, 0.25, 1]]; },
+  view(s) { const H = Math.max(2.4, s.p.L + 0.6); return [[0, H * 0.5, 0], Math.max(2.1, H * 0.8), [0.7, 0.22, 1]]; },
 });
 
 // ---------- 等速円運動 ----------
@@ -3748,6 +3836,128 @@ EQ.photo = s => {
     <div><var>hν</var> = 1240/<var>λ</var> = 1240/${s.p.nm} = ${nf(E)} eV</div>
     <div>${E > W ? `<var>K</var>₀ = <var>hν</var> − <var>W</var> = ${nf(E)} − ${W} = <em>${nf(E - W)} eV</em>` : `<var>hν</var> = ${nf(E)} ＜ <var>W</var> = ${W} → <em>電子は出ない</em>`}</div>` };
 };
+// ======================= 問題を「図にする」：文章題 → 式 → 3D =======================
+// 色の約束：オレンジ = 問題に書いてある数字（わかっている量）、青 = 求めるもの（？）
+// 問題のページでは、3D をその問題の数字で作り、止めたまま「数字の名札」だけを出す（図にする）。
+// 答えが出たら動かして、「いまの式」と見くらべる（3D で確かめる）。
+
+const NUMRE = /[−-]?\d+(?:\.\d+)?(?:\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(?:\s*(?:m\/s²|m\/s|km\/s|km|cm|mm|nm|m³|m²|N\/m|kg|kPa|Pa|eV|Hz|mol|m|g|s|秒|分|N|°|K|℃|L|J|V|Ω|A|T|C|W|倍|回|個|%))?/g;
+const stripP = t => String(t).replace(/（[^）]*）/g, '').replace(/\([^)]*\)/g, '').trim();
+// 問題文：数字をオレンジ、問われている所（最後の「何〜か」）を青に
+function hiliteQ(q) {
+  let h = String(q).split(/(<[^>]+>)/).map(t => t.startsWith('<') ? t : t.replace(NUMRE, m => /\d/.test(m) ? `<span class="kn">${m}</span>` : m)).join('');
+  const i = h.lastIndexOf('何');
+  if (i >= 0) {
+    let a = Math.max(h.lastIndexOf('。', i), h.lastIndexOf('、', i)) + 1, b = h.indexOf('か', i);
+    if (b > 0 && !/<span[^>]*$/.test(h.slice(0, a))) h = h.slice(0, a) + `<span class="ask">${h.slice(a, b + 1)}</span>` + h.slice(b + 1);
+  }
+  return h;
+}
+// 求めるものの記号（「落ちるまでの時間 t」→ t）
+function findSym(f) {
+  const m = stripP(f).match(/([A-Za-zα-ωΔθλμφ][A-Za-z0-9₀-₉'′_]*)\s*$/);
+  return m ? { sym: m[1], text: stripP(f).slice(0, m.index).trim() } : { sym: '？', text: stripP(f) };
+}
+// わかっている数字（オレンジ）と、求めるもの（青）の札
+function chipsHTML(P) {
+  const kn = P.given.map(([k, v]) => {
+    const mean = (String(k).match(/（([^）]*)）/) || [])[1], val = stripP(v), why = (String(v).match(/（([^）]*)）/) || [])[1];
+    return /\d/.test(val) ? `<span class="chip kn"><span><b>${esc(stripP(k))}</b> = ${esc(val)}</span>${mean || why ? `<small>${esc(mean || why)}</small>` : ''}</span>` : '';
+  }).join('');
+  const f = findSym(P.find);
+  return `<div class="chips">${kn}<span class="chip ask"><span><b>${esc(f.sym)}</b> = ？</span><small>${esc(f.text || '求めるもの')}</small></span></div>${P.figNote ? `<p class="note">3D：${esc(P.figNote)}</p>` : ''}`;
+}
+
+// ---- 3D の中の「数字の名札」 ----
+// FIGPOS[実験][パラメータ] = s => { at: () => Vector3, slot, line?: [Vector3, Vector3] }
+const FIGPOS = {
+  fall: {
+    h0: s => ({ at: () => V3(0.55, s.p.h0 / 2, 0.3), line: [V3(0.55, 0, 0.3), V3(0.55, s.p.h0, 0.3)], slot: 'h' }),
+    v0: s => ({ at: () => s.balls[0].m.position.clone().add(V3(0, s.r * 2, 0)), slot: 'b' }),
+  },
+  proj: {
+    h0: s => ({ at: () => V3(0.35, s.p.h0 / 2, 0.3), line: [V3(0.35, 0, 0.3), V3(0.35, s.p.h0, 0.3)], slot: 'h' }),
+    v0: s => ({ at: () => s.b.position.clone().add(V3(0, s.r * 3, 0)), slot: 'b' }),
+    th: s => ({ at: () => s.b.position.clone().add(V3(0, s.r * 3, 0)), slot: 'b' }),
+  },
+  incline: {
+    th: s => ({ at: () => V3(s.W / 2 - 1.5, 0.3, 0.6), slot: 'th' }),
+    m: s => ({ at: () => s.blk.position.clone().add(V3(0, 0.75, 0)), slot: 'm' }),
+    mu0: s => ({ at: () => s.blk.position.clone().add(V3(0, 0.75, 0)), slot: 'm' }),
+    mu: s => ({ at: () => s.blk.position.clone().add(V3(0, 0.75, 0)), slot: 'm' }),
+  },
+  collide: {
+    mA: s => ({ at: () => s.A.c.position.clone().add(V3(0, 1.75, 0)), slot: 'A' }),
+    vA: s => ({ at: () => s.A.c.position.clone().add(V3(0, 1.75, 0)), slot: 'A' }),
+    mB: s => ({ at: () => s.B.c.position.clone().add(V3(0, 1.75, 0)), slot: 'B' }),
+    vB: s => ({ at: () => s.B.c.position.clone().add(V3(0, 1.75, 0)), slot: 'B' }),
+  },
+  pend: {
+    L: s => ({ at: () => s.piv.clone().add(V3(Math.sin(s.th) * s.p.L / 2 + 0.12, -Math.cos(s.th) * s.p.L / 2, 0)), slot: 'L' }),
+    th0: s => ({ at: () => s.piv.clone().add(V3(0.35, -0.25, 0)), slot: 'th' }),
+    m: s => ({ at: () => s.piv.clone().add(V3(Math.sin(s.th) * s.p.L, -Math.cos(s.th) * s.p.L + 0.45, 0)), slot: 'm' }),
+  },
+  spring: {
+    m: s => ({ at: () => s.blk.position.clone().add(V3(0, 0.2, 0)), slot: 'm' }),
+    A: s => ({ at: () => s.blk.position.clone().add(V3(0, 0.2, 0)), slot: 'm' }),
+    k: s => ({ at: () => s.spr.position.clone().add(V3(0.3, 0.15, 0)), slot: 'k' }),
+  },
+  circle: {
+    r: s => ({ at: () => V3(s.p.r / 2, 0.75, 0), line: [V3(0, 0.68, 0), V3(s.p.r, 0.68, 0)], slot: 'r' }),
+    T: s => ({ at: () => s.b.position.clone().add(V3(0, 0.15, 0)), slot: 'b' }),
+    m: s => ({ at: () => s.b.position.clone().add(V3(0, 0.15, 0)), slot: 'b' }),
+  },
+};
+// パラメータの記号（ラベルの <var> から後ろ）
+const parSym = q => { const i = q.label.indexOf('<var>'); return i < 0 ? stripP(q.label.replace(/<[^>]+>/g, '')) : q.label.slice(i).replace(/（[^）]*）/g, '').trim(); };
+const numIn = (q, v) => { const n = String(+(+v).toFixed(4)); return new RegExp('(?<![\\d.])' + n.replace('.', '\\.') + (n.includes('.') ? '0*' : '(?:\\.0+)?') + '(?!\\d|\\.\\d)').test(String(q).replace(/<[^>]+>/g, '')); };
+let figBox = null;
+function figMarks(s, P) {
+  const def = s.def, pos = FIGPOS[def.id] || {}, slots = {};
+  let n = 0;
+  for (const q of def.params || []) {
+    const v = P.set && P.set[q.k];
+    if (typeof v !== 'number' || !numIn(P.q, v)) continue;
+    let m = pos[q.k] ? pos[q.k](s) : null;
+    if (!m) { // 場所が決まっていないときは、全体の上にならべる
+      if (!figBox) figBox = new THREE.Box3();
+      figBox.setFromObject(R.group); const c = figBox.getCenter(V3()); c.y = figBox.max.y;
+      m = { at: () => c, slot: 'top' };
+    }
+    const k = slots[m.slot] = (slots[m.slot] || 0) + 1;
+    addLabel(`${parSym(q)} = ${+(+v).toFixed(4)}${q.unit ? ' ' + q.unit : ''}`, m.at, 'kn', 10 + (k - 1) * 24);
+    if (m.line) R.group.add(makeLine(m.line, 0xe07a2f, 0.12, 0.95));
+    n++;
+  }
+  return n;
+}
+// 問題の図の表示（止めて名札だけ）／確かめる（動かす）
+function figShow(P) {
+  state.fig = P; state.figLive = false;
+  $('stageWrap').classList.add('figmode');
+  state.running = false; updatePlay();
+}
+function figReveal() {
+  if (!state.fig || state.figLive) return;
+  state.figLive = true;
+  $('stageWrap').classList.remove('figmode');
+  if (state.s && state.s.ended) loadSim(state.id, true);
+  state.running = true; updatePlay();
+}
+function figClear() {
+  state.fig = null; state.figLive = false;
+  $('stageWrap').classList.remove('figmode');
+  const el = $('figcap'); if (el) el.hidden = true;
+}
+const ansText = P => (Math.abs(P.ans) >= 0.01 && Math.abs(P.ans) < 1e4 ? +P.ans.toPrecision(3) : sci(P.ans, 2)) + ' ' + P.unit;
+// 答えのあと：解き方（1行ずつ）・3D で確かめる・くわしい説明（たたんでおく）
+function solHTML(P, from) {
+  return `<ol class="sol3">${P.sol.slice(from || 0).map(([f, w]) => `<li><div class="f">${f}</div><div class="w">${w}</div></li>`).join('')}</ol>`;
+}
+function afterHTML(P) {
+  return `<p class="checkit"><b>▶ 3D で確かめよう</b>3D がこの問題の数字で動き出した。左下の「いまの式」の数字と、答えを見くらべよう。</p>
+    <details class="more"><summary>なぜこの式を使うの？・まちがえやすい所</summary><p>${P.why}</p><p class="trapline"><b>まちがえやすい所</b>${P.trap}</p></details>`;
+}
 
 // ======================= かみくだいた説明（物理が苦手な人向け） =======================
 // 授業の画面ごと（LESSONS の steps と同じ順）
@@ -5522,7 +5732,7 @@ function lessonOpen(id, i) {
   renderLib();
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* 無視 */ }
 }
-// 問題の数字どおりに 3D を作る
+// 問題の数字どおりに 3D を作る（止めたまま、数字の名札だけを出す）
 function showFig(D) {
   const d = DRILLS.find(x => x.id === D.id), def = simOf(d.sim), set = Object.assign({}, D.P.set || {});
   (def.params || []).forEach(q => { if (typeof set[q.k] === 'number') set[q.k] = clamp(set[q.k], q.min, q.max); });
@@ -5530,22 +5740,21 @@ function showFig(D) {
   const prev = state.s;
   if (prev && prev.def.id !== d.sim && prev.def.leave) prev.def.leave(prev);
   state.id = d.sim;
+  figShow(D.P);
   if (R) loadSim(d.sim);
-  figCap(D.P);
 }
-// 3D の左上に「この問題の数字」を出す
-function figCap(P) {
+// 3D に名札を出せなかったときだけ、左上に「この問題の数字」をまとめて出す
+function figCapShow(P, n) {
   const el = $('figcap'); if (!el) return;
-  if (!P) { el.hidden = true; return; }
-  const strip = t => String(t).replace(/（[^）]*）/g, '').replace(/\(.*?\)/g, '').trim();
-  el.innerHTML = `<b>図：この問題の数字</b>${P.given.filter(([, v]) => /\d/.test(v)).slice(0, 4).map(([k, v]) => `<span>${esc(strip(k))} = ${esc(strip(v))}</span>`).join('')}${P.figNote ? `<small>${esc(P.figNote)}</small>` : ''}`;
+  if (n || !P) { el.hidden = true; return; }
+  el.innerHTML = `<b>この問題の数字</b>${P.given.filter(([, v]) => /\d/.test(stripP(v))).slice(0, 4).map(([k, v]) => `<span>${esc(stripP(k))} = ${esc(stripP(v))}</span>`).join('')}${P.figNote ? `<small>${esc(P.figNote)}</small>` : ''}`;
   el.hidden = false;
 }
 function lessonStep() {
   const L = state.lesson, pg = lsPages(L.l)[L.i];
   L.tab = 'learn'; L.rev = false; L.easy = false; L.exam = false; L.pick = null; L.choices = null;
   if (pg.k === 'learn') {
-    figCap(null);
+    figClear();
     const st = L.l.steps[pg.i], def = simOf(st.sim);
     PARAMS[st.sim] = Object.assign(defaults(def), st.set || {});
     const prev = state.s;
@@ -5586,30 +5795,27 @@ function lessonPrimary() {
     if (L.choices && L.pick === null) { L.pick = -1; renderCard(); lsScrollTo('.ls-ans'); return; }
     if (st.f && !L.rev) { L.rev = true; renderCard(); lsScrollTo('.ls-fbox'); return; }
   }
-  if (pg.k === 'example' && L.ex.shown < exItems(L.ex.P).length) { L.ex.shown++; renderCard(); lsScrollTo('.exstep:last-child'); return; }
+  if (pg.k === 'example' && L.ex.shown < exItems(L.ex.P).length) { L.ex.shown++; const end = L.ex.shown === exItems(L.ex.P).length; if (end) figReveal(); renderCard(); lsScrollTo(end ? '.ansbig' : '.exstep:last-of-type'); return; }
   if (L.i === lsPages(L.l).length - 1) { lsQuizStart(); renderCard(); return; }
   lessonMove(1);
 }
 function lsScrollTo(sel) { const el = $('card').querySelector(sel); if (el) el.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); }
 function lessonExit() {
-  state.lesson = null; figCap(null);
+  state.lesson = null; figClear();
   document.body.classList.remove('present');
   renderLib(); renderCard();
 }
 function lessonNext() { const L = state.lesson, list = LESSONS.filter(x => x.course === L.l.course); return list[list.indexOf(L.l) + 1] || null; }
 function lsQuizStart() {
-  const L = state.lesson; figCap(null);
+  const L = state.lesson; figClear();
   L.quiz = { i: 0, score: 0, picked: null, qs: shuffle(L.l.quiz).map(([q, a, w, ex]) => ({ q, a, ex, choices: shuffle([a].concat(w)) })) };
 }
-// 例題を1手順ずつ見せるための部品
+// 例題を1手順ずつ見せるための部品：② 式にする → ③ 計算する → 答え（3D で確かめる）
 function exItems(P) {
-  return [
-    `<h4>① わかっていることを書き出す</h4><dl class="exg">${P.given.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl><p>求めるもの：<b>${esc(P.find)}</b></p>`,
-    `<h4>② 使う式を決める</h4><p>${P.why}</p>`,
-  ].concat(P.sol.map(([f, w], i) => `<h4>③ 計算する（${i + 1}）</h4><div class="exf">${f}</div><p class="exw">なぜ？ ${w}</p>`))
-    .concat([`<h4>答え</h4><div class="exans">${Math.abs(P.ans) >= 0.01 && Math.abs(P.ans) < 1e4 ? +P.ans.toPrecision(3) : sci(P.ans, 2)} ${esc(P.unit)}</div><p class="exw">気をつけよう：${P.trap}</p>`]);
+  return [{ h: '② 式にする', f: P.sol[0][0], w: P.sol[0][1] }]
+    .concat(P.sol.slice(1).map(([f, w], i) => ({ h: '③ 計算する' + (P.sol.length > 2 ? `（${i + 1}）` : ''), f, w })))
+    .concat([{ ans: true }]);
 }
-
 // ===== 授業の画面 =====
 function lessonMenuHTML() {
   const c = state.lessonCourse || 'kiso', list = LESSONS.filter(l => l.course === c), passN = list.filter(l => lessonPass.has(l.id)).length;
@@ -5627,7 +5833,7 @@ function lessonCardHTML() {
   if (L.quiz) return lsQuizHTML();
   const pages = lsPages(l), pg = pages[L.i], last = L.i === pages.length - 1, next = lessonNext();
   const kinds = ['learn'].concat(['example', 'similar', 'apply', 'adv'].filter(k => pages.some(x => x.k === k)));
-  const names = kinds.map(k => k === 'learn' ? '観察' : DPAGE[k][0]).concat(['テスト']);
+  const names = kinds.map(k => k === 'learn' ? '観察' + (pg.k === 'learn' ? ` ${pg.i + 1}/${l.steps.length}` : '') : DPAGE[k][0]).concat(['テスト']);
   const phase = kinds.indexOf(pg.k);
   const flow = `<ol class="ls-flow">${names.map((n, k) => `<li class="${k === phase ? 'on' : k < phase ? 'done' : ''}">${n}</li>`).join('')}</ol>`;
   const toTest = `確認テストへ（${l.quiz.length}問）`;
@@ -5653,26 +5859,27 @@ function lessonCardHTML() {
     }
     primary = !open ? '答えを見る →' : st.f && !L.rev ? '式にすると？ →' : nextName;
   } else if (pg.k === 'example') {
-    const P = L.ex.P, items = exItems(P);
+    const P = L.ex.P, items = exItems(P), sh = L.ex.shown;
     title = DPAGE.example[1];
-    body = `<p class="note">観察したことを、式で表して計算してみよう。<b>3D はこの例題の数字どおり</b>に動いている。</p><p class="qtext">${P.q}</p><div class="exsteps">${items.slice(0, L.ex.shown).map(x => `<div class="exstep">${x}</div>`).join('')}</div>
-      ${L.ex.shown < items.length ? `<p class="note">ボタンを押すと、解き方が 1 手順ずつ出る（${L.ex.shown} / ${items.length}）。自分で考えてから押そう。</p>` : ''}${last ? lsExamHTML(l) : ''}`;
-    primary = L.ex.shown < items.length ? (L.ex.shown === 0 ? 'まず、わかっていることは？ →' : '次の手順を見る →') : nextName;
+    body = `<div class="stepbox"><div class="sh">① 問題を読んで、図にする</div><div class="prob">${hiliteQ(P.q)}</div>${chipsHTML(P)}${sh === 0 ? '<p class="note">オレンジがわかっている数字、青が求めるもの。3D の図にも同じ数字が書いてある。</p>' : ''}</div>
+      ${items.slice(0, sh).map(x => x.ans ? `<div class="ansbig ok"><span>答え</span><b>${esc(ansText(P))}</b></div>${afterHTML(P)}` : `<div class="stepbox exstep"><div class="sh">${x.h}</div><div class="exf">${x.f}</div><p class="exw">なぜ？ ${x.w}</p></div>`).join('')}
+      ${last && sh >= items.length ? lsExamHTML(l) : ''}`;
+    const nx = items[sh];
+    primary = !nx ? nextName : nx.ans ? '答えを出して、3D で確かめる →' : nx.h.replace(/（\d+）/, '') + ' →';
   } else {
-    const note = { similar: '例題と同じ手順で解こう。数字だけが変わっている。こまったらヒントを 1 つずつ見られる。', apply: '例題より一歩すすんだ問題。① わかっていること → ② 使う式 → ③ 計算、の順に。ヒントを見ながらでよい。', adv: '入試に近いチャレンジ問題。むずかしければ、とばしてテストへ進んでよい。' }[pg.k];
+    const note = { similar: '例題と同じ手順で。数字だけが変わっている。', apply: '例題より一歩すすんだ問題。ヒントを使ってよい。', adv: '入試に近いチャレンジ問題。とばしてもよい。' }[pg.k];
     title = DPAGE[pg.k][1];
-    body = `<p class="note">${note}<b>3D はこの問題の数字どおり</b>に動いている。</p>${drillBodyHTML(L.drill)}${last ? lsExamHTML(l) : ''}`;
+    body = `<p class="note">${note}</p>${drillBodyHTML(L.drill)}${last ? lsExamHTML(l) : ''}`;
     primary = nextName;
     if (pg.k === 'apply' && !last) extra = `<p class="note"><button type="button" class="linkbtn" data-a="lsquiz">発展問題をとばしてテストへ →</button></p>`;
   }
   return `<div class="card-head"><div><div class="eyebrow">${courseName(l.course)} ・ 授業 ${esc(l.no)} ・ ${esc(l.name)}</div>${flow}<h2 class="ls-title">${esc(title)}</h2></div></div>
     <div class="body">${body}
     <div class="ls-foot">
-    <div class="ls-dots">${pages.map((_, k) => `<i class="${k === L.i ? 'on' : k < L.i ? 'done' : ''}"></i>`).join('')}<span>${L.i + 1} / ${pages.length}</span></div>
     <div class="ls-nav"><button type="button" class="btn" data-a="lsprev" ${L.i === 0 ? 'disabled' : ''}>← 前へ</button>
     <button type="button" class="btn main big" data-a="lsprimary">${primary}${last && lessonPass.has(l.id) && primary === toTest ? ' ・ 合格ずみ' : ''}</button></div>
     ${extra}${last ? `<p class="note"><button type="button" class="linkbtn" data-a="lsskip">テストをとばして${next ? `次の授業 ${esc(next.no)} へ` : '終わる'} →</button></p>` : ''}
-    <button type="button" class="btn ghost" data-a="lsexit">授業モードをやめる</button></div></div>`;
+    <button type="button" class="linkbtn exitlink" data-a="lsexit">授業モードをやめる</button></div></div>`;
 }
 function lsExamHTML(l) {
   const L = state.lesson;
@@ -5733,7 +5940,7 @@ function lessonClick(t) {
   if (k === 'lsback') { L.tab = 'learn'; renderCard(); return true; }
   if (k === 'lsprev') { lessonMove(-1); return true; }
   if (k === 'lsexit') { lessonExit(); return true; }
-  if (k === 'lsquiz' || k === 'lsqretry') { lsQuizStart(); figCap(null); renderCard(); return true; }
+  if (k === 'lsquiz' || k === 'lsqretry') { lsQuizStart(); figClear(); renderCard(); return true; }
   if (k === 'lsqback') { L.quiz = null; L.i = 0; lessonStep(); return true; }
   if (k === 'lsskip') { const nx = lessonNext(); if (nx) lessonOpen(nx.id); else lessonExit(); return true; }
   if (k === 'lsqpick') { const q = L.quiz.qs[L.quiz.i]; L.quiz.picked = q.choices[+a.dataset.k]; if (L.quiz.picked === q.a) L.quiz.score++; renderCard(); return true; }
@@ -5759,29 +5966,23 @@ function drillCardHTML() {
   return `<div class="card-head"><div><div class="eyebrow">計算 ・ ${esc(sm.cat)}${done.has(d.id) ? ' ・ ✓' : ''}</div><h2 class="name">${esc(d.name)}</h2><p class="lead">数字は毎回変わる。有効数字 2〜3 けたで答えればよい。</p></div></div><div class="body">${drillBodyHTML(D)}</div>`;
 }
 function drillBodyHTML(D) {
-  const d = DRILLS.find(x => x.id === D.id), P = D.P, sm = simOf(d.sim), inLesson = state.mode === 'lesson';
+  const d = DRILLS.find(x => x.id === D.id), P = D.P, inLesson = state.mode === 'lesson';
   const fin = D.result === 'ok' || D.result === 'skip';
-  let h = `<div class="ctl">${inLesson ? `<h3 class="sub">${esc(d.name)}</h3>` : ''}
-    <p class="qtext">${P.q}</p>
-    <div class="given"><div class="given-h">① わかっていることを書き出す</div><dl>${P.given.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl><div class="given-f">求めるもの：<b>${esc(P.find)}</b></div></div>`;
-  // 段階ヒント
+  let h = `<div class="ctl">
+    <div class="stepbox"><div class="sh">① 問題を読んで、図にする</div><div class="prob">${hiliteQ(P.q)}</div>${chipsHTML(P)}</div>`;
   if (!fin) {
+    h += `<div class="stepbox"><div class="sh">② 式にして、③ 計算する</div>`;
     if (D.hint) h += `<ol class="hints">${P.hints.slice(0, D.hint).map((x, i) => `<li><b>ヒント ${i + 1}</b>${x}</li>`).join('')}</ol>`;
-    if (D.hint < P.hints.length) h += `<button type="button" class="btn hintbtn" data-a="dhint">ヒント ${D.hint + 1} を見る（全 ${P.hints.length}）</button>`;
+    h += `<div class="ans"><input id="dAns" type="text" inputmode="decimal" autocomplete="off" placeholder="答え" value="${esc(D.input)}" aria-label="答え"><span class="u">${esc(P.unit)}</span><button type="button" class="btn main" data-a="judge">答え合わせ</button></div>`;
+    if (D.result === 'ng') h += `<div class="verdict ng">ちがうようです（${D.tries} 回目）。${esc(D.advice)}</div>`;
+    h += `<div class="row">${D.hint < P.hints.length ? `<button type="button" class="btn hintbtn" data-a="dhint">ヒント ${D.hint + 1} を見る</button>` : ''}<button type="button" class="linkbtn" data-a="dskip">答えと解き方を見る</button></div></div>`;
+  } else {
+    h += `<div class="ansbig ${D.result === 'ok' ? 'ok' : ''}"><span>${D.result === 'ok' ? (D.tries > 1 ? `正解！（${D.tries} 回目）` : '正解！') : '答え'}</span><b>${esc(ansText(P))}</b></div>
+      <div class="stepbox"><div class="sh">② 式にして、③ 計算する</div>${solHTML(P)}</div>${afterHTML(P)}
+      <div class="row"><button type="button" class="btn" data-a="dnext">数字を変えて、もう1問</button></div>`;
   }
-  h += `<div class="ans"><input id="dAns" type="text" inputmode="decimal" autocomplete="off" placeholder="例 12.5" value="${esc(D.input)}" aria-label="答え"${fin ? ' disabled' : ''}><span class="u">${esc(P.unit)}</span>${fin ? '' : '<button type="button" class="btn main" data-a="judge">答え合わせ</button>'}</div>`;
-  if (D.result === 'ng') h += `<div class="verdict ng">ちがうようです（${D.tries} 回目）。<br>${esc(D.advice)}</div>
-    <div class="row">${D.hint < P.hints.length ? '<button type="button" class="btn" data-a="dhint">ヒントを見る</button>' : ''}<button type="button" class="btn" data-a="dskip">答えと解き方を見る</button></div>`;
-  if (fin) {
-    h += `<div class="verdict ${D.result === 'ok' ? 'ok' : ''}">${D.result === 'ok' ? (D.tries > 1 ? `正解！（${D.tries} 回目）よくがんばった。` : '正解！') : '解き方を見て、考え方を確かめよう。'}　答え ${Math.abs(P.ans) >= 0.01 && Math.abs(P.ans) < 1e4 ? +P.ans.toPrecision(3) : sci(P.ans, 2)} ${esc(P.unit)}</div>
-      <h3 class="sub">② 解き方（1行ずつ、なぜそうするか）</h3>
-      <ol class="sol2">${P.sol.map(([f, why]) => `<li><div class="f">${f}</div><div class="w">${why}</div></li>`).join('')}</ol>
-      <div class="purpose"><b>なぜこの式を使うの？</b>${P.why}</div>
-      <div class="trap"><b>まちがえやすい所</b>${P.trap}</div>
-      <div class="row"><button type="button" class="btn main" data-a="dnext">次の問題（数字が変わる）</button>${inLesson ? '' : `<button type="button" class="btn" data-sim="${sm.id}">「${esc(sm.name)}」で確かめる</button>`}</div>`;
-  } else if (D.result !== 'ng') h += `<div class="row"><button type="button" class="btn" data-a="dskip">答えと解き方を見る</button></div>`;
-  h += `<p class="note">${D.ok} / ${D.n} 問正解　計算の手順：① わかっている量を書き出す → ② 使う式を選ぶ → ③ 数を入れて計算する。「1.2×10^5」「1.2e5」の形でも入力できる。</p></div>`;
-  return h;
+  if (!inLesson) h += `<p class="note">${D.ok} / ${D.n} 問正解　「1.2×10^5」「1.2e5」の形でも入力できる。</p>`;
+  return h + '</div>';
 }
 function drillJudge() {
   const D = curDrill(); const el = $('dAns'); if (el) D.input = el.value;
@@ -5790,7 +5991,7 @@ function drillJudge() {
   const ok = Math.abs(v - D.P.ans) <= Math.abs(D.P.ans) * 0.03 + 1e-12;
   if (!D.tries) D.n++;
   D.tries++;
-  if (ok) { D.result = 'ok'; D.ok++; markDone(D.id); }
+  if (ok) { D.result = 'ok'; D.ok++; markDone(D.id); figReveal(); }
   else { D.result = 'ng'; D.advice = drillAdvice(D.P, v); }
   renderCard();
   if (!ok) { const x = $('dAns'); if (x) { x.focus(); x.select(); } }
@@ -5925,7 +6126,7 @@ function renderCard() {
   const nb = card.querySelector('.body'); if (nb) nb.scrollTop = y;
   renderLive(true);
 }
-function setModeUI(mode) { figCap(null); if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
+function setModeUI(mode) { figClear(); if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
 function go(id) {
   setModeUI('sim');
   const prev = state.s;
@@ -5974,7 +6175,7 @@ document.addEventListener('click', ev => {
     const k = a.dataset.a;
     if (k === 'qnext') { state.quiz.i++; state.quiz.picked = null; if (state.quiz.i >= state.quiz.qs.length) renderCard(); else quizShow(); return; }
     if (k === 'judge') { drillJudge(); return; }
-    if (k === 'dskip') { const D = curDrill(); if (!D.tries) D.n++; D.tries = Math.max(D.tries, 1); D.result = 'skip'; renderCard(); return; }
+    if (k === 'dskip') { const D = curDrill(); if (!D.tries) D.n++; D.tries = Math.max(D.tries, 1); D.result = 'skip'; figReveal(); renderCard(); return; }
     if (k === 'dhint') { const D = curDrill(), x = $('dAns'); if (x) D.input = x.value; D.hint = Math.min(D.hint + 1, D.P.hints.length); renderCard(); return; }
     if (k === 'dnext') { if (state.mode === 'lesson') { lessonDrillNext(); } else { drillStart(state.drill.id); showFig(state.drill); renderCard(); } const el = $('dAns'); if (el) el.focus(); return; }
   }
