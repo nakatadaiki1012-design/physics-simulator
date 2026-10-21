@@ -284,6 +284,43 @@ details.more { margin-top: 6px; font-size: 14px; }
 details.more summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 details.more p { margin: 6px 0; line-height: 1.7; }
 .trapline b { display: block; color: var(--warm); font-size: 12px; }
+/* やさしい授業：3D の中のペンタの吹き出し・表・ことばの式・空らん */
+.gbubble { position: absolute; left: 10px; right: 10px; bottom: 56px; z-index: 4; display: flex; gap: 10px; align-items: flex-start; background: color-mix(in srgb, var(--panel) 94%, transparent); border: 2px solid var(--ink); border-radius: 14px; padding: 8px 12px; font-size: 16.5px; line-height: 1.6; box-shadow: 0 4px 14px rgb(0 0 0 / .16); animation: lsIn .3s ease; }
+.gbubble[hidden] { display: none; }
+.gbubble .gface { font-size: 26px; line-height: 1; flex: none; }
+.gbubble b { color: var(--kn); }
+.gbubble small { color: var(--muted); font-size: 13px; }
+.guided #playbar .speed { display: none; }
+.gprog { height: 5px; background: var(--chip); border-radius: 3px; margin: 6px 0 2px; overflow: hidden; }
+.gprog i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.gnum { font-size: 13px; color: var(--muted); margin-left: 8px; font-weight: 500; }
+.gtable { width: 100%; border-collapse: collapse; font: 600 15px var(--font-data); margin: 4px 0 8px; }
+.gtable th { text-align: left; font: 700 12.5px var(--font-body, inherit); color: var(--muted); padding: 4px 6px; white-space: nowrap; }
+.gtable td { border: 1px solid var(--line); text-align: center; padding: 6px 2px; }
+.gtable tr:last-child td.on { color: var(--kn); background: color-mix(in srgb, var(--kn) 10%, var(--panel)); }
+.gformula { font: 800 21px var(--font-display); text-align: center; padding: 12px 8px; border: 2px solid var(--accent); border-radius: 8px; margin: 4px 0 8px; }
+.gformula b { color: var(--kn); }
+.gformula small { display: block; font: 500 13px var(--font-data); color: var(--muted); margin-top: 4px; }
+.gformula.sym { font-size: 30px; font-family: var(--font-display); font-style: italic; }
+.c-y { color: var(--kn); } .c-t { color: var(--ask); } .c-g { color: var(--accent); }
+.gmap { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 15px; line-height: 1.5; }
+.gmap dt { font: italic 800 19px var(--font-display); text-align: center; }
+.gmap dd { margin: 0; }
+.gcheck { margin: 0; padding-left: 20px; font: 600 15px var(--font-data); line-height: 1.8; }
+.gsteps { margin: 0 0 8px; padding-left: 22px; font-size: 16px; line-height: 1.8; }
+.gsteps b { color: var(--ask); }
+.gcalc { font-size: 14px; color: var(--muted); line-height: 2; }
+.gcalc kbd { display: inline-block; min-width: 26px; text-align: center; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 5px; padding: 0 5px; font: 700 14px var(--font-data); color: var(--ink); background: var(--panel); }
+.gblanks { font: 700 19px var(--font-data); line-height: 2.4; margin: 6px 0 8px; }
+.gblanks input.blank { width: 4.4em; font: 700 19px var(--font-data); text-align: center; border: 2px dashed var(--ask); border-radius: 6px; padding: 2px 4px; background: color-mix(in srgb, var(--ask) 6%, var(--panel)); color: var(--ink); }
+.gblanks input.blank.bad { border-color: var(--ng); border-style: solid; }
+.gblanks .bk.ok { display: inline-block; min-width: 3em; text-align: center; color: var(--ok); border-bottom: 2px solid var(--ok); }
+.ls-foot .btn.main.big[disabled] { opacity: .55; }
+.gtry-card { display: block; width: 100%; text-align: left; border: 2px solid var(--kn); border-radius: 8px; background: color-mix(in srgb, var(--kn) 8%, var(--panel)); padding: 10px 14px; font-size: 14.5px; line-height: 1.6; color: var(--ink); cursor: pointer; margin-bottom: 8px; }
+.gtry-card b { display: block; color: var(--kn); font-size: 13px; letter-spacing: .06em; }
+.gtry-card span { display: block; text-align: right; font-weight: 700; color: var(--kn); }
+.ls-foot { position: sticky; bottom: 0; z-index: 2; background: var(--panel); padding-bottom: 6px; box-shadow: 0 -8px 10px -6px color-mix(in srgb, var(--panel) 90%, transparent); }
+.ls-flow { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
 .linkbtn.exitlink { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 /* 3D：問題の数字の名札。図にしている間はほかの名札・式・凡例をかくす */
 .lbl.kn { color: var(--panel); background: var(--kn); border-color: var(--kn); font-size: 13.5px; line-height: 22px; box-shadow: 0 2px 6px rgb(0 0 0 / .18); }
@@ -375,6 +412,7 @@ body.present .lib { display: none; }
     <div class="labels" id="labels"></div>
     <div class="ov ov-tl" id="ovTL"></div>
     <div class="figcap" id="figcap" hidden></div>
+    <div class="gbubble" id="gbubble" hidden></div>
     <div class="eqbox" id="eqbox" aria-live="off" hidden></div>
     <div class="ov ov-tr">
       <button type="button" class="ibtn eqbtn" id="btnEq" aria-pressed="true" title="いま動いている式を3Dのそばに出す" aria-label="いまの式を表示">式</button>
@@ -897,10 +935,12 @@ function advance(s, dt) {
   s.acc += dt;
   let n = 0;
   while (s.acc >= h && n < 4000) {
+    // やさしい授業：決めた時刻でぴたりと止める
+    if (state.stopAt != null && s.t + h > state.stopAt + 1e-9) { state.running = false; s.acc = 0; state.stopAt = null; updatePlay(); renderLive(true); if (state.onStop) state.onStop(s); break; }
     s.acc -= h; n++;
     const r = s.def.step(s, h);
     s.t += h;
-    if (r === 'stop') { s.ended = true; s.endedAt = performance.now(); state.running = false; s.acc = 0; updatePlay(); renderLive(true); break; }
+    if (r === 'stop') { s.ended = true; s.endedAt = performance.now(); state.running = false; s.acc = 0; state.stopAt = null; updatePlay(); renderLive(true); if (state.onStop) state.onStop(s); break; }
   }
   if (n >= 4000) s.acc = 0;
 }
@@ -916,7 +956,7 @@ function loop(now) {
     if (ACTORS[s.def.id]) ACTORS[s.def.id].draw(s, now / 1000);
     if (now - s.lastLive > 110) { s.lastLive = now; renderLive(); }
     // 授業では、終わった実験を少し待ってからくり返す（説明を読んでいる間も動いて見える）
-    if (s.ended && state.mode === 'lesson' && state.lesson && !state.lesson.quiz && now - (s.endedAt || now) > 2500) {
+    if (s.ended && state.mode === 'lesson' && state.lesson && !state.lesson.quiz && !state.lesson.l.guided && now - (s.endedAt || now) > 2500) {
       loadSim(state.id, true); state.running = true; updatePlay();
       if (state.lesson.tab === 'try') renderCard();
     }
@@ -1019,9 +1059,9 @@ function renderLegend() {
 let showEq = true;
 try { showEq = localStorage.getItem('physics-3d:eq') !== '0'; } catch (e) { /* 無視 */ }
 function renderEq(s) {
-  const L = state.lesson, pg = L && !L.quiz ? lsPages(L.l)[L.i] : null;
+  const L = state.lesson, pg = L && !L.quiz && !L.l.guided ? lsPages(L.l)[L.i] : null;
   // 授業の観察では「式にすると？」を押すまで式を出さない（先に現象を見る）
-  const box = $('eqbox'), on = showEq && EQ[s.def.id] && (state.mode !== 'lesson' || L && !L.quiz && !(pg.k === 'learn' && !L.rev && L.tab !== 'try')) && state.mode !== 'quiz';
+  const box = $('eqbox'), on = showEq && EQ[s.def.id] && (state.mode !== 'lesson' || L && !L.quiz && !(pg && pg.k === 'learn' && !L.rev && L.tab !== 'try')) && state.mode !== 'quiz';
   $('btnEq').setAttribute('aria-pressed', String(showEq));
   if (!on) { box.hidden = true; return; }
   const o = EQ[s.def.id](s);
@@ -1065,20 +1105,20 @@ sim({
   id: 'fall', cat: '力学', icon: '落', name: '自由落下と鉛直投げ上げ',
   lead: '高い所から落とす・真上に投げる。速さは時間に比例して変わる。',
   params: [
-    { k: 'h0', label: '高さ <var>h</var>', min: 0, max: 20, step: 0.5, v: 15, unit: 'm', reset: true },
+    { k: 'h0', label: '高さ <var>h</var>', min: 0, max: 45, step: 0.5, v: 15, unit: 'm', reset: true },
     { k: 'v0', label: '初速度 <var>v</var><sub>0</sub>', min: -10, max: 20, step: 0.5, v: 0, unit: 'm/s', reset: true },
   ],
   p0: { g: 9.8, strobe: true, air: false, vec: true, gmode: 'vt' },
   rs: ['g', 'air'],
-  legend: [['v', '速度 v（上向きが正）']],
+  legend: [['v', '速度（矢印の向きに動く）']],
   init(s) {
     const p = s.p, g = R.group;
     const top = p.h0 + (p.v0 > 0 ? p.v0 * p.v0 / (2 * p.g) : 0);
     s.H = Math.max(4, Math.ceil(top + 1));
-    s.r = clamp(s.H * 0.016, 0.12, 0.34);
+    s.r = clamp(s.H * 0.016, 0.12, 0.34) * (p.big || 1);
     // 校舎（高さ h の屋上から落とす）。h = 0 のときは校庭
     if (p.h0 > 0) {
-      const bw = 3.2, bd = 2.4, bld = school(p.h0, bw, bd);
+      const bw = Math.max(3.2, p.h0 * 0.2), bd = Math.max(2.4, p.h0 * 0.12), bld = school(p.h0, bw, bd);
       bld.position.set(-0.32 - bw / 2 + 0.1, p.h0 / 2, 0); g.add(bld);
       const rail = solid(0x59606a, { shininess: 40 }), ex = -0.24;
       g.add(rod(V3(ex, p.h0 + 0.55, -bd / 2), V3(ex, p.h0 + 0.55, bd / 2), 0.025, rail));
@@ -1114,8 +1154,8 @@ sim({
       b.rec.add(s.t, b.y, b.v);
     });
     if (p.strobe && s.t >= s.nextG) {
-      s.nextG += 0.2;
-      s.balls.forEach(b => { if (!b.on) return; const gm = ball(s.r * 0.9, new THREE.MeshPhongMaterial({ color: b.k > 0.1 ? 0xd9a35a : 0x2f6fd0, transparent: true, opacity: 0.28, depthWrite: false }), 16); gm.position.set(0.0 - 0.0, b.y + s.r, b.z - 0.0); gm.position.x = -0.0; R.group.add(gm); s.ghost.push(gm); });
+      s.nextG += p.sint || 0.2;
+      s.balls.forEach(b => { if (!b.on) return; const gm = ball(s.r * 0.9, new THREE.MeshPhongMaterial({ color: b.k > 0.1 ? 0xd9a35a : 0xf08a4b, transparent: true, opacity: 0.55, depthWrite: false }), 16); gm.position.set(0.0 - 0.0, b.y + s.r, b.z - 0.0); gm.position.x = -0.0; R.group.add(gm); s.ghost.push(gm); });
     }
     if (!alive) return 'stop';
   },
@@ -1127,7 +1167,7 @@ sim({
       b.ar.set(b.m.position.clone().add(V3(-s.r * 2.2, 0, 0)), V3(0, b.v, 0), 0.12 * s.H / 15);
       b.ar.g.visible = p.vec && Math.abs(b.v) > 0.05;
       b.lb.el.hidden = !p.vec;
-      b.lb.set(`${b.k > 0.1 ? 'ピンポン球 ' : ''}v = ${fmt(b.v, 1)} m/s`);
+      b.lb.set(`${b.k > 0.1 ? 'ピンポン球 ' : ''}${Math.abs(b.v) < 0.05 ? '止まっている' : (b.v < 0 ? '↓ 下向き ' : '↑ 上向き ') + fmt(Math.abs(b.v), 1) + ' m/s'}`);
     });
   },
   live(s) {
@@ -3464,7 +3504,11 @@ ACTORS.fall = {
 };
 EQ.fall = s => {
   const b = s.balls[0], p = s.p, t = s.ended && b.land ? b.land : s.t;
-  return { at: b.m.position, html: `<b>等加速度運動（上向きが正、a = −g）</b>
+  // 静かにはなすとき（自由落下）は下向きを＋にして、マイナスを出さない
+  if (p.v0 === 0 && !p.air) return { at: b.m.position, html: `<b>自由落下（下向きを＋）</b>
+    <div><var>v</var> = <var>gt</var> = ${p.g}×${nf(t)} = <em>${nf(-b.v)} m/s</em></div>
+    <div>落ちた距離 = ½<var>gt</var>² = <em>${nf(p.h0 - b.y)} m</em></div>` };
+  return { at: b.m.position, html: `<b>等加速度運動（上向きを＋、a = −g）</b>
     <div><var>v</var> = <var>v</var>₀ − <var>gt</var> = ${nf(p.v0, 1)} − ${p.g}×${nf(t)} = <em>${nf(b.v)} m/s</em></div>
     <div><var>y</var> = <var>h</var> + <var>v</var>₀<var>t</var> − ½<var>gt</var>² = <em>${nf(b.y)} m</em></div>${p.air ? '<div class="sm">空気抵抗あり：ピンポン球は a = −g − kv|v|</div>' : ''}` };
 };
@@ -3955,7 +3999,7 @@ function solHTML(P, from) {
   return `<ol class="sol3">${P.sol.slice(from || 0).map(([f, w]) => `<li><div class="f">${f}</div><div class="w">${w}</div></li>`).join('')}</ol>`;
 }
 function afterHTML(P) {
-  return `<p class="checkit"><b>▶ 3D で確かめよう</b>3D がこの問題の数字で動き出した。左下の「いまの式」の数字と、答えを見くらべよう。</p>
+  return `<p class="checkit"><b>▶ 3D で確かめよう</b>3D がこの問題の数字で動き出した。3D の時間 t や数字と、答えを見くらべよう。</p>
     <details class="more"><summary>なぜこの式を使うの？・まちがえやすい所</summary><p>${P.why}</p><p class="trapline"><b>まちがえやすい所</b>${P.trap}</p></details>`;
 }
 
@@ -5371,6 +5415,16 @@ const LESSONS = [
       ['静止から 2 m/s² で 3 秒加速した。速さは？', '6 m/s', ['3 m/s', '9 m/s', '1.5 m/s'], 'v = at = 2 × 3 = 6 m/s。'],
       ['右へ 3 m/s の A から、左へ 2 m/s の B を見た相対速度は？（右向きが正）', '−5 m/s', ['+5 m/s', '−1 m/s', '+1 m/s'], 'v_B − v_A = (−2) − 3 = −5 m/s。A から見ると B は左へ 5 m/s で近づく。'],
     ] },
+  // やさしい授業（試作）：中身は guided.js の GL['k-fall0']
+  { id: 'k-fall0', course: 'kiso', part: 0, chap: 0, no: '1-2', name: '自由落下（やさしい授業・試作）', drills: [], guided: true,
+    steps: [{ sim: 'fall', set: { h0: 44.1, v0: 0, strobe: true, sint: 1, vec: false, big: 2.4 } }],
+    exam: ['落ちた距離 ＝ 4.9 × 時間 × 時間（y = ½gt²）', '距離から時間：4.9 で割って、√（2 回かけてその数になる数）'],
+    quiz: [
+      ['静かにはなしたボール。1 秒で何 m 落ちる？（g = 9.8）', '4.9 m', ['9.8 m', '1 m', '19.6 m'], '4.9 × 1 × 1 = 4.9 m。'],
+      ['落ちる時間が 2 倍になると、落ちた距離は何倍？', '4 倍', ['2 倍', '8 倍', '同じ'], '時間を 2 回かけるので 2 × 2 = 4 倍。'],
+      ['2 秒で何 m 落ちる？', '19.6 m', ['9.8 m', '4.9 m', '39.2 m'], '4.9 × 2 × 2 = 19.6 m。'],
+      ['44.1 m の高さからボールを落とすと、何秒で地面に着く？', '3 秒', ['9 秒', '4.5 秒', '2 秒'], '44.1 ÷ 4.9 = 9。2 回かけて 9 になる数は 3。'],
+    ] },
   { id: 'k-fall', course: 'kiso', part: 0, chap: 0, no: '1-2', name: '落体の運動', drills: ['d-fall', 'd-up', 'd-horiz'],
     steps: [
       { sim: 'fall', set: { h0: 15, v0: 0, g: 9.8, strobe: true, air: false, vec: true, gmode: 'vt' }, title: '自由落下', text: '静かにはなした物体は、下向きに一定の加速度 <var>g</var> = 9.8 m/s² で速くなる。ストロボの間かくが、下へいくほど広がっていく。', f: '<var>v</var> = <var>gt</var>　<var>y</var> = ½<var>gt</var><sup>2</sup>' },
@@ -5751,6 +5805,7 @@ function figCapShow(P, n) {
   el.hidden = false;
 }
 function lessonStep() {
+  if (state.lesson.l.guided) { gStep(); return; }
   const L = state.lesson, pg = lsPages(L.l)[L.i];
   L.tab = 'learn'; L.rev = false; L.easy = false; L.exam = false; L.pick = null; L.choices = null;
   if (pg.k === 'learn') {
@@ -5762,7 +5817,7 @@ function lessonStep() {
     state.id = st.sim;
     if (R) loadSim(st.sim);
     const a = ASK[L.l.id] && ASK[L.l.id][pg.i];
-    if (a) L.choices = shuffle(a.pick);
+    if (a) { L.choices = shuffle(a.pick); state.running = false; updatePlay(); } // 予想を選ぶまで 3D は止めておく
   } else if (pg.k === 'example') {
     if (!L.ex || L.ex.id !== pg.d) L.ex = { id: pg.d, P: DRILLS.find(x => x.id === pg.d).gen(), shown: 0 };
     showFig(L.ex);
@@ -5782,32 +5837,36 @@ function lessonDrillNext() {
   showFig(L.drill); renderCard();
 }
 function lessonMove(d) {
-  const L = state.lesson; if (!L || L.quiz) return;
+  const L = state.lesson; if (!L || L.quiz || L.l.guided) return;
   const k = L.i + d; if (k < 0 || k >= lsPages(L.l).length) return;
   L.i = k; lessonStep();
 }
 // 大きいボタン：予想の答えを見る → 式を出す → 例題を1手順すすめる → 次の画面へ
 function lessonPrimary() {
   const L = state.lesson; if (!L || L.quiz) return;
+  if (L.l.guided) { gPrimary(); return; }
   const pg = lsPages(L.l)[L.i];
   if (pg.k === 'learn') {
     const st = L.l.steps[pg.i];
-    if (L.choices && L.pick === null) { L.pick = -1; renderCard(); lsScrollTo('.ls-ans'); return; }
+    if (L.choices && L.pick === null) { L.pick = -1; lsPlay(); renderCard(); lsScrollTo('.ls-ans'); return; }
     if (st.f && !L.rev) { L.rev = true; renderCard(); lsScrollTo('.ls-fbox'); return; }
   }
   if (pg.k === 'example' && L.ex.shown < exItems(L.ex.P).length) { L.ex.shown++; const end = L.ex.shown === exItems(L.ex.P).length; if (end) figReveal(); renderCard(); lsScrollTo(end ? '.ansbig' : '.exstep:last-of-type'); return; }
   if (L.i === lsPages(L.l).length - 1) { lsQuizStart(); renderCard(); return; }
   lessonMove(1);
 }
+function lsPlay() { if (state.s && state.s.ended) loadSim(state.id, true); state.running = true; updatePlay(); }
 function lsScrollTo(sel) { const el = $('card').querySelector(sel); if (el) el.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); }
 function lessonExit() {
-  state.lesson = null; figClear();
+  state.lesson = null; figClear(); gClear();
   document.body.classList.remove('present');
   renderLib(); renderCard();
 }
 function lessonNext() { const L = state.lesson, list = LESSONS.filter(x => x.course === L.l.course); return list[list.indexOf(L.l) + 1] || null; }
 function lsQuizStart() {
   const L = state.lesson; figClear();
+  const st = L.l.steps[0];
+  if (st && R) { PARAMS[st.sim] = Object.assign(defaults(simOf(st.sim)), st.set || {}); state.id = st.sim; loadSim(st.sim); }
   L.quiz = { i: 0, score: 0, picked: null, qs: shuffle(L.l.quiz).map(([q, a, w, ex]) => ({ q, a, ex, choices: shuffle([a].concat(w)) })) };
 }
 // 例題を1手順ずつ見せるための部品：② 式にする → ③ 計算する → 答え（3D で確かめる）
@@ -5823,6 +5882,7 @@ function lessonMenuHTML() {
   return `<div class="card-head"><div><div class="eyebrow">授業モード</div><h2 class="name">どの授業をする？</h2><p class="lead">教科書の順に並んでいる。大きな文字の説明と3Dで、1画面ずつ進める。</p></div></div><div class="body"><div class="ctl">
     <div class="seg" role="tablist">${COURSES.map(([k, n]) => `<button type="button" data-lcourse="${k}" aria-pressed="${k === c}">${n}　${LESSONS.filter(l => l.course === k && lessonPass.has(l.id)).length}/${LESSONS.filter(l => l.course === k).length}</button>`).join('')}</div>
     <div class="ls-score"><span>${courseName(c)}の合格</span><b>${passN}</b><span>/ ${list.length}</span></div><div class="qprog"><i style="width:${passN / list.length * 100}%"></i></div>
+    ${c === 'kiso' ? '<button type="button" class="gtry-card" data-lesson="k-fall0"><b>新しい形の授業（試作）</b>自由落下：ペンタといっしょに「見る → 数える → 表 → 式 → 穴うめ」<span>はじめる →</span></button>' : ''}
     ${nx ? `<button type="button" class="btn main ls-go" data-lesson="${nx.id}">${list.some(l => lessonDone.has(l.id)) ? '続きから' : '最初から'}：${esc(nx.no)}　${esc(nx.name)} →</button>` : '<div class="verdict ok">全部の授業を見終わりました！</div>'}
     ${LESSON_PARTS[c].map((pt, pi) => `<h3 class="ls-part">${esc(pt.name)}</h3>` + pt.chaps.map((ch, ci) => { const ls = list.filter(l => l.part === pi && l.chap === ci); return ls.length ? `<h4 class="ls-chap">${esc(ch)}</h4>` + ls.map(l => `<div class="ls-row"><button type="button" class="item" data-lesson="${l.id}"><span class="ls-no">${esc(l.no)}</span><span>${esc(l.name)}</span>${lessonPass.has(l.id) ? '<i class="stamp s" title="合格">合格</i>' : lessonDone.has(l.id) ? '<span class="done">✓</span>' : ''}</button><button type="button" class="btn ls-t" data-lstest="${l.id}" title="確認テストだけをする">テスト</button></div>`).join('') : ''; }).join('')).join('')}
     <p class="note">プロジェクターに映すときは、授業を始めてから 3D の右上のボタンで全画面に（説明もいっしょに大きく映る）。キーボードの ← → でも進める。</p>
@@ -5831,6 +5891,7 @@ function lessonMenuHTML() {
 function lessonCardHTML() {
   const L = state.lesson, l = L.l;
   if (L.quiz) return lsQuizHTML();
+  if (l.guided) return gCardHTML();
   const pages = lsPages(l), pg = pages[L.i], last = L.i === pages.length - 1, next = lessonNext();
   const kinds = ['learn'].concat(['example', 'similar', 'apply', 'adv'].filter(k => pages.some(x => x.k === k)));
   const names = kinds.map(k => k === 'learn' ? '観察' + (pg.k === 'learn' ? ` ${pg.i + 1}/${l.steps.length}` : '') : DPAGE[k][0]).concat(['テスト']);
@@ -5931,20 +5992,203 @@ function lessonClick(t) {
   }
   if (!a || !state.lesson) return false;
   const L = state.lesson, k = a.dataset.a;
+  if (L.l.guided && !L.quiz && gClick(a)) return true;
   if (k === 'lsnext') { lessonMove(1); return true; }
   if (k === 'lsprimary') { lessonPrimary(); return true; }
   if (k === 'lseasy') { L.easy = true; renderCard(); return true; }
-  if (k === 'lspick') { L.pick = +a.dataset.k; renderCard(); lsScrollTo('.ls-ans'); return true; }
+  if (k === 'lspick') { L.pick = +a.dataset.k; lsPlay(); renderCard(); lsScrollTo('.ls-ans'); return true; }
   if (k === 'lsexam') { L.exam = true; renderCard(); return true; }
   if (k === 'lstry') { L.tab = 'try'; renderCard(); const b = $('card').querySelector('.body'); if (b) b.scrollTop = 0; return true; }
   if (k === 'lsback') { L.tab = 'learn'; renderCard(); return true; }
   if (k === 'lsprev') { lessonMove(-1); return true; }
   if (k === 'lsexit') { lessonExit(); return true; }
   if (k === 'lsquiz' || k === 'lsqretry') { lsQuizStart(); figClear(); renderCard(); return true; }
-  if (k === 'lsqback') { L.quiz = null; L.i = 0; lessonStep(); return true; }
+  if (k === 'lsqback') { L.quiz = null; L.i = 0; L.g = null; lessonStep(); return true; }
   if (k === 'lsskip') { const nx = lessonNext(); if (nx) lessonOpen(nx.id); else lessonExit(); return true; }
   if (k === 'lsqpick') { const q = L.quiz.qs[L.quiz.i]; L.quiz.picked = q.choices[+a.dataset.k]; if (L.quiz.picked === q.a) L.quiz.score++; renderCard(); return true; }
   if (k === 'lsqnext') { L.quiz.i++; L.quiz.picked = null; renderCard(); if (L.quiz.i >= L.quiz.qs.length) renderLib(); return true; }
+  return false;
+}
+// ======================= やさしい授業（試作）：見る → 数える → 表 → ことばの式 → 記号の式 → 穴うめ =======================
+// 1画面に1つのこと。ペンタが 3D の中の吹き出しで話し、下のボタンは1つだけ。
+// beat = { title, say, sayAfter, set（3D の条件）, reset（はじめから）, run（この時刻まで再生）, speed, mark（止まった所に距離の札）, row（表に書く秒）,
+//          task: { pick: [正解, まちがい…], ok, ng } または { blanks: '… [[a]] …', ans: { a: 値 }, diag(v) → まちがいの理由, okSay, check(v) → 確かめの1行 },
+//          card(G) → カードに出す表や式, last }
+const GL = {};
+const fx = (x, d) => String(+x.toFixed(d === undefined ? 2 : d));
+
+// ---- 自由落下 ----
+const gDist = t => 4.9 * t * t;
+function gTable(G, ask) {
+  const ts = [0, 1, 2, 3];
+  return `<table class="gtable"><tr><th>時間</th>${ts.map(t => `<td>${t} 秒</td>`).join('')}</tr>
+    <tr><th>落ちた距離</th>${ts.map(t => `<td class="${G.rows.includes(t) || t === 0 ? 'on' : ''}">${G.rows.includes(t) || t === 0 ? fx(gDist(t), 1) + ' m' : t === ask ? '？' : ''}</td>`).join('')}</tr></table>`;
+}
+GL['k-fall0'] = {
+  sim: 'fall',
+  base: { h0: 44.1, v0: 0, g: 9.8, strobe: true, sint: 1, air: false, vec: false, big: 2.4 },
+  // 止まった時刻の「落ちた距離」の札（屋上からボールまでの線）
+  mark(t) {
+    const s = state.s, h0 = s.p.h0, d = Math.min(gDist(t), h0), x = 1.0;
+    const pts = [V3(x - 0.3, h0, 0), V3(x, h0, 0), V3(x, h0 - d, 0), V3(x - 0.3, h0 - d, 0)];
+    const mat = solid(0xe07a2f, { emissive: 0x6a3000 }), r = Math.max(0.04, h0 * 0.004);
+    for (let i = 0; i < 3; i++) R.group.add(rod(pts[i], pts[i + 1], r, mat));
+    addLabel(`${fx(t)} 秒で <b>${fx(d, 1)} m</b>`, () => V3(x + 0.2, h0 - d / 2, 0), 'kn', 0);
+  },
+  beats: [
+    { title: 'まず予想', say: '高さ 44.1 m のビルの屋上から、ボールをそっとはなすよ。ボールはどんなふうに落ちると思う？',
+      task: { pick: ['だんだん速くなる', 'ずっと同じ速さ', 'だんだん遅くなる'], ok: 'いい予想！ 3D で確かめよう。', ng: 'どうかな？ 3D で確かめよう。' } },
+    { title: '見てみよう', say: 'スローで落とすよ。1 秒ごとに写真をとって、オレンジのボールで残すね。', run: 9, speed: 0.4,
+      sayAfter: 'オレンジのボールのすき間を見て。<b>下へいくほど広い</b>ね。だんだん速くなっているんだ。' },
+    { title: '1 秒で何 m？', reset: true, say: 'もう一度。こんどは 1 秒で止めるよ。', run: 1, speed: 0.5, mark: true, row: 1,
+      sayAfter: '1 秒で <b>4.9 m</b> 落ちた。下の表に書いたよ。', card: G => gTable(G) },
+    { title: '2 秒では？', say: 'つづけて 2 秒まで落とすよ。', run: 2, speed: 0.5, mark: true, row: 2,
+      sayAfter: '2 秒で <b>19.6 m</b>。表を見てね。', card: G => gTable(G) },
+    { title: 'きまりを見つけよう', say: '2 秒の距離は、1 秒の距離の何倍かな？ 電卓で計算してみよう。', card: G => gTable(G),
+      task: { blanks: '19.6 ÷ 4.9 = [[a]] 倍', ans: { a: 4 }, okSay: '<b>4 倍</b>！ 時間が 2 倍になると、距離は 2 × 2 = 4 倍になるんだ。',
+        diag: v => (Math.abs(v.a - 2) < 0.05 ? '19.6 を 4.9 で割ってみよう。' : null) } },
+    { title: '3 秒を予想', say: 'じゃあ 3 秒では、1 秒の距離の何倍になると思う？', card: G => gTable(G, 3),
+      task: { pick: ['9 倍（3 × 3）', '3 倍', '6 倍'], ok: 'そのとおり！ 時間を 2 回かける。3 × 3 = 9 倍。', ng: '時間を 2 回かけるよ。3 × 3 = 9 倍。' } },
+    { title: '確かめよう', say: '3 秒まで落とすよ。', run: 3, speed: 0.5, mark: true, row: 3,
+      sayAfter: '3 秒で <b>44.1 m</b>。4.9 × 9 = 44.1、予想どおり！', card: G => gTable(G) },
+    { title: 'ことばの式', say: 'ここまでを 1 つの式にまとめよう。どの時間でも、これで計算できるよ。',
+      card: () => `<div class="gformula">落ちた距離 ＝ <b>4.9</b> × 時間 × 時間</div>
+        <ul class="gcheck"><li>1 秒：4.9 × 1 × 1 = 4.9 m ✓</li><li>2 秒：4.9 × 2 × 2 = 19.6 m ✓</li><li>3 秒：4.9 × 3 × 3 = 44.1 m ✓</li></ul>` },
+    { title: '教科書の書き方', say: '教科書では、同じことを記号で短く書くよ。中身はさっきのことばの式と同じ。',
+      card: () => `<div class="gformula sym"><span class="c-y">y</span> ＝ ½ <span class="c-g">g</span> <span class="c-t">t</span>²</div>
+        <dl class="gmap"><dt class="c-y">y</dt><dd>落ちた距離（m）</dd><dt class="c-t">t</dt><dd>時間（秒）。t² は「t × t」のこと</dd>
+        <dt class="c-g">g</dt><dd>9.8。1 秒ごとに速さが 9.8 m/s ずつ増える、という意味（重力加速度）</dd>
+        <dt>½ g</dt><dd>9.8 の半分 ＝ <b>4.9</b>。さっきの 4.9 の正体！</dd></dl>` },
+    { title: '例題：時間 → 距離', set: { h0: 44.1 }, reset: true, say: '1.5 秒では何 m 落ちる？ ことばの式に入れるだけだよ。',
+      card: () => `<ol class="gsteps"><li>落ちた距離 ＝ 4.9 × <b>1.5</b> × <b>1.5</b></li><li>1.5 × 1.5 ＝ 2.25</li><li>4.9 × 2.25 ＝ <b>11.0 m</b>（電卓：4.9 × 1.5 × 1.5 ＝）</li></ol>`,
+      run: 1.5, speed: 0.5, mark: true, runLabel: '▶ 3D で 1.5 秒まで落として確かめる', sayAfter: '3D でも 1.5 秒で <b>11.0 m</b>。計算どおり！' },
+    { title: 'やってみよう：時間 → 距離', reset: true, say: '2.5 秒では何 m 落ちる？ 空らんをうめてね。',
+      task: { blanks: '4.9 × [[a]] × [[b]] ＝ [[c]] m', ans: { a: 2.5, b: 2.5, c: 30.625 },
+        diag: v => (Math.abs(v.c - 4.9 * 2.5) < 0.1 ? '時間は 2 回かけるよ（4.9 × 2.5 × 2.5）。' : Math.abs(v.c - 9.8 * 6.25) < 0.3 ? '9.8 ではなく、その半分の 4.9 を使うよ。' : null),
+        okSay: '正解！ 30.6 m。' },
+      run: 2.5, speed: 0.5, mark: true, runLabel: '▶ 3D で 2.5 秒まで落として確かめる', sayAfter: '3D でも 2.5 秒で <b>30.6 m</b>。ぴったり！' },
+    { title: '例題：距離 → 時間', set: { h0: 19.6, big: 1.6 }, reset: true, say: 'こんどは反対。19.6 m の高さからだと、何秒で地面に着く？',
+      card: () => `<ol class="gsteps"><li>まず 4.9 で割る：19.6 ÷ 4.9 ＝ <b>4</b>（これが「時間 × 時間」）</li><li>2 回かけて 4 になる数は？ 2 × 2 ＝ 4 だから <b>2 秒</b></li></ol>`,
+      run: 9, speed: 0.5, runLabel: '▶ 3D で落として確かめる', sayAfter: 'ちょうど <b>2 秒</b>で地面に着いた！（下の t を見てね）' },
+    { title: 'やってみよう：距離 → 時間', set: { h0: 10, big: 1.3 }, reset: true, say: '10 m の高さからだと何秒で着く？ 電卓を使っていいよ。',
+      card: () => `<p class="gcalc">電卓：<kbd>10</kbd> <kbd>÷</kbd> <kbd>4.9</kbd> <kbd>=</kbd> のあと <kbd>√</kbd>（スマホの電卓は横向きにすると √ が出る）</p>`,
+      task: { blanks: '① 10 ÷ 4.9 ＝ [[a]]<br>② 2 回かけて ① になる数 ＝ [[b]] 秒', ans: { a: 10 / 4.9, b: Math.sqrt(10 / 4.9) },
+        diag: v => (Math.abs(v.b - 10 / 4.9) < 0.05 ? '② は「2 回かけて ① になる数」。電卓で √ を押そう。' : Math.abs(v.b - Math.sqrt(10 / 9.8)) < 0.03 ? '9.8 ではなく 4.9 で割るよ。' : null),
+        okSay: '正解！ 確かめ：1.43 × 1.43 ＝ 2.04 ✓', tryTime: 'b' },
+      run: 9, speed: 0.5, runLabel: '▶ 3D で落として確かめる', sayAfter: '<b>1.43 秒</b>で着いた！ 計算どおり。' },
+    { title: 'まとめ', say: 'よくがんばったね！ この 2 つができれば、自由落下はばっちり。', last: true,
+      card: () => `<div class="gformula">落ちた距離 ＝ 4.9 × 時間 × 時間<small>（y ＝ ½ g t²）</small></div>
+        <ul class="gcheck"><li>時間 → 距離：式に入れて計算する</li><li>距離 → 時間：4.9 で割って、√（2 回かけてその数になる数）</li></ul>` },
+  ],
+};
+
+// ---- しくみ ----
+const gBeat = () => GL[state.lesson.l.id].beats[state.lesson.g.i];
+function gLoad(full) {
+  const L = state.lesson, gl = GL[L.l.id], b = gBeat(), G = L.g;
+  const set = Object.assign({}, gl.base, G.set || {});
+  PARAMS[gl.sim] = Object.assign(defaults(simOf(gl.sim)), set);
+  state.id = gl.sim;
+  if (R) { loadSim(gl.sim, !full); if (full) R.userMoved = false; }
+  state.running = false; state.stopAt = null; updatePlay();
+  G.marks.forEach(t => gl.mark(t));
+  void b;
+}
+function gStep() {
+  const L = state.lesson, gl = GL[L.l.id];
+  if (!L.g) L.g = { i: L.i || 0, rows: [], marks: [], set: null };
+  const G = L.g, b = gBeat();
+  G.pick = null; G.vals = {}; G.solved = !b.task; G.ran = !b.run; G.msg = ''; G.tried = false;
+  const set = b.set ? Object.assign({}, G.set || {}, b.set) : G.set;
+  const changed = JSON.stringify(set) !== JSON.stringify(G.set);
+  if (changed) { G.set = set; G.marks = []; }
+  if (b.reset || changed || !state.s || state.s.def.id !== gl.sim) { if (b.reset) G.marks = []; gLoad(changed || !state.s || state.s.def.id !== gl.sim); }
+  else { state.running = false; updatePlay(); }
+  $('stageWrap').classList.add('figmode', 'guided');
+  gSay(b.say);
+  if (L.i === GL[L.l.id].beats.length - 1 && !lessonDone.has(L.l.id)) { lessonDone.add(L.l.id); saveSet(LS_DONE_KEY, lessonDone); }
+  renderCard();
+  const bd = $('card').querySelector('.body'); if (bd) bd.scrollTop = 0;
+}
+function gSay(html) { const el = $('gbubble'); if (!el) return; el.innerHTML = `<span class="gface" aria-hidden="true">🐧</span><span class="gtext">${html}</span>`; el.hidden = false; }
+function gClear() { const el = $('gbubble'); if (el) el.hidden = true; $('stageWrap').classList.remove('guided'); state.stopAt = null; state.onStop = null; }
+// 決めた時刻まで再生する
+function gRun(T, speed, done) {
+  const s = state.s; if (!s) return;
+  if (s.ended || s.t >= T - 1e-6) { gLoad(false); }
+  state.speed = speed || 1; document.querySelectorAll('#speed [data-sp]').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.sp === state.speed)));
+  state.stopAt = T; state.onStop = () => { state.onStop = null; done(); };
+  state.running = true; updatePlay();
+}
+function gPrimary() {
+  const L = state.lesson, G = L.g, b = gBeat(), gl = GL[L.l.id];
+  if (!G.solved) return;
+  if (!G.ran) {
+    gSay(b.say + '<br><small>（見ていてね…）</small>');
+    gRun(b.run, b.speed, () => {
+      G.ran = true;
+      if (b.mark) { const t = Math.min(b.run, state.s.t); G.marks.push(t); gl.mark(t); }
+      if (b.row && !G.rows.includes(b.row)) G.rows.push(b.row);
+      gSay(b.sayAfter || b.say); renderCard();
+    });
+    renderCard(); return;
+  }
+  if (b.last) { lsQuizStart(); gClear(); renderCard(); return; }
+  L.i++; G.i = L.i; gStep();
+}
+function gCheck() {
+  const G = state.lesson.g, t = gBeat().task;
+  document.querySelectorAll('#card input.blank').forEach(x => { G.vals[x.dataset.b] = x.value; });
+  const v = {}; let ok = true, empty = false;
+  for (const k in t.ans) {
+    const n = parseNum(G.vals[k] || ''); v[k] = n;
+    if (n === null) { empty = true; ok = false; continue; }
+    if (Math.abs(n - t.ans[k]) > Math.max(Math.abs(t.ans[k]) * 0.02, 0.011)) ok = false;
+  }
+  G.bad = Object.keys(t.ans).filter(k => v[k] === null || Math.abs(v[k] - t.ans[k]) > Math.max(Math.abs(t.ans[k]) * 0.02, 0.011));
+  if (empty) G.msg = 'すべての空らんに数を入れよう。';
+  else if (ok) { G.solved = true; G.msg = ''; gSay(t.okSay || '正解！'); }
+  else { G.msg = (t.diag && t.diag(v)) || 'おしい！ 赤い空らんをもう一度計算してみよう。'; G.tryVal = t.tryTime ? v[t.tryTime] : null; }
+  renderCard();
+}
+function gCardHTML() {
+  const L = state.lesson, l = L.l, G = L.g, b = gBeat(), n = GL[l.id].beats.length;
+  let task = '';
+  const t = b.task;
+  if (t && t.pick) {
+    if (!G.order) G.order = {};
+    const ch = G.order[L.i] || (G.order[L.i] = shuffle(t.pick));
+    task = `<div class="ls-choices">${ch.map((c, k) => `<button type="button" class="qc${G.pick !== null ? (c === t.pick[0] ? ' right' : k === G.pick ? ' wrong' : ' dim') : ''}" data-a="gpick" data-k="${k}" ${G.pick !== null ? 'disabled' : ''}>${esc(c)}</button>`).join('')}</div>`;
+  } else if (t && t.blanks) {
+    const html = t.blanks.replace(/\[\[(\w+)\]\]/g, (m, k) => G.solved ? `<b class="bk ok">${fx(t.ans[k], 2)}</b>` : `<input class="blank${(G.bad || []).includes(k) && G.msg ? ' bad' : ''}" data-b="${k}" type="text" inputmode="decimal" autocomplete="off" value="${esc(G.vals[k] || '')}" aria-label="空らん">`);
+    task = `<div class="gblanks">${html}</div>${G.solved ? '' : `<div class="row"><button type="button" class="btn main" data-a="gcheck">答え合わせ</button><button type="button" class="linkbtn" data-a="gshow">答えを見る</button></div>`}
+      ${G.msg ? `<div class="verdict ng">${esc(G.msg)}</div>${G.tryVal ? `<button type="button" class="btn" data-a="gtry">その時間（${fx(G.tryVal)} 秒）で 3D を止めてみる</button>` : ''}` : ''}`;
+  }
+  const primary = !G.solved ? (t && t.pick ? '↑ 予想をえらんでね' : '↑ 空らんをうめてね') : !G.ran ? (b.runLabel || '▶ 3D で見る') : b.last ? `確認テストへ（${l.quiz.length}問）` : '次へ →';
+  return `<div class="card-head"><div><div class="eyebrow">${courseName(l.course)} ・ ${esc(l.name)}</div>
+    <div class="gprog"><i style="width:${(L.i + 1) / n * 100}%"></i></div>
+    <h2 class="ls-title">${esc(b.title)}<small class="gnum">${L.i + 1} / ${n}</small></h2></div></div>
+    <div class="body">${b.card ? b.card(G) : ''}${task}
+    <div class="ls-foot"><div class="ls-nav"><button type="button" class="btn" data-a="gback" ${L.i === 0 ? 'disabled' : ''}>←</button>
+    <button type="button" class="btn main big" data-a="lsprimary" ${G.solved ? '' : 'disabled'}>${primary}</button></div>
+    <button type="button" class="linkbtn exitlink" data-a="lsexit">授業をやめる</button></div></div>`;
+}
+// 授業の操作（やさしい授業）。処理したら true
+function gClick(a) {
+  const L = state.lesson, G = L.g, k = a.dataset.a, b = gBeat();
+  if (k === 'gpick') {
+    G.pick = +a.dataset.k; G.solved = true;
+    const c = G.order[L.i][G.pick]; gSay(c === b.task.pick[0] ? b.task.ok : b.task.ng);
+    renderCard(); return true;
+  }
+  if (k === 'gcheck') { gCheck(); return true; }
+  if (k === 'gshow') { G.solved = true; G.msg = ''; gSay('答えを見て、計算の流れを確かめよう。' + (b.task.okSay ? '<br>' + b.task.okSay.replace(/^正解！\s*/, '') : '')); renderCard(); return true; }
+  if (k === 'gtry') {
+    const T = G.tryVal; gLoad(false);
+    gRun(T, 0.5, () => { gSay(state.s.ended ? `${fx(T)} 秒より前に、もう地面に着いているよ。答えはもっと短い時間。` : `${fx(T)} 秒では、ボールはまだ空中！ もう少し長い時間がかかるよ。`); });
+    return true;
+  }
+  if (k === 'gback') { if (L.i > 0) { L.i--; G.i = L.i; G.marks = []; G.set = null; gStep(); } return true; }
   return false;
 }
 
@@ -6126,7 +6370,7 @@ function renderCard() {
   const nb = card.querySelector('.body'); if (nb) nb.scrollTop = y;
   renderLive(true);
 }
-function setModeUI(mode) { figClear(); if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
+function setModeUI(mode) { figClear(); gClear(); if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
 function go(id) {
   setModeUI('sim');
   const prev = state.s;
