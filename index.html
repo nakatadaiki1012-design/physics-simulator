@@ -240,12 +240,12 @@ ol.sol2 .w::before { content: "なぜ？ "; color: var(--accent); font-weight: 7
 .ls-ask .verdict { margin-top: 8px; }
 .ls-ans { margin-top: 10px; animation: lsIn .35s ease; }
 /* 問題の図：3D の左上に「この問題の数字」 */
-.figcap { position: absolute; left: 8px; top: 46px; z-index: 3; max-width: min(300px, calc(100% - 70px)); background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--warm); border-radius: 3px; padding: 4px 9px 5px; font-size: 12.5px; line-height: 1.5; pointer-events: none; display: flex; flex-wrap: wrap; gap: 0 10px; }
+.figcap { position: absolute; left: 8px; bottom: 54px; z-index: 3; max-width: min(300px, calc(100% - 70px)); background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--warm); border-radius: 3px; padding: 4px 9px 5px; font-size: 12.5px; line-height: 1.5; pointer-events: none; display: flex; flex-wrap: wrap; gap: 0 10px; }
 .figcap b { width: 100%; font-size: 11.5px; color: var(--warm); letter-spacing: .06em; }
 .figcap span { font-family: var(--font-data); white-space: nowrap; }
 .figcap small { width: 100%; color: var(--muted); font-size: 11px; }
 .figcap[hidden] { display: none; }
-@media (max-width: 640px) { .figcap { font-size: 11px; top: 42px; } }
+@media (max-width: 640px) { .figcap { font-size: 11px; bottom: 50px; } }
 .ls-fh { font-size: 12px; font-weight: 700; color: var(--warm); letter-spacing: .06em; }
 .exsteps { display: grid; gap: 8px; margin: 6px 0; }
 .exstep { border-left: 3px solid var(--accent); background: var(--chip); border-radius: 2px; padding: 6px 12px; animation: lsIn .35s ease; }
@@ -320,6 +320,16 @@ details.more p { margin: 6px 0; line-height: 1.7; }
 .gtry-card b { display: block; color: var(--kn); font-size: 13px; letter-spacing: .06em; }
 .gtry-card span { display: block; text-align: right; font-weight: 700; color: var(--kn); }
 /* 学習のレール（式を立てる） */
+.railbar { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; }
+.railbar .rb-n { color: var(--muted); font-family: var(--font-data); white-space: nowrap; }
+.railbar .rb-dots { display: flex; gap: 4px; }
+.railbar .rb-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--chip); }
+.railbar .rb-dots i.on { background: var(--accent); } .railbar .rb-dots i.done { background: color-mix(in srgb, var(--accent) 45%, var(--panel)); }
+.railbar b { color: var(--accent); }
+.stepbox.slim { display: flex; align-items: baseline; gap: 10px; padding: 6px 12px; }
+.stepbox.slim .sh { margin: 0; white-space: nowrap; }
+.stepbox.slim .exf.big { font-size: 19px; padding: 0; text-align: left; }
+.verdict var { font-style: italic; }
 .railsteps { list-style: none; display: flex; gap: 3px; margin: 0 0 8px; padding: 0; counter-reset: r; }
 .railsteps li { flex: 1; font-size: 10.5px; line-height: 1.3; text-align: center; padding: 4px 2px; border-radius: 3px; background: var(--chip); color: var(--muted); counter-increment: r; }
 .railsteps li::before { content: counter(r); display: block; font: 700 12px var(--font-data); }
@@ -4268,7 +4278,7 @@ function railChips(P) {
 }
 function railHTML(D) {
   const P = D.P, rl = P.rail, R = D.rail, ex = R.mode === 'ex';
-  const head = `<ol class="railsteps">${RAIL_STAGES.map((n, i) => `<li class="${i === R.st ? 'on' : i < R.st ? 'done' : ''}">${n}</li>`).join('')}</ol>`;
+  const head = `<div class="railbar"><span class="rb-n">手順 ${R.st + 1} / ${RAIL_STAGES.length}</span><span class="rb-dots">${RAIL_STAGES.map((n, i) => `<i class="${i === R.st ? 'on' : i < R.st ? 'done' : ''}"></i>`).join('')}</span><b>${RAIL_STAGES[R.st]}</b></div>`;
   let body = '';
   if (R.st === 0) {
     body = `<div class="stepbox"><div class="sh">① 問題を読む</div><div class="prob">${hiliteQ(P.q)}</div>${chipsHTML(P)}</div>
@@ -4286,10 +4296,9 @@ function railHTML(D) {
     body = `<div class="stepbox"><div class="sh">③ 式に数を入れる（□ をえらんで、下の札をタップ）</div>
       <div class="fillrow">${rl.fill.map((x, i) => x.v === '?' ? `<span class="slot ask">${railSym(x.sym)} = ？</span>` : `<button type="button" class="slot${R.cur === i ? ' cur' : ''}${R.fill[i] !== null ? ' has' : ''}${R.bad.includes(i) ? ' bad' : ''}" data-a="rslot" data-i="${i}">${railSym(x.sym)} = ${R.fill[i] !== null ? esc(R.fill[i]) : '□'}</button>`).join('')}</div>
       <div class="chips tap">${chips.map(c => `<button type="button" class="chip kn" data-a="rchip" data-v="${esc(c.v)}"><span><b>${esc(c.sym)}</b> = ${esc(c.v)}</span>${c.note ? `<small>${esc(c.note)}</small>` : ''}</button>`).join('')}</div>
-      ${R.msg ? `<div class="verdict ng">${esc(R.msg)}</div>` : ''}
-      <div class="row"><button type="button" class="btn main" data-a="rfillok" ${R.fill.some((v, i) => v === null && rl.fill[i].v !== '?') ? 'disabled' : ''}>式にする</button></div></div>`;
+      ${R.msg ? `<div class="verdict ng">${R.msg}</div>` : '<p class="note">札をぜんぶ入れると、式ができる。</p>'}</div>`;
   } else if (R.st === 3) {
-    body = `<div class="stepbox"><div class="sh">③ 式にできた！</div><div class="exf big">${esc(rl.eq)}</div></div>` + railCalcHTML(D);
+    body = `<div class="stepbox slim"><div class="sh">③ 式にできた</div><div class="exf big">${esc(rl.eq)}</div></div>` + railCalcHTML(D);
   } else {
     body = `<div class="ansbig ok"><span>答え</span><b>${esc(ansText(P))}</b></div><div class="stepbox"><div class="sh">解き方（1行ずつ）</div>${solHTML(P)}</div>${afterHTML(P)}`;
   }
@@ -4301,15 +4310,16 @@ function railCalcHTML(D) {
   if (R.mode === 'ex') {
     return `<div class="stepbox"><div class="sh">④ 計算する（ボタンで 1 行ずつ）</div>
       ${steps.length ? `<ol class="sol3">${steps.slice(0, R.shown).map(([f, w]) => `<li><div class="f">${f}</div><div class="w">${w}</div></li>`).join('')}</ol>` : ''}
-      ${R.shown < steps.length ? `<div class="row"><button type="button" class="btn main" data-a="rstep">${R.shown === 0 ? 'まず、どうする？ →' : '次の 1 行 →'}</button></div>` : `<div class="ansbig ok"><span>答え</span><b>${esc(ansText(P))}</b></div>`}</div>`;
+      ${R.shown < steps.length ? (R.shown === 0 ? '<p class="note">下のボタンで、計算を 1 行ずつ見よう。</p>' : '') : `<div class="ansbig ok"><span>答え</span><b>${esc(ansText(P))}</b></div>`}</div>`;
   }
   const fin = D.result === 'ok' || D.result === 'skip';
   let h = `<div class="stepbox"><div class="sh">④ 計算する</div>`;
-  if (R.shown) h += `<ol class="sol3 hint">${steps.slice(0, R.shown).map(([f, w]) => `<li><div class="f">${f}</div><div class="w">${w}</div></li>`).join('')}</ol>`;
+  const hints = P.hints || [];
+  if (R.shown) h += `<ol class="hints">${hints.slice(0, R.shown).map((x, i) => `<li><b>ヒント ${i + 1}</b>${x}</li>`).join('')}</ol>`;
   if (!fin) {
     h += `<div class="ans"><input id="dAns" type="text" inputmode="decimal" autocomplete="off" placeholder="答え" value="${esc(D.input)}" aria-label="答え"><span class="u">${esc(P.unit)}</span><button type="button" class="btn main" data-a="judge">答え合わせ</button></div>`;
     if (D.result === 'ng') h += `<div class="verdict ng">ちがうようです（${D.tries} 回目）。${esc(D.advice)}</div>`;
-    h += `<div class="row">${R.shown < steps.length ? `<button type="button" class="btn hintbtn" data-a="rstep">計算のヒント（${R.shown + 1} / ${steps.length}）</button>` : ''}<button type="button" class="linkbtn" data-a="dskip">答えと解き方を見る</button></div>`;
+    h += `<div class="row">${R.shown < hints.length ? `<button type="button" class="btn hintbtn" data-a="rstep">ヒント ${R.shown + 1} を見る（全 ${hints.length}）</button>` : ''}<button type="button" class="linkbtn" data-a="dskip">答えと解き方を見る</button></div>`;
   }
   return h + '</div>';
 }
@@ -4322,20 +4332,23 @@ function railClick(a) {
   if (k === 'rslot') { R.cur = +a.dataset.i; renderCard(); return true; }
   if (k === 'rchip') {
     if (R.cur < 0 || rl.fill[R.cur].v === '?') R.cur = R.fill.findIndex((v, i) => v === null && rl.fill[i].v !== '?');
-    if (R.cur >= 0) { R.fill[R.cur] = a.dataset.v; R.bad = R.bad.filter(i => i !== R.cur); R.cur = R.fill.findIndex((v, i) => v === null && rl.fill[i].v !== '?'); }
+    if (R.cur >= 0) {
+      const i = R.cur, want = rl.fill[i].v, got = a.dataset.v;
+      R.fill[i] = got; R.bad = R.bad.filter(j => j !== i);
+      if (railNum(got) !== null && railNum(want) !== null ? Math.abs(railNum(got) - railNum(want)) > Math.abs(railNum(want)) * 0.001 + 1e-9 : got !== want) {
+        // その場で教える：記号がちがう札を入れた
+        R.bad.push(i); const chip = railChips(P).find(c => c.v === got);
+        R.msg = `${railSym(rl.fill[i].sym)} の所に「${esc(chip ? chip.sym : got)}」の札が入っている。同じ記号の札（${railSym(rl.fill[i].sym)} = …）をさがそう。`;
+      } else { R.msg = ''; R.cur = R.fill.findIndex((v, j) => v === null && rl.fill[j].v !== '?'); if (R.cur < 0 && !R.bad.length) { R.st = 3; renderCard(); lsScrollToIn('#dAns, .exf.big'); return true; } }
+    }
     renderCard(); return true;
   }
-  if (k === 'rfillok') {
-    const num = s => parseNum(String(s).replace(/[^\d.eE+\-×⁻⁰¹²³⁴⁵⁶⁷⁸⁹^]/g, ''));
-    R.bad = rl.fill.map((x, i) => (x.v !== '?' && num(R.fill[i]) !== null && num(x.v) !== null ? Math.abs(num(R.fill[i]) - num(x.v)) > Math.abs(num(x.v)) * 0.001 + 1e-9 : x.v !== '?' && R.fill[i] !== x.v) ? i : -1).filter(i => i >= 0);
-    if (R.bad.length) { R.msg = `${R.bad.map(i => rl.fill[i].sym).join('、')} に入れる数がちがうよ。問題文の数と札を見くらべよう。`; R.cur = R.bad[0]; }
-    else { R.msg = ''; R.st = 3; }
-    renderCard(); return true;
-  }
-  if (k === 'rstep') { R.shown++; renderCard(); lsScrollToIn('.sol3 li:last-child'); return true; }
+
+  if (k === 'rstep') { R.shown++; renderCard(); lsScrollToIn(R.mode === 'ex' ? '.sol3 li:last-child' : 'ol.hints li:last-child'); return true; }
   if (k === 'rnext') { railAdvance(D); return true; }
   return false;
 }
+const railNum = s => parseNum(String(s).replace(/[^\d.eE+\-×⁻⁰¹²³⁴⁵⁶⁷⁸⁹^]/g, ''));
 function lsScrollToIn(sel) { const el = $('card').querySelector(sel); if (el) el.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); }
 // 次の段へ（大きいボタン）。進めたら true、もう進めないなら false
 function railAdvance(D) {
@@ -4354,7 +4367,7 @@ function railPrimary(D) {
   if (R.st === 0) return R.find === null ? '↑ 求めるものをえらぶ' : '式をえらぶ →';
   if (R.st === 1) return R.fpick === null ? '↑ 使う式をえらぶ' : '式に数を入れる →';
   if (R.st === 2) return '↑ 札をタップして式を作る';
-  if (R.st === 3) return R.mode === 'ex' ? (R.shown < P.sol.length - 1 ? '次の 1 行 →' : '答えを出して、3D で確かめる →') : (D.result === 'ok' || D.result === 'skip' ? '3D で確かめる →' : '↑ 答えを入れる');
+  if (R.st === 3) return R.mode === 'ex' ? (R.shown < P.sol.length - 1 ? (R.shown === 0 ? 'まず、どうする？ →' : '次の 1 行 →') : '答えを出す →') : (D.result === 'ok' || D.result === 'skip' ? '3D で確かめる →' : '↑ 答えを入れる');
   return null;
 }
 const railLocked = D => { const R = D.rail; return R.st === 0 ? R.find === null : R.st === 1 ? R.fpick === null : R.st === 2 ? true : R.st === 3 ? (R.mode !== 'ex' && !(D.result === 'ok' || D.result === 'skip')) : false; };
@@ -4869,7 +4882,7 @@ function drillAdvice(P, v) {
   for (const k of [10, 100, 1000, 1e6]) if (near(r, k) || near(r, 1 / k)) return 'けたがずれている。単位の変換（km と m、cm と m、L と m³、k = 1000）を確かめよう。';
   if (near(v, P.ans * P.ans) || near(v * v, P.ans)) return '2 乗や √ のつけ忘れ・とり忘れがないか確かめよう。';
   if (Math.abs(r - 1) < 0.1) return 'おしい！ 途中で数を丸めすぎていないか確かめよう（途中は 3 けた以上で計算）。';
-  return 'ヒントを順番に見て、使う式から確かめよう。';
+  return (Math.abs(v) > Math.abs(P.ans) ? '答えが大きすぎる。' : '答えが小さすぎる。') + '式に入れた数と、かけ算・割り算の向きを確かめよう。ヒントも使える。';
 }
 // 授業データ：力学の基本（k-vel, k-fall, k-force, k-law, k-energy, b-plane）
 // ※ ほかの plan ファイルと名前がぶつからないよう、トップレベルに const は置かない。
@@ -6474,7 +6487,7 @@ function lessonMenuHTML() {
   return `<div class="card-head"><div><div class="eyebrow">授業モード</div><h2 class="name">どの授業をする？</h2><p class="lead">教科書の順に並んでいる。大きな文字の説明と3Dで、1画面ずつ進める。</p></div></div><div class="body"><div class="ctl">
     <div class="seg" role="tablist">${COURSES.map(([k, n]) => `<button type="button" data-lcourse="${k}" aria-pressed="${k === c}">${n}　${LESSONS.filter(l => l.course === k && lessonPass.has(l.id)).length}/${LESSONS.filter(l => l.course === k).length}</button>`).join('')}</div>
     <div class="ls-score"><span>${courseName(c)}の合格</span><b>${passN}</b><span>/ ${list.length}</span></div><div class="qprog"><i style="width:${passN / list.length * 100}%"></i></div>
-    ${c === 'kiso' ? '<button type="button" class="gtry-card" data-lesson="k-fall0"><b>新しい形の授業（試作）</b>自由落下：ペンタといっしょに「見る → 数える → 表 → 式 → 穴うめ」<span>はじめる →</span></button>' : ''}
+    ${c === 'kiso' ? '<button type="button" class="gtry-card" data-lesson="k-fall0"><b>いちばんやさしい授業</b>自由落下：ペンタといっしょに「見る → 数える → 表 → 式 → 穴うめ」<span>はじめる →</span></button>' : ''}
     ${nx ? `<button type="button" class="btn main ls-go" data-lesson="${nx.id}">${list.some(l => lessonDone.has(l.id)) ? '続きから' : '最初から'}：${esc(nx.no)}　${esc(nx.name)} →</button>` : '<div class="verdict ok">全部の授業を見終わりました！</div>'}
     ${LESSON_PARTS[c].map((pt, pi) => `<h3 class="ls-part">${esc(pt.name)}</h3>` + pt.chaps.map((ch, ci) => { const ls = list.filter(l => l.part === pi && l.chap === ci); return ls.length ? `<h4 class="ls-chap">${esc(ch)}</h4>` + ls.map(l => `<div class="ls-row"><button type="button" class="item" data-lesson="${l.id}"><span class="ls-no">${esc(l.no)}</span><span>${esc(l.name)}</span>${lessonPass.has(l.id) ? '<i class="stamp s" title="合格">合格</i>' : lessonDone.has(l.id) ? '<span class="done">✓</span>' : ''}</button><button type="button" class="btn ls-t" data-lstest="${l.id}" title="確認テストだけをする">テスト</button></div>`).join('') : ''; }).join('')).join('')}
     <p class="note">プロジェクターに映すときは、授業を始めてから 3D の右上のボタンで全画面に（説明もいっしょに大きく映る）。キーボードの ← → でも進める。</p>
@@ -6501,9 +6514,9 @@ function lessonCardHTML() {
       const easy = EASY[l.id] && EASY[l.id][pg.i];
       const good = a && L.pick >= 0 && L.choices[L.pick] === a.pick[0];
       body = (a ? `<div class="ls-ask"><div class="ls-askh">こんなとき、どうなる？</div><p class="ls-q">${esc(a.q)}</p>
-          ${L.pick === null ? '<p class="note">まず 3D をよく見て、予想してから選ぼう。</p>' : ''}
-          <div class="ls-choices">${L.choices.map((c, k) => `<button type="button" class="qc${L.pick !== null ? (c === a.pick[0] ? ' right' : k === L.pick ? ' wrong' : ' dim') : ''}" data-a="lspick" data-k="${k}" ${L.pick !== null ? 'disabled' : ''}>${esc(c)}</button>`).join('')}</div>
-          ${L.pick !== null ? `<div class="verdict ${good ? 'ok' : L.pick >= 0 ? 'ng' : ''}">${good ? '予想どおり！' : '答え：' + esc(a.pick[0])}</div>` : ''}</div>` : '')
+          ${L.pick === null ? `<p class="note">予想して選ぼう。選ぶと 3D が動き出す。</p>
+          <div class="ls-choices">${L.choices.map((c, k) => `<button type="button" class="qc" data-a="lspick" data-k="${k}">${esc(c)}</button>`).join('')}</div>`
+          : `<div class="verdict ${good ? 'ok' : L.pick >= 0 ? 'ng' : ''}">${good ? `予想どおり！ <b>${esc(a.pick[0])}</b>` : L.pick >= 0 ? `あなたの予想「${esc(L.choices[L.pick])}」→ 答えは <b>${esc(a.pick[0])}</b>` : `答え：<b>${esc(a.pick[0])}</b>`}</div>`}</div>` : '')
         + (open ? `<div class="ls-ans"><div class="ls-fh">${a ? 'なぜ？（3D で起きていること）' : '3D で起きていること'}</div><p class="ls-text">${st.text}</p></div>
           ${easy ? (L.easy ? `<div class="easy"><b>かみくだくと</b>${easy}</div>` : '<button type="button" class="ls-easybtn" data-a="lseasy">むずかしい？ かみくだいた説明を読む</button>') : ''}
           ${st.f && L.rev ? `<div class="ls-fbox"><div class="ls-fh">式にすると</div><div class="formula">${st.f}</div></div>` : ''}
@@ -6794,6 +6807,8 @@ function parseNum(str) {
   return t === '' || !isFinite(v) ? null : v;
 }
 function drillNew(id, prev, mode) { const d = DRILLS.find(x => x.id === id), same = prev && prev.id === id; const D = { id, P: d.gen(), input: '', result: null, hint: 0, tries: 0, advice: '', n: same ? prev.n : 0, ok: same ? prev.ok : 0 }; if (D.P.rail) railNew(D, mode || 'try'); return D; }
+// カードを上までもどす（問題の文からはじめる）
+function cardTop() { const c = $('card'); c.scrollTop = 0; const b = c.querySelector('.body'); if (b) b.scrollTop = 0; }
 function drillStart(id) { state.drill = drillNew(id, state.drill); }
 // いま答えている計算問題（授業の中か、計算モードか）
 const curDrill = () => { if (state.mode !== 'lesson' || !state.lesson) return state.drill; const L = state.lesson, pg = !L.quiz && !L.l.guided && lsPages(L.l)[L.i]; return pg && pg.k === 'example' ? L.ex : L.drill; };
@@ -6977,7 +6992,7 @@ function go(id) {
 function goDrill(id) {
   setModeUI('drill'); state.libCat = null;
   const d = DRILLS.find(x => x.id === id);
-  drillStart(id); showFig(state.drill); renderLib(); renderCard(); renderLegend();
+  drillStart(id); showFig(state.drill); renderLib(); renderCard(); renderLegend(); cardTop();
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* 無視 */ }
 }
 function setMode(mode) {
@@ -7016,7 +7031,7 @@ document.addEventListener('click', ev => {
     if (k === 'judge') { drillJudge(); return; }
     if (k === 'dskip') { const D = curDrill(); if (!D.tries) D.n++; D.tries = Math.max(D.tries, 1); D.result = 'skip'; figReveal(); renderCard(); return; }
     if (k === 'dhint') { const D = curDrill(), x = $('dAns'); if (x) D.input = x.value; D.hint = Math.min(D.hint + 1, D.P.hints.length); renderCard(); return; }
-    if (k === 'dnext') { if (state.mode === 'lesson') { lessonDrillNext(); } else { drillStart(state.drill.id); showFig(state.drill); renderCard(); } const el = $('dAns'); if (el) el.focus(); return; }
+    if (k === 'dnext') { if (state.mode === 'lesson') { lessonDrillNext(); } else { drillStart(state.drill.id); showFig(state.drill); renderCard(); cardTop(); } const el = $('dAns'); if (el) el.focus(); return; }
   }
   if (!s) return;
   const sg = t.closest('[data-seg]');
@@ -7073,6 +7088,7 @@ $('btnFull').addEventListener('click', () => {
   if (!ok) { state.id = 'fall'; state.s = null; renderLib(); $('card').innerHTML = `<div class="card-head"><div><h2 class="name">物理ラボ3D</h2><p class="lead">3D を表示できる環境で開いてください。計算とクイズは使えます。</p></div></div>`; return; }
   if (LESSONS.some(l => l.id === h)) lessonOpen(h);
   else if (DRILLS.some(d => d.id === h)) goDrill(h);
+  else if (!h && !done.size && !lessonDone.size) { go('fall'); setMode('lesson'); } // はじめての人は授業の一覧から
   else go(SIMS.some(x => x.id === h) ? h : 'fall');
 })();
 </script>
