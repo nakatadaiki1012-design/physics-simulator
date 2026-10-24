@@ -76,7 +76,8 @@ var { font-family: var(--font-display); font-style: italic; font-weight: 700; }
 .item .ic { width: 24px; height: 22px; border-radius: 4px; background: var(--chip); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--accent); flex: none; font-family: var(--font-display); }
 .item[aria-current="true"] .ic { background: var(--accent); color: var(--accent-ink); }
 .item .done { margin-left: auto; color: var(--ok); font-weight: 700; }
-.stage-wrap { position: relative; border-radius: var(--r); overflow: hidden; min-height: 0; border: 1px solid var(--line); background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-hz) 62%, var(--sky-hz) 100%); }
+.stagecol { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 6px; }
+.stage-wrap { position: relative; flex: 1 1 0; border-radius: var(--r); overflow: hidden; min-height: 0; border: 1px solid var(--line); background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-hz) 62%, var(--sky-hz) 100%); }
 .stage-wrap.outdoor { --sky-top: var(--sky-top-o); --sky-hz: var(--sky-hz-o); }
 .stage-wrap.space { background: radial-gradient(120% 90% at 40% 30%, #1d2a35, #05080c); }
 .stage-wrap.is-max { position: fixed; inset: 0; z-index: 50; border-radius: 0; }
@@ -91,7 +92,8 @@ var { font-family: var(--font-display); font-style: italic; font-weight: 700; }
 .lbl.warn { background: var(--ng); color: var(--panel); border-color: var(--ng); }
 .lbl.plain { background: transparent; border-color: transparent; color: var(--muted); font-weight: 600; }
 .ov { position: absolute; z-index: 2; display: flex; gap: 6px; }
-.ov-tl { top: 10px; left: 10px; flex-wrap: wrap; max-width: calc(100% - 150px); }
+.ov-tl { display: flex; flex: none; }
+.ov-tl:empty { display: none; }
 .ov-tr { top: 10px; right: 10px; }
 .ov-bc { bottom: 10px; left: 50%; transform: translateX(-50%); align-items: center; background: var(--glass); border: 1px solid var(--line); border-radius: 4px; padding: 4px; }
 .ibtn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); }
@@ -103,7 +105,9 @@ var { font-family: var(--font-display); font-style: italic; font-weight: 700; }
 .speed button { border: 0; background: transparent; padding: 3px 8px; font: 600 12.5px var(--font-data); color: var(--muted); border-radius: 3px; }
 .speed button[aria-pressed="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--warm); }
 .clock { white-space: nowrap; font: 600 13px var(--font-data); padding: 0 8px; min-width: 6.2em; text-align: right; font-variant-numeric: tabular-nums; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 10px; background: var(--glass); border: 1px solid var(--line); border-radius: 3px; padding: 4px 9px; font-size: 12px; font-weight: 700; }
+.strip { flex: none; display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 2px; }
+.strip:not(:has(> :not([hidden]):not(:empty))) { display: none; }
+.legend { display: flex; flex-wrap: nowrap; white-space: nowrap; gap: 4px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 4px 9px; font-size: 12px; font-weight: 700; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; background: currentColor; position: relative; }
 .legend i::after { content: ""; position: absolute; right: -4px; top: -3px; border-left: 6px solid currentColor; border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; }
@@ -188,9 +192,9 @@ ol.sol li { margin-bottom: 4px; }
 .stamp { display: inline-grid; place-items: center; font-family: var(--font-display); font-weight: 800; color: var(--stamp); border: 3px solid var(--stamp); border-radius: 50%; line-height: 1; transform: rotate(-12deg); width: 72px; height: 72px; font-size: 21px; margin: 4px 0 10px; box-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 4.5px var(--stamp); }
 .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
 /* 3Dのそばの「いまの式」 */
-.eqbox { position: absolute; left: 8px; bottom: 54px; z-index: 3; max-width: min(340px, calc(100% - 16px)); background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--ink); border-radius: 3px; padding: 5px 9px 6px; font-size: 12.5px; line-height: 1.5; box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 18%, transparent); pointer-events: none; }
+.eqbox { flex: 1 1 auto; min-width: 0; background: var(--panel); border: 1px solid var(--ink); border-radius: 3px; padding: 4px 9px 5px; font-size: 12.5px; line-height: 1.5; cursor: pointer; }
 .eqbox .eq-t { display: none; }
-.eqbox.compact { pointer-events: auto; cursor: pointer; bottom: 50px; max-width: calc(100% - 16px); font-size: 11.5px; padding: 3px 8px; }
+.eqbox.compact { font-size: 12px; padding: 3px 8px; }
 .eqbox.compact .eq-t { display: inline; margin-left: 6px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
 .eqbox.compact.open .eq-t { display: none; }
 .eqbox.compact:not(.open) b, .eqbox.compact:not(.open) div + div, .eqbox.compact:not(.open) .sm { display: none; }
@@ -240,12 +244,12 @@ ol.sol2 .w::before { content: "なぜ？ "; color: var(--accent); font-weight: 7
 .ls-ask .verdict { margin-top: 8px; }
 .ls-ans { margin-top: 10px; animation: lsIn .35s ease; }
 /* 問題の図：3D の左上に「この問題の数字」 */
-.figcap { position: absolute; left: 8px; bottom: 54px; z-index: 3; max-width: min(300px, calc(100% - 70px)); background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--warm); border-radius: 3px; padding: 4px 9px 5px; font-size: 12.5px; line-height: 1.5; pointer-events: none; display: flex; flex-wrap: wrap; gap: 0 10px; }
-.figcap b { width: 100%; font-size: 11.5px; color: var(--warm); letter-spacing: .06em; }
+.figcap { flex: 1 1 auto; min-width: 0; background: var(--panel); border: 1px solid var(--warm); border-radius: 3px; padding: 3px 9px 4px; font-size: 12.5px; line-height: 1.5; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+.figcap b { font-size: 11.5px; color: var(--warm); letter-spacing: .06em; margin-right: 4px; }
 .figcap span { font-family: var(--font-data); white-space: nowrap; }
 .figcap small { width: 100%; color: var(--muted); font-size: 11px; }
 .figcap[hidden] { display: none; }
-@media (max-width: 640px) { .figcap { font-size: 11px; bottom: 50px; } }
+@media (max-width: 640px) { .figcap { font-size: 11px; } }
 .ls-fh { font-size: 12px; font-weight: 700; color: var(--warm); letter-spacing: .06em; }
 .exsteps { display: grid; gap: 8px; margin: 6px 0; }
 .exstep { border-left: 3px solid var(--accent); background: var(--chip); border-radius: 2px; padding: 6px 12px; animation: lsIn .35s ease; }
@@ -285,9 +289,9 @@ details.more summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 details.more p { margin: 6px 0; line-height: 1.7; }
 .trapline b { display: block; color: var(--warm); font-size: 12px; }
 /* やさしい授業：3D の中のペンタの吹き出し・表・ことばの式・空らん */
-.gbubble { position: absolute; left: 10px; right: 10px; bottom: 56px; z-index: 4; display: flex; gap: 10px; align-items: flex-start; background: color-mix(in srgb, var(--panel) 94%, transparent); border: 2px solid var(--ink); border-radius: 14px; padding: 8px 12px; font-size: 16.5px; line-height: 1.6; box-shadow: 0 4px 14px rgb(0 0 0 / .16); animation: lsIn .3s ease; }
+.gbubble { flex: 1 1 auto; min-width: 0; display: flex; gap: 10px; align-items: center; background: var(--panel); border: 2px solid var(--ink); border-radius: 12px; padding: 6px 12px; font-size: 15.5px; line-height: 1.5; animation: lsIn .3s ease; }
 .gbubble[hidden] { display: none; }
-.gbubble .gface { font-size: 26px; line-height: 1; flex: none; }
+.gbubble .gface { font-size: 24px; line-height: 1; flex: none; }
 .gbubble b { color: var(--kn); }
 .gbubble small { color: var(--muted); font-size: 13px; }
 .guided #playbar .speed { display: none; }
@@ -359,13 +363,14 @@ details.more p { margin: 6px 0; line-height: 1.7; }
 .chips.tap .chip:active { transform: scale(.96); }
 .exf.big { font-size: 24px; text-align: center; padding: 8px 0; }
 ol.sol3.hint { background: color-mix(in srgb, var(--vel) 8%, var(--panel)); border-left: 3px solid var(--vel); padding: 6px 8px 6px 26px; margin-bottom: 8px; }
-.scenebar { position: absolute; right: 8px; top: 50px; z-index: 3; display: flex; gap: 4px; align-items: center; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 3px; padding: 3px 4px 3px 8px; font-size: 11.5px; }
-.scenebar span { color: var(--muted); margin-right: 2px; }
-.scenebar button { font: 600 12px var(--font-body, inherit); border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--ink); padding: 3px 7px; cursor: pointer; }
+.scenebar { position: absolute; right: 8px; top: 50px; z-index: 5; display: none; flex-direction: column; gap: 4px; background: var(--panel); border: 1px solid var(--ink); border-radius: 4px; padding: 6px; font-size: 12px; box-shadow: 0 6px 16px rgb(0 0 0 / .18); }
+.scenebar.open { display: flex; }
+.scenebtn { width: auto; padding: 0 9px; font-size: 12px; font-weight: 700; }
+.scenebar span { color: var(--muted); font-size: 11px; }
+.scenebar button { font: 600 13px var(--font-body, inherit); border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--ink); padding: 5px 10px; cursor: pointer; text-align: left; }
 .scenebar button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
 .scenebar[hidden] { display: none; }
-.figmode .scenebar { top: 50px; }
-@media (max-width: 640px) { .scenebar { top: 46px; font-size: 11px; } .scenebar button { padding: 3px 6px; } }
+
 .ls-foot { position: sticky; bottom: 0; z-index: 2; background: var(--panel); padding-bottom: 6px; box-shadow: 0 -8px 10px -6px color-mix(in srgb, var(--panel) 90%, transparent); }
 .ls-flow { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
 .ls-flow li { white-space: nowrap; }
@@ -373,7 +378,9 @@ ol.sol3.hint { background: color-mix(in srgb, var(--vel) 8%, var(--panel)); bord
 /* 3D：問題の数字の名札。図にしている間はほかの名札・式・凡例をかくす */
 .lbl.kn { color: var(--panel); background: var(--kn); border-color: var(--kn); font-size: 13.5px; line-height: 22px; box-shadow: 0 2px 6px rgb(0 0 0 / .18); }
 .lbl.kn var { font-family: var(--font-display); }
-.figmode .lbl:not(.kn), .figmode #ovTL, .figmode .eqbox { display: none !important; }
+.figmode .lbl:not(.kn) { display: none !important; }
+.stagecol:has(.figmode) #ovTL, .stagecol:has(.figmode) .eqbox { display: none !important; }
+.stagecol:has(.guided) #ovTL, .stagecol:has(.guided) .eqbox, .stagecol:has(.guided) .figcap { display: none !important; }
 body.present .prob { font-size: 19px; }
 body.present .chip { font-size: 17px; }
 /* 授業モード：左の一覧を消して、大きな文字の説明パネルにする */
@@ -417,7 +424,10 @@ body.present .lib { display: none; }
   .items { flex-direction: row; overflow-x: auto; gap: 6px; }
   .libfoot, .grp { display: none; }
   .item { flex: 0 0 auto; width: auto; white-space: nowrap; border-color: var(--line); }
-  .stage-wrap { flex: 1 1 0; min-height: 200px; }
+  .stagecol { flex: 1 1 0; min-height: 200px; }
+  .strip { gap: 6px; min-height: 26px; }
+  .gbubble { font-size: 14.5px; padding: 5px 10px; border-radius: 10px; }
+  .legend { font-size: 11px; padding: 3px 7px; }
   .card { flex: 0 1 auto; max-height: 48%; min-height: 0; }
   .card-head { padding: 6px 12px 0; }
   .name { font-size: 18px; }
@@ -455,16 +465,14 @@ body.present .lib { display: none; }
 </header>
 <main class="app">
   <aside class="lib" id="lib" aria-label="実験をえらぶ"></aside>
+  <div class="stagecol">
   <section class="stage-wrap" id="stageWrap" aria-label="3Dの実験室">
     <div id="stage"></div>
     <div class="labels" id="labels"></div>
-    <div class="ov ov-tl" id="ovTL"></div>
-    <div class="figcap" id="figcap" hidden></div>
-    <div class="gbubble" id="gbubble" hidden></div>
     <div class="scenebar" id="scenebar" hidden></div>
-    <div class="eqbox" id="eqbox" aria-live="off" hidden></div>
     <div class="ov ov-tr">
-      <button type="button" class="ibtn eqbtn" id="btnEq" aria-pressed="true" title="いま動いている式を3Dのそばに出す" aria-label="いまの式を表示">式</button>
+      <button type="button" class="ibtn scenebtn" id="btnScene" title="身近な場面に切りかえる" aria-haspopup="true" aria-expanded="false" hidden>場面</button>
+      <button type="button" class="ibtn eqbtn" id="btnEq" aria-pressed="true" title="いま動いている式を下に出す" aria-label="いまの式を表示">式</button>
       <button type="button" class="ibtn" id="btnReset" title="見る向きをもどす" aria-label="見る向きをもどす"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
       <button type="button" class="ibtn" id="btnFull" title="全画面（プロジェクター向け）" aria-label="全画面"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     </div>
@@ -481,6 +489,14 @@ body.present .lib { display: none; }
     </div>
     <div class="toast" id="toast" hidden></div>
   </section>
+  <!-- 3D の下の帯：凡例・ペンタのセリフ・この問題の数字・いまの式。3D の上には何も重ねない -->
+  <div class="strip" id="strip">
+    <div class="gbubble" id="gbubble" hidden></div>
+    <div class="figcap" id="figcap" hidden></div>
+    <div class="eqbox" id="eqbox" aria-live="off" hidden></div>
+    <div class="ov-tl" id="ovTL"></div>
+  </div>
+  </div>
   <aside class="card" id="card" aria-live="polite"></aside>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1122,9 +1138,8 @@ function renderEq(s) {
 function placeEq() {
   // 3D の左下に置く（動く物の上には重ねない）。せまい画面では1行にたたむ
   const box = $('eqbox'); if (box.hidden) return;
-  const narrow = $('stage').clientWidth < 640;
-  box.classList.toggle('compact', narrow);
-  box.classList.toggle('open', narrow && !!state.eqOpen);
+  box.classList.add('compact');
+  box.classList.toggle('open', !!state.eqOpen);
 }
 
 // ======================= 力学 =======================
@@ -3442,12 +3457,13 @@ function setScene(v) {
   restart();
 }
 function renderSceneBar() {
-  const el = $('scenebar'), s = state.s, list = s && SCENES[s.def.id];
-  if (!el) return;
-  if (!list) { el.hidden = true; return; }
-  const cur = sceneOf(s);
-  el.innerHTML = `<span>場面</span>${list.map(([v, n]) => `<button type="button" data-scene="${v}" aria-pressed="${v === cur}">${n}</button>`).join('')}`;
-  el.hidden = false;
+  const el = $('scenebar'), bt = $('btnScene'), s = state.s, list = s && SCENES[s.def.id];
+  if (!el || !bt) return;
+  if (!list) { el.hidden = true; el.classList.remove('open'); bt.hidden = true; return; }
+  const cur = sceneOf(s), name = (list.find(x => x[0] === cur) || list[0])[1];
+  el.innerHTML = `<span>場面を切りかえる</span>${list.map(([v, n]) => `<button type="button" data-scene="${v}" aria-pressed="${v === cur}">${v === cur ? '✓ ' : ''}${n}</button>`).join('')}`;
+  el.hidden = false; el.classList.remove('open');
+  bt.hidden = false; bt.textContent = `場面：${name}`; bt.setAttribute('aria-expanded', 'false');
 }
 
 // ======================= キャラクター「ペンタ」（アデリーペンギンの研究員） =======================
@@ -7007,6 +7023,8 @@ const parseV = v => (v === 'true' ? true : v === 'false' ? false : v !== '' && !
 document.addEventListener('click', ev => {
   const t = ev.target, s = state.s;
   const sb = t.closest('#scenebar [data-scene]'); if (sb) { setScene(sb.dataset.scene); return; }
+  if (t.closest('#btnScene')) { const o = $('scenebar').classList.toggle('open'); $('btnScene').setAttribute('aria-expanded', String(o)); return; }
+  if (!t.closest('#scenebar') && $('scenebar').classList.contains('open')) { $('scenebar').classList.remove('open'); $('btnScene').setAttribute('aria-expanded', 'false'); }
   const m = t.closest('#modes [data-mode]');
   if (m) { setMode(m.dataset.mode); return; }
   if (lessonClick(t)) return;
