@@ -80,7 +80,8 @@ var { font-family: var(--font-display); font-style: italic; font-weight: 700; }
 .stage-wrap { position: relative; flex: 1 1 0; border-radius: var(--r); overflow: hidden; min-height: 0; border: 1px solid var(--line); background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-hz) 62%, var(--sky-hz) 100%); }
 .stage-wrap.outdoor { --sky-top: var(--sky-top-o); --sky-hz: var(--sky-hz-o); }
 .stage-wrap.space { background: radial-gradient(120% 90% at 40% 30%, #1d2a35, #05080c); }
-.stage-wrap.is-max { position: fixed; inset: 0; z-index: 50; border-radius: 0; }
+.stagecol.is-max { position: fixed; inset: 0; z-index: 50; background: var(--panel); padding: 6px; }
+.stagecol:fullscreen { background: var(--panel); padding: 6px; }
 #stage { position: absolute; inset: 0; touch-action: none; }
 #stage canvas { display: block; width: 100%; height: 100%; }
 .labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -94,9 +95,13 @@ var { font-family: var(--font-display); font-style: italic; font-weight: 700; }
 .ov { position: absolute; z-index: 2; display: flex; gap: 6px; }
 .ov-tl { display: flex; flex: none; }
 .ov-tl:empty { display: none; }
-.ov-tr { top: 10px; right: 10px; }
-.ov-bc { bottom: 10px; left: 50%; transform: translateX(-50%); align-items: center; background: var(--glass); border: 1px solid var(--line); border-radius: 4px; padding: 4px; }
-.ibtn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); }
+.toolbar { flex: none; display: flex; align-items: center; gap: 6px; min-height: 36px; }
+.toolbar .tb-sp { flex: 1; }
+.toolbar .ibtn { width: 32px; height: 32px; }
+.toolbar .scenebtn, .toolbar .eqbtn { width: auto; min-width: 0; padding: 0 9px; white-space: nowrap; font-size: 13px; font-weight: 700; }
+.toolbar .scenebtn { max-width: 42vw; overflow: hidden; text-overflow: ellipsis; }
+.ov-bc { display: flex; align-items: center; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 2px; flex: none; }
+.ibtn { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); }
 .ov-bc .ibtn { width: 34px; height: 30px; border-color: transparent; background: transparent; }
 .ibtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .ibtn svg .fill { fill: currentColor; stroke: none; }
@@ -105,8 +110,7 @@ var { font-family: var(--font-display); font-style: italic; font-weight: 700; }
 .speed button { border: 0; background: transparent; padding: 3px 8px; font: 600 12.5px var(--font-data); color: var(--muted); border-radius: 3px; }
 .speed button[aria-pressed="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--warm); }
 .clock { white-space: nowrap; font: 600 13px var(--font-data); padding: 0 8px; min-width: 6.2em; text-align: right; font-variant-numeric: tabular-nums; }
-.strip { flex: none; display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 2px; }
-.strip:not(:has(> :not([hidden]):not(:empty))) { display: none; }
+.strip { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 30px; padding: 0 2px; }
 .legend { display: flex; flex-wrap: nowrap; white-space: nowrap; gap: 4px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 4px 9px; font-size: 12px; font-weight: 700; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; background: currentColor; position: relative; }
@@ -294,7 +298,7 @@ details.more p { margin: 6px 0; line-height: 1.7; }
 .gbubble .gface { font-size: 24px; line-height: 1; flex: none; }
 .gbubble b { color: var(--kn); }
 .gbubble small { color: var(--muted); font-size: 13px; }
-.guided #playbar .speed { display: none; }
+.stagecol:has(.guided) #playbar .speed { display: none; }
 .gprog { height: 5px; background: var(--chip); border-radius: 3px; margin: 6px 0 2px; overflow: hidden; }
 .gprog i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
 .gnum { font-size: 13px; color: var(--muted); margin-left: 8px; font-weight: 500; }
@@ -363,7 +367,7 @@ details.more p { margin: 6px 0; line-height: 1.7; }
 .chips.tap .chip:active { transform: scale(.96); }
 .exf.big { font-size: 24px; text-align: center; padding: 8px 0; }
 ol.sol3.hint { background: color-mix(in srgb, var(--vel) 8%, var(--panel)); border-left: 3px solid var(--vel); padding: 6px 8px 6px 26px; margin-bottom: 8px; }
-.scenebar { position: absolute; right: 8px; top: 50px; z-index: 5; display: none; flex-direction: column; gap: 4px; background: var(--panel); border: 1px solid var(--ink); border-radius: 4px; padding: 6px; font-size: 12px; box-shadow: 0 6px 16px rgb(0 0 0 / .18); }
+.scenebar { position: absolute; right: 8px; top: 8px; z-index: 5; display: none; flex-direction: column; gap: 4px; background: var(--panel); border: 1px solid var(--ink); border-radius: 4px; padding: 6px; font-size: 12px; box-shadow: 0 6px 16px rgb(0 0 0 / .18); }
 .scenebar.open { display: flex; }
 .scenebtn { width: auto; padding: 0 9px; font-size: 12px; font-weight: 700; }
 .scenebar span { color: var(--muted); font-size: 11px; }
@@ -443,8 +447,14 @@ body.present .lib { display: none; }
   .ls-text { font-size: 16px; line-height: 1.65; }
   .ls-q { font-size: 17px; }
   .ov-tl { max-width: calc(100% - 100px); }
-  .ov-bc { padding: 2px; gap: 2px; }
-  .ov-bc .ibtn { width: 30px; }
+  .ov-bc { padding: 1px; gap: 0; }
+  .ov-bc .ibtn { width: 28px; height: 26px; }
+  .toolbar { min-height: 30px; gap: 4px; }
+  .toolbar .ibtn { width: 28px; height: 28px; }
+  .toolbar .scenebtn, .toolbar .eqbtn { width: auto; padding: 0 7px; font-size: 12px; }
+  .ov-tl .legend { font-size: 10.5px; padding: 2px 6px; }
+  .clock { font-size: 12px; padding: 0 5px; min-width: 5.6em; }
+  .speed button { padding: 2px 5px; font-size: 11.5px; }
   .speed button { padding: 3px 5px; }
   .clock { min-width: 0; padding: 0 4px; font-size: 12px; }
   .legend { font-size: 11px; padding: 2px 6px; }
@@ -466,17 +476,23 @@ body.present .lib { display: none; }
 <main class="app">
   <aside class="lib" id="lib" aria-label="実験をえらぶ"></aside>
   <div class="stagecol">
+  <div class="toolbar">
+    <div class="ov-tl" id="ovTL"></div>
+    <span class="tb-sp"></span>
+    <button type="button" class="ibtn scenebtn" id="btnScene" title="身近な場面に切りかえる" aria-haspopup="true" aria-expanded="false" hidden>場面</button>
+    <button type="button" class="ibtn eqbtn" id="btnEq" aria-pressed="true" title="いま動いている式を下に出す" aria-label="いまの式を表示">式</button>
+    <button type="button" class="ibtn" id="btnReset" title="見る向きをもどす" aria-label="見る向きをもどす"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+    <button type="button" class="ibtn" id="btnFull" title="全画面（プロジェクター向け）" aria-label="全画面"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
   <section class="stage-wrap" id="stageWrap" aria-label="3Dの実験室">
     <div id="stage"></div>
     <div class="labels" id="labels"></div>
     <div class="scenebar" id="scenebar" hidden></div>
-    <div class="ov ov-tr">
-      <button type="button" class="ibtn scenebtn" id="btnScene" title="身近な場面に切りかえる" aria-haspopup="true" aria-expanded="false" hidden>場面</button>
-      <button type="button" class="ibtn eqbtn" id="btnEq" aria-pressed="true" title="いま動いている式を下に出す" aria-label="いまの式を表示">式</button>
-      <button type="button" class="ibtn" id="btnReset" title="見る向きをもどす" aria-label="見る向きをもどす"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
-      <button type="button" class="ibtn" id="btnFull" title="全画面（プロジェクター向け）" aria-label="全画面"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-    </div>
-    <div class="ov ov-bc" id="playbar">
+    <div class="toast" id="toast" hidden></div>
+  </section>
+  <!-- 3D の下の帯：凡例・ペンタのセリフ・この問題の数字・いまの式。3D の上には何も重ねない -->
+  <div class="strip" id="strip">
+    <div class="ov-bc" id="playbar">
       <button type="button" class="ibtn" id="btnPlay" title="一時停止（スペースキー）" aria-label="一時停止"><svg viewBox="0 0 24 24" id="icPlay"><rect class="fill" x="6" y="5" width="4" height="14" rx="1"/><rect class="fill" x="14" y="5" width="4" height="14" rx="1"/></svg></button>
       <button type="button" class="ibtn" id="btnStep" title="0.05 秒すすめる" aria-label="少しすすめる"><svg viewBox="0 0 24 24"><path class="fill" d="M6 5l9 7-9 7z"/><rect class="fill" x="16" y="5" width="3" height="14" rx="1"/></svg></button>
       <button type="button" class="ibtn" id="btnRestart" title="はじめから（R キー）" aria-label="はじめから"><svg viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M4.5 10A8 8 0 1 1 6 17"/></svg></button>
@@ -487,14 +503,9 @@ body.present .lib { display: none; }
       </div>
       <span class="clock" id="clock">t = 0.00 s</span>
     </div>
-    <div class="toast" id="toast" hidden></div>
-  </section>
-  <!-- 3D の下の帯：凡例・ペンタのセリフ・この問題の数字・いまの式。3D の上には何も重ねない -->
-  <div class="strip" id="strip">
     <div class="gbubble" id="gbubble" hidden></div>
     <div class="figcap" id="figcap" hidden></div>
     <div class="eqbox" id="eqbox" aria-live="off" hidden></div>
-    <div class="ov-tl" id="ovTL"></div>
   </div>
   </div>
   <aside class="card" id="card" aria-live="polite"></aside>
@@ -7092,7 +7103,7 @@ $('btnEq').addEventListener('click', () => { showEq = !showEq; try { localStorag
 $('btnReset').addEventListener('click', () => { if (R && R.lastView) view(...R.lastView); });
 $('btnFull').addEventListener('click', () => {
   // 授業モードでは説明パネルもいっしょに全画面にする（プロジェクター向け）
-  const w = state.mode === 'lesson' && state.lesson ? document.documentElement : $('stageWrap');
+  const w = state.mode === 'lesson' && state.lesson ? document.documentElement : $('stageWrap').parentElement;
   if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
   if (w.requestFullscreen) w.requestFullscreen().catch(() => w.classList.toggle('is-max')); else w.classList.toggle('is-max');
 });
