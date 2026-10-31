@@ -375,6 +375,56 @@ ol.sol3.hint { background: color-mix(in srgb, var(--vel) 8%, var(--panel)); bord
 .scenebar button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
 .scenebar[hidden] { display: none; }
 
+/* タイムアタック */
+body.game .ls-foot { position: static; box-shadow: none; }
+.ta-menu { border: 2px solid var(--kn); border-radius: 8px; background: color-mix(in srgb, var(--kn) 7%, var(--panel)); padding: 10px 12px; margin-bottom: 6px; }
+.ta-menu .ta-title { font: 800 18px var(--font-display); color: var(--kn); }
+.ta-menu p { margin: 4px 0 8px; font-size: 14px; line-height: 1.7; }
+.ta-menu .btn small { display: block; font-size: 10.5px; color: var(--muted); font-weight: 500; }
+.ta-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ta-time { font: 800 26px var(--font-data); font-variant-numeric: tabular-nums; }
+.ta-time.low { color: var(--ng); }
+.ta-score { font: 700 17px var(--font-data); }
+.ta-combo { font: 700 13px var(--font-body, inherit); color: var(--panel); background: var(--kn); border-radius: 10px; padding: 1px 8px; }
+.ta-flash { font: 800 15px var(--font-data); color: var(--ok); animation: lsIn .3s ease; }
+.ta-top .linkbtn { margin-left: auto; font-size: 12px; color: var(--muted); }
+.ta-bar { height: 5px; background: var(--chip); border-radius: 3px; overflow: hidden; margin: 4px 0 6px; }
+.ta-bar i { display: block; height: 100%; background: var(--accent); transition: width .2s linear; }
+.ta-steps { list-style: none; display: flex; gap: 4px; margin: 0; padding: 0; }
+.ta-steps li { flex: 1; text-align: center; font-size: 12px; font-weight: 700; padding: 3px 2px; border-radius: 3px; background: var(--chip); color: var(--muted); }
+.ta-steps li.on { background: var(--accent); color: var(--accent-ink); }
+.ta-steps li.done { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); color: var(--accent); }
+.prob.ta-q { font-size: 15.5px; line-height: 1.75; }
+.ta-ask { font-size: 15px; margin: 6px 0 4px; }
+.ta-ask b { color: var(--accent); }
+.ta-know { font-size: 13.5px; line-height: 1.7; color: var(--muted); }
+.ta-know var, .ta-chain var, .verdict var { font-style: italic; font-family: var(--font-display); font-weight: 700; }
+.ta-ch { display: grid; gap: 6px; }
+.ta-ch.num { grid-template-columns: 1fr 1fr; }
+.ta-ch .qc { display: flex; align-items: baseline; gap: 8px; text-align: left; }
+.ta-ch.sym .qc var { font: italic 800 21px var(--font-display); }
+.ta-ch.sym .qc small { font-size: 13px; color: var(--muted); font-weight: 500; }
+.ta-ch.num .qc { font: 700 17px var(--font-data); justify-content: center; }
+.ta-ch kbd { font: 600 10.5px var(--font-data); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-right: 2px; align-self: center; }
+@media (hover: none) { .ta-ch kbd { display: none; } }
+.ta-done { font: 800 17px var(--font-body, inherit); color: var(--ok); }
+.ta-done small { font-weight: 500; color: var(--muted); font-size: 12px; }
+ol.ta-chain { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 0; }
+ol.ta-chain li { position: relative; padding: 6px 10px 6px 12px; border-left: 3px solid var(--accent); font-size: 14.5px; line-height: 1.6; }
+ol.ta-chain li + li::before { content: "↓"; position: absolute; left: -9px; top: -10px; font-size: 12px; color: var(--accent); background: var(--panel); }
+ol.ta-chain li b { display: block; font-size: 11.5px; color: var(--accent); letter-spacing: .06em; }
+ol.ta-chain .ff { font: 600 16px var(--font-data); }
+ol.ta-chain small { display: block; color: var(--muted); font-size: 12.5px; }
+ol.ta-chain li.ans { border-left-color: var(--ask); font: 800 18px var(--font-data); color: var(--ask); }
+ol.ta-chain li.ans b { color: var(--ask); font-family: var(--font-body, inherit); }
+ol.ta-chain.sm li { font-size: 13px; padding: 4px 8px 4px 10px; } ol.ta-chain.sm li.ans { font-size: 14px; }
+.ta-res { font-size: 14px; line-height: 1.7; } .ta-new { color: var(--kn); }
+.ta-stat { display: grid; gap: 4px; font-size: 13px; }
+.ta-stat > div { display: grid; grid-template-columns: 7.5em 1fr 4em; align-items: center; gap: 8px; }
+.ta-stat .t { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; } .ta-stat .t i { display: block; height: 100%; background: var(--accent); }
+.ta-stat output { font-family: var(--font-data); text-align: right; }
+details.ta-rev { border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font-size: 13.5px; }
+details.ta-rev summary { cursor: pointer; font-weight: 700; }
 .ls-foot { position: sticky; bottom: 0; z-index: 2; background: var(--panel); padding-bottom: 6px; box-shadow: 0 -8px 10px -6px color-mix(in srgb, var(--panel) 90%, transparent); }
 .ls-flow { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
 .ls-flow li { white-space: nowrap; }
@@ -443,6 +493,10 @@ body.present .lib { display: none; }
   .brand { font-size: 16px; }
   .back .l { display: none; }
   body.present .card { max-height: 56%; }
+  body.game .lib { display: none; }
+  body.game .card { max-height: 62%; }
+  body.game .stagecol { min-height: 150px; }
+  body.game .toolbar .scenebtn { display: none; }
   .ls-title { font-size: 20px; }
   .ls-text { font-size: 16px; line-height: 1.65; }
   .ls-q { font-size: 17px; }
@@ -469,7 +523,7 @@ body.present .lib { display: none; }
     <button type="button" data-mode="sim" aria-current="true" title="現象を3Dで動かす">実験</button>
     <button type="button" data-mode="lesson" aria-current="false" title="教科書の順に1画面ずつ進む授業">授業</button>
     <button type="button" data-mode="drill" aria-current="false" title="数字が毎回変わる計算問題">計算</button>
-    <button type="button" data-mode="quiz" aria-current="false" title="考え方のクイズ">クイズ</button>
+    <button type="button" data-mode="quiz" aria-current="false" title="タイムアタックと考え方クイズ">ゲーム</button>
   </nav>
   <a class="back" href="https://nakatadaiki1012-design.github.io/chemistry-simulator/" target="_blank" rel="noopener" title="分子ラボ3D（化学）を開く（新しいタブ）"><span class="l">分子ラボ3D</span><span>化学</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
 </header>
@@ -6823,6 +6877,168 @@ function gClick(a) {
   if (k === 'gback') { if (L.i > 0) { L.i--; G.i = L.i; G.marks = []; G.set = null; gStep(); } return true; }
   return false;
 }
+// ======================= ゲーム：タイムアタック（ステップを踏んで答える） =======================
+// 1 問を 3 つのステップで答える：
+//   ① 状態を読む「何を求める？」→ ② 式を立てる「どの式？」→ ③ 計算する「いくつになる？」（4 択）
+// 1 問終わるごとに「この状態だから → この式 → 計算すると → 答え」の 1 本の流れを見せる（そのあいだ時計は止まる）。
+const TA_SEC = 180, TA_KEY = 'physics-3d:ta-best';
+const TA_STEPS = ['状態を読む', '式を立てる', '計算する'];
+const TA_PTS = [10, 20, 30];
+const taCat = id => simOf(DRILLS.find(d => d.id === id).sim).cat;
+const taNum = (x, unit) => (Math.abs(x) >= 0.01 && Math.abs(x) < 1e4 ? String(+x.toPrecision(3)) : sci(x, 2)) + (unit ? ' ' + unit : '');
+const taFirst = t => { const s = String(t).replace(/<[^>]+>/g, ''), i = s.indexOf('。'); return i > 0 ? s.slice(0, i + 1) : s; };
+function taBest(cat) { try { return (JSON.parse(localStorage.getItem(TA_KEY) || '{}')[cat || 'all']) || 0; } catch (e) { return 0; } }
+function taSaveBest(cat, v) { try { const o = JSON.parse(localStorage.getItem(TA_KEY) || '{}'); if (v > (o[cat || 'all'] || 0)) { o[cat || 'all'] = v; localStorage.setItem(TA_KEY, JSON.stringify(o)); } } catch (e) { /* 無視 */ } }
+
+// 計算の 4 択：正解 ＋ よくあるまちがい（P.wrong）＋ 2 倍・半分などのずれ
+function taCalcChoices(P) {
+  const near = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.03 + 1e-12;
+  const out = [{ v: P.ans, ok: true }], seen = new Set([taNum(P.ans)]);
+  const add = (v, why) => { if (!isFinite(v) || v === 0 || out.length >= 4 || near(v, P.ans) || Math.sign(v) !== Math.sign(P.ans)) return; const s = taNum(v); if (seen.has(s)) return; seen.add(s); out.push({ v, why }); };
+  shuffle(P.wrong || []).forEach(([v, why]) => add(v, why));
+  [2, 0.5, 10, 0.1, 4, 0.25, Math.SQRT2, 1 / Math.SQRT2, 3].forEach(k => add(P.ans * k));
+  return shuffle(out);
+}
+function taQueue(cat) { return shuffle(DRILLS.filter(d => (!cat || taCat(d.id) === cat) && d.gen().rail).map(d => d.id)); }
+function taStart(cat) {
+  taStop();
+  state.ta = { cat, left: TA_SEC * 1000, t0: 0, running: false, score: 0, combo: 0, maxCombo: 0, queue: taQueue(cat), qi: 0, D: null, step: 0, pick: null, calc: null, log: [], stat: [[0, 0], [0, 0], [0, 0]], end: false, token: 0, perfect: true, flash: '' };
+  taNext();
+}
+function taNext() {
+  const T = state.ta; if (!T) return;
+  if (T.qi >= T.queue.length) { T.queue = T.queue.concat(taQueue(T.cat)); }
+  const D = drillNew(T.queue[T.qi++], null, 'try');
+  T.D = D; T.step = 0; T.pick = null; T.perfect = true; T.flash = ''; T.calc = taCalcChoices(D.P);
+  showFig(D);
+  taResume(); renderCard(); cardTop();
+}
+// 時計
+function taTick() {
+  const T = state.ta; if (!T || !T.running) return;
+  const left = T.left - (performance.now() - T.t0);
+  const el = $('taTime'), bar = $('taBar');
+  if (el) { const s = Math.max(0, Math.ceil(left / 1000)); el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; el.classList.toggle('low', s <= 15); }
+  if (bar) bar.style.width = Math.max(0, left / (TA_SEC * 1000) * 100) + '%';
+  if (left <= 0) taFinish();
+}
+function taResume() { const T = state.ta; if (!T || T.end || T.running) return; T.running = true; T.t0 = performance.now(); if (!state.taTimer) state.taTimer = setInterval(taTick, 200); }
+function taPause() { const T = state.ta; if (!T || !T.running) return; T.left -= performance.now() - T.t0; T.running = false; }
+function taStop() { if (state.taTimer) { clearInterval(state.taTimer); state.taTimer = null; } if (state.ta) state.ta.running = false; }
+function taFinish() {
+  const T = state.ta; if (!T || T.end) return;
+  taPause(); T.left = 0; T.end = true; taStop();
+  taSaveBest(T.cat, T.score); figClear(); renderCard(); cardTop();
+}
+
+// ステップに答える
+function taAnswer(k) {
+  const T = state.ta; if (!T || T.end || T.pick !== null || T.step > 2) return;
+  const D = T.D, rl = D.P.rail, R = D.rail;
+  let ok;
+  if (T.step === 0) { T.pick = R.fopts[k]; ok = T.pick === rl.find.sym; }
+  else if (T.step === 1) { T.pick = R.forder[k]; ok = T.pick === 0; }
+  else { T.pick = k; ok = !!T.calc[k].ok; }
+  T.stat[T.step][1]++;
+  if (ok) {
+    T.stat[T.step][0]++; T.combo++; T.maxCombo = Math.max(T.maxCombo, T.combo);
+    const pts = TA_PTS[T.step] + 2 * Math.min(T.combo, 10); T.score += pts; T.flash = `+${pts}`;
+    const tok = ++T.token; renderCard();
+    setTimeout(() => { if (state.ta === T && T.token === tok) taAdvance(); }, 520);
+  } else { T.combo = 0; T.perfect = false; T.flash = ''; renderCard(); const b = $('card').querySelector('.body'); if (b) b.scrollTop = b.scrollHeight; }
+}
+function taAdvance() {
+  const T = state.ta; if (!T || T.end) return;
+  T.pick = null; T.flash = '';
+  T.step++;
+  if (T.step === 3) { // 1 問おわり：流れを見せる（時計は止める）
+    if (T.perfect) { T.score += 20; T.flash = 'パーフェクト +20'; }
+    T.log.push({ D: T.D, perfect: T.perfect });
+    taPause(); figReveal();
+  }
+  renderCard(); taScroll(T.step === 1 ? '.ta-know' : T.step === 2 ? '.ta-ask' : null);
+}
+
+// スマホでも、いま答える所がすぐ見えるように：② ③ は「わかっている」「式」から、まちがえたら説明まで
+function taScroll(sel) {
+  const b = $('card').querySelector('.body'); if (!b) return;
+  const el = sel && b.querySelector(sel);
+  if (!el) { b.scrollTop = 0; return; }
+  b.scrollTop += el.getBoundingClientRect().top - b.getBoundingClientRect().top - 6;
+}
+// 「この状態だから → この式 → 計算すると → 答え」
+function taChainHTML(D, small) {
+  const P = D.P, rl = P.rail, F = rl.formulas[0];
+  const kn = rl.fill.filter(x => x.v !== '?').map(x => `${railSym(x.sym)} = ${esc(x.v)}`).join('、');
+  return `<ol class="ta-chain${small ? ' sm' : ''}">
+    <li><b>この状態だから</b>${kn} がわかっていて、求めるのは ${railSym(rl.find.sym)}（${esc(rl.find.text)}）</li>
+    <li><b>この式を立てる</b><span class="ff">${F.f}</span><small>${esc(F.w)}</small></li>
+    <li><b>計算すると</b><span class="ff">${esc(rl.eq)}</span></li>
+    <li class="ans"><b>答え</b>${railSym(rl.find.sym)} = ${esc(ansText(P))}</li></ol>`;
+}
+function taCardHTML() {
+  const T = state.ta, catName = T.cat || 'ぜんぶ';
+  if (T.end) {
+    const best = taBest(T.cat), pct = ([a, n]) => (n ? Math.round(a / n * 100) : 0);
+    const weak = T.stat.map((x, i) => [pct(x), i]).filter(([, i]) => T.stat[i][1]).sort((a, b) => a[0] - b[0])[0];
+    return `<div class="card-head"><div><div class="eyebrow">タイムアタック ・ ${esc(catName)}</div><h2 class="name">結果 ${T.score} 点</h2></div></div><div class="body"><div class="ctl">
+      <p class="ta-res">${T.log.length} 問クリア ・ パーフェクト ${T.log.filter(x => x.perfect).length} 問 ・ 最大コンボ ${T.maxCombo}　${T.score >= best && T.score ? '<b class="ta-new">自己ベスト！</b>' : `（ベスト ${best} 点）`}</p>
+      <div class="ta-stat">${TA_STEPS.map((n, i) => `<div><span>${i + 1}. ${n}</span><span class="t"><i style="width:${pct(T.stat[i])}%"></i></span><output>${T.stat[i][0]} / ${T.stat[i][1]}</output></div>`).join('')}</div>
+      ${weak && weak[0] < 80 ? `<div class="verdict ng">「${TA_STEPS[weak[1]]}」でまちがいが多い。${['問題文の青い所（何を求める？）をよく読もう。', '「わかっている量」と「求める量」が全部入っている式をさがそう。', '計算は 1 行ずつ。√ や ½、単位の変換に気をつけよう。'][weak[1]]}</div>` : T.log.length ? '<div class="verdict ok">どのステップもよくできた！</div>' : ''}
+      ${T.log.length ? `<h3 class="sub">解いた問題のふり返り</h3>${T.log.slice(-6).map(x => `<details class="ta-rev"><summary>${x.perfect ? '◎' : '△'} ${esc(DRILLS.find(d => d.id === x.D.id).name)}</summary>${taChainHTML(x.D, true)}</details>`).join('')}` : ''}
+      <div class="row"><button type="button" class="btn main" data-a="tastart" data-cat="${T.cat || ''}">もう一度</button><button type="button" class="btn" data-a="tamenu">分野を変える</button></div></div></div>`;
+  }
+  const D = T.D, P = D.P, rl = P.rail, R = D.rail, st = T.step;
+  const s = Math.max(0, Math.ceil((T.running ? T.left - (performance.now() - T.t0) : T.left) / 1000));
+  const head = `<div class="card-head"><div>
+    <div class="ta-top"><span class="ta-time${s <= 15 ? ' low' : ''}" id="taTime">${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</span><span class="ta-score">${T.score} 点</span>${T.combo >= 2 ? `<span class="ta-combo">${T.combo} コンボ</span>` : ''}${T.flash ? `<span class="ta-flash">${esc(T.flash)}</span>` : ''}<button type="button" class="linkbtn" data-a="taquit">やめる</button></div>
+    <div class="ta-bar"><i id="taBar" style="width:${(T.running ? T.left - (performance.now() - T.t0) : T.left) / (TA_SEC * 1000) * 100}%"></i></div>
+    <ol class="ta-steps">${TA_STEPS.map((n, i) => `<li class="${i === st ? 'on' : i < st ? 'done' : ''}">${i + 1} ${n}</li>`).join('')}</ol></div></div>`;
+  let body = st < 3 ? `<div class="prob ta-q">${hiliteQ(P.q)}</div>` : '';
+  const pick = T.pick, picked = pick !== null;
+  if (st === 0) {
+    body += `<div class="ta-ask">① この状態で、<b>何を求める？</b></div><div class="ta-ch sym">${R.fopts.map((sym, k) => { const note = sym === rl.find.sym ? rl.find.text : (railChips(P).find(c => c.sym === sym) || {}).note || ''; const cls = picked ? (sym === rl.find.sym ? ' right' : sym === pick ? ' wrong' : ' dim') : ''; return `<button type="button" class="qc${cls}" data-a="tapick" data-k="${k}" ${picked ? 'disabled' : ''}><kbd>${k + 1}</kbd>${railSym(sym)}<small>${esc(note)}</small></button>`; }).join('')}</div>`;
+    if (picked && pick !== rl.find.sym) body += `<div class="verdict ng">求めるのは ${railSym(rl.find.sym)}（${esc(rl.find.text)}）。問題文の<b class="c-ask">青い所</b>が「求めるもの」。</div>`;
+  } else if (st === 1) {
+    body += `<div class="ta-know">わかっている：${rl.fill.filter(x => x.v !== '?').map(x => `${railSym(x.sym)} = ${esc(x.v)}`).join('、')}　→ 求める：<b class="c-ask">${railSym(rl.find.sym)}</b></div>
+      <div class="ta-ask">② だから、<b>どの式を立てる？</b></div><div class="ta-ch">${R.forder.map((i, k) => { const F = rl.formulas[i], cls = picked ? (i === 0 ? ' right' : i === pick ? ' wrong' : ' dim') : ''; return `<button type="button" class="fcard${cls}" data-a="tapick" data-k="${k}" ${picked ? 'disabled' : ''}><span class="ff"><kbd>${k + 1}</kbd>${F.f}</span><span class="fw">${esc(F.w)}</span></button>`; }).join('')}</div>`;
+    if (picked && pick !== 0) body += `<div class="verdict ng">この式を使う：${rl.formulas[0].f}<br>${esc(taFirst(P.why))}</div>`;
+  } else if (st === 2) {
+    body += `<div class="ta-ask">③ 式に数を入れて<b>計算すると？</b></div><div class="exf big">${esc(rl.eq)}</div>
+      <div class="ta-ch num">${T.calc.map((c, k) => { const cls = picked ? (c.ok ? ' right' : k === pick ? ' wrong' : ' dim') : ''; return `<button type="button" class="qc${cls}" data-a="tapick" data-k="${k}" ${picked ? 'disabled' : ''}><kbd>${k + 1}</kbd>${esc(taNum(c.v, P.unit))}</button>`; }).join('')}</div>`;
+    if (picked && !T.calc[pick].ok) body += `<div class="verdict ng">答えは ${esc(ansText(P))}。${esc(T.calc[pick].why || drillAdvice(P, T.calc[pick].v))}</div>`;
+  } else {
+    body += `<div class="ta-done">${T.perfect ? '◎ パーフェクト！' : '○ できた！'}　<small>（時計はいま止まっている）</small></div>${taChainHTML(D)}`;
+  }
+  const wrongWait = picked && st < 3 && !(st === 0 ? pick === rl.find.sym : st === 1 ? pick === 0 : T.calc[pick].ok);
+  const foot = st === 3 ? '<button type="button" class="btn main big" data-a="tanext">次の問題 →（Enter）</button>' : wrongWait ? '<button type="button" class="btn main big" data-a="taok">わかった、次へ →（Enter）</button>' : '';
+  return head + `<div class="body"><div class="ctl">${body}</div>${foot ? `<div class="ls-foot"><div class="ls-nav">${foot}</div></div>` : ''}</div>`;
+}
+function taMenuHTML() {
+  return `<div class="ta-menu"><div class="ta-title">タイムアタック</div>
+    <p>${TA_SEC / 60} 分で何問とける？ 1 問を <b>① 状態を読む → ② 式を立てる → ③ 計算する</b> の 3 ステップで答える。ぜんぶタップだけ。</p>
+    <div class="row">${[['', 'ぜんぶ']].concat(CATS.map(([c]) => [c, c])).map(([c, n]) => `<button type="button" class="btn${c ? '' : ' main'}" data-a="tastart" data-cat="${c}">${n}${taBest(c || null) ? `<small>ベスト ${taBest(c || null)}</small>` : ''}</button>`).join('')}</div></div>`;
+}
+// 操作。処理したら true
+function taClick(t) {
+  const a = t.closest('[data-a]'); if (!a) return false;
+  const k = a.dataset.a;
+  if (k === 'tastart') { setModeUI('quiz'); state.quiz = null; taStart(a.dataset.cat || null); renderLib(); return true; }
+  if (!state.ta) return false;
+  if (k === 'tapick') { taAnswer(+a.dataset.k); return true; }
+  if (k === 'taok') { taAdvance(); return true; }
+  if (k === 'tanext') { taNext(); return true; }
+  if (k === 'taquit') { taFinish(); return true; }
+  if (k === 'tamenu') { taStop(); state.ta = null; figClear(); renderCard(); return true; }
+  return false;
+}
+// キーボード：1〜4 で選ぶ、Enter で次へ
+function taKey(ev) {
+  const T = state.ta; if (!T || T.end || state.mode !== 'quiz') return false;
+  if (/^[1-4]$/.test(ev.key)) { const b = $('card').querySelector(`[data-a="tapick"][data-k="${+ev.key - 1}"]`); if (b && !b.disabled) { b.click(); return true; } }
+  if (ev.key === 'Enter') { const b = $('card').querySelector('[data-a="tanext"], [data-a="taok"]'); if (b) { b.click(); return true; } }
+  return false;
+}
 
 // ======================= 計算ドリル（数字が毎回変わる） =======================
 const rnd = (a, b, st) => { const n = Math.round((b - a) / st); return +(a + st * Math.floor(Math.random() * (n + 1))).toFixed(6); };
@@ -6919,6 +7135,7 @@ const QUIZ = [
 ];
 const BEST_KEY = 'physics-3d:quiz-best';
 function quizStart(cat) {
+  taStop(); state.ta = null;
   const pool = shuffle(QUIZ.filter(q => !cat || simOf(q[0]).cat === cat)).slice(0, 10);
   state.quiz = { cat, qs: pool.map(q => ({ sim: q[0], q: q[1], answer: q[2], choices: shuffle(q.slice(2, 6)), ex: q[6] })), i: 0, score: 0, picked: null };
   quizShow();
@@ -6947,8 +7164,10 @@ function quizCardHTML() {
   return h + '</div>';
 }
 function quizMenuHTML() {
-  return `<div class="card-head"><div><div class="eyebrow">クイズ</div><h2 class="name">どの分野にする？</h2><p class="lead">1回 10 問。答えると解説が出る。</p></div></div><div class="body"><div class="ctl">
-    <button type="button" class="btn main" data-quiz="">ぜんぶから（10問）</button>
+  return `<div class="card-head"><div><div class="eyebrow">ゲーム</div><h2 class="name">なにで遊ぶ？</h2></div></div><div class="body"><div class="ctl">
+    ${taMenuHTML()}
+    <h3 class="sub">考え方クイズ（1 回 10 問。答えると解説が出る）</h3>
+    <button type="button" class="btn" data-quiz="">ぜんぶから（10問）</button>
     ${CATS.map(([c]) => { const n = QUIZ.filter(q => simOf(q[0]).cat === c).length; return `<button type="button" class="btn" data-quiz="${c}">${c}（${Math.min(10, n)}問）</button>`; }).join('')}</div></div>`;
 }
 
@@ -6999,13 +7218,14 @@ function renderCard() {
   if (state.mode === 'sim') h = state.s ? simCardHTML() : '';
   else if (state.mode === 'lesson') h = state.lesson ? lessonCardHTML() : lessonMenuHTML();
   else if (state.mode === 'drill') h = drillCardHTML();
-  else h = state.quiz ? quizCardHTML() : quizMenuHTML();
+  else h = state.ta ? taCardHTML() : state.quiz ? quizCardHTML() : quizMenuHTML();
+  document.body.classList.toggle('game', state.mode === 'quiz' && !!state.ta && !state.ta.end);
   const body = card.querySelector('.body'), y = body ? body.scrollTop : 0;
   card.innerHTML = h;
   const nb = card.querySelector('.body'); if (nb) nb.scrollTop = y;
   renderLive(true);
 }
-function setModeUI(mode) { figClear(); gClear(); if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
+function setModeUI(mode) { figClear(); gClear(); if (mode !== 'quiz' && state.ta) { taStop(); state.ta = null; } if (mode !== 'lesson' && state.lesson) { state.lesson = null; document.body.classList.remove('present'); } state.mode = mode; document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mode === mode))); renderLegend(); }
 function go(id) {
   setModeUI('sim');
   const prev = state.s;
@@ -7026,7 +7246,7 @@ function setMode(mode) {
   if (mode === 'sim') go(state.id || 'fall');
   else if (mode === 'lesson') { setModeUI('lesson'); state.libCat = null; if (!state.lessonCourse) state.lessonCourse = 'kiso'; renderLib(); renderCard(); }
   else if (mode === 'drill') goDrill((state.drill && state.drill.id) || (DRILLS.find(d => d.sim === state.id) || DRILLS[0]).id);
-  else { setModeUI('quiz'); state.quiz = null; state.libCat = null; renderLib(); renderCard(); }
+  else { setModeUI('quiz'); taStop(); state.ta = null; state.quiz = null; state.libCat = null; renderLib(); renderCard(); }
 }
 
 // ======================= イベント =======================
@@ -7034,6 +7254,7 @@ const parseV = v => (v === 'true' ? true : v === 'false' ? false : v !== '' && !
 document.addEventListener('click', ev => {
   const t = ev.target, s = state.s;
   const sb = t.closest('#scenebar [data-scene]'); if (sb) { setScene(sb.dataset.scene); return; }
+  if (taClick(t)) return;
   if (t.closest('#btnScene')) { const o = $('scenebar').classList.toggle('open'); $('btnScene').setAttribute('aria-expanded', String(o)); return; }
   if (!t.closest('#scenebar') && $('scenebar').classList.contains('open')) { $('scenebar').classList.remove('open'); $('btnScene').setAttribute('aria-expanded', 'false'); }
   const m = t.closest('#modes [data-mode]');
@@ -7091,6 +7312,7 @@ document.addEventListener('keydown', ev => {
   const tag = (ev.target.tagName || '').toLowerCase();
   if (tag === 'input' && ev.target.type !== 'range' || tag === 'textarea' || ev.ctrlKey || ev.metaKey || ev.altKey) return;
   if (state.lesson && !state.lesson.quiz && tag !== 'input' && (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft')) { ev.preventDefault(); if (ev.key === 'ArrowRight') lessonPrimary(); else lessonMove(-1); return; }
+  if (taKey(ev)) { ev.preventDefault(); return; }
   if (ev.key === ' ' && tag !== 'button') { ev.preventDefault(); togglePlay(); }
   else if (ev.key === 'r' || ev.key === 'R') { restart(); state.running = true; updatePlay(); }
 });
