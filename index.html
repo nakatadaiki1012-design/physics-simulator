@@ -492,6 +492,14 @@ body.present .lib { display: none; }
   .top { gap: 8px; padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
   .brand { font-size: 16px; }
   .back .l { display: none; }
+}
+@media (max-width: 520px) {
+  .top { gap: 4px; }
+  .brand { font-size: 14px; }
+  .modes { gap: 0; min-width: 0; }
+  .modes button { padding: 3px 5px; font-size: 13px; }
+  .back { padding: 0 6px; }
+  .back svg { display: none; }
   body.present .card { max-height: 56%; }
   body.game .lib { display: none; }
   body.game .card { max-height: 62%; }
@@ -4219,6 +4227,228 @@ EQ.photo = s => {
     <div><var>hν</var> = 1240/<var>λ</var> = 1240/${s.p.nm} = ${nf(E)} eV</div>
     <div>${E > W ? `<var>K</var>₀ = <var>hν</var> − <var>W</var> = ${nf(E)} − ${W} = <em>${nf(E - W)} eV</em>` : `<var>hν</var> = ${nf(E)} ＜ <var>W</var> = ${W} → <em>電子は出ない</em>`}</div>` };
 };
+// ======================= 空想科学：マンガ・アニメ・映画の「よくある場面」を物理で確かめる =======================
+// KUSO[id] = { name, story, sliders, p0, setup(s), step(s, dt), live(s), calc(p) → { chain:[[見出し, 中身]], verdict:[ok|ng, 文] }, eq(s) }
+// 登場するのはペンタ（ペンギン）。作品名やキャラクターは使わず、よくある場面だけを取り上げる。
+const KG = 9.8;
+const kfmt = (x, d) => fmt(x, d === undefined ? 1 : d);
+// ペンタの体（物理エンジンの箱 ＋ ペンギンの見た目）。sc = 1.4 で 身長 約 1.7 m
+function kPenta(s, sc, pos, m, opt) {
+  opt = opt || {};
+  const hy = 0.6 * sc, g = new THREE.Group(), c = makeChar({ color: opt.color || GREEN, scale: sc });
+  c.root.position.y = -hy; c.pose(opt.pose || 'idle').snap(); g.add(c.root);
+  const o = engAddBody(s, 'block', { x: pos.x, y: pos.y + hy, z: pos.z || 0 }, { hx: 0.3 * sc, hy, hz: 0.25 * sc, m, mesh: g, name: opt.name || 'ペンタ', fixed: true });
+  o.ch = c; o.hy = hy;
+  return o;
+}
+const kFeet = o => o.body.position.y - o.hy;
+// カメラを物について行かせる（向きはそのまま）
+function kFollow(s, o, ax) {
+  s.follow = o ? { o, ax: ax || 'y' } : null;
+}
+
+const KUSO = {
+  // ---------- 1. 落ちてくる人を空中でキャッチ ----------
+  catch: {
+    name: '落ちてくる人を空中でキャッチ',
+    story: 'ビルから落ちた人を、空を飛ぶヒーローが空中で「がしっ」と受け止める。<b>受け止めた人の体には、どれくらいの力がかかる？</b>',
+    sliders: ['kh', 'kd'],
+    setup(s) {
+      const p = s.p, cy = 3; s.k = { cy, caught: false, maxG: 1, vc: 0 };
+      const b = school(p.kh + cy + 2, 4, 3); b.position.set(-3.4, (p.kh + cy + 2) / 2, -3.2); R.group.add(b);
+      const o = kPenta(s, 1.4, { x: 0, y: cy + p.kh }, 60, { name: '落ちる人', pose: 'cheer' });
+      const hero = makeChar({ color: ORANGE, scale: 1.4 }); hero.root.position.set(0.95, cy - 0.3, 0); hero.root.rotation.y = -Math.PI / 2; hero.pose('float').snap(); R.group.add(hero.root);
+      s.k.hero = hero; engSelect(s, o); s.k.o = o; kFollow(s, o, 'y');
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.62, 40), solid(0xe07a2f, { emissive: 0x6a3000, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(0, cy, 0); R.group.add(ring);
+      addLabel('ここで受け止める', () => V3(0.9, cy + 1.7, 0), 'kn');
+      state.running = false;
+    },
+    step(s) {
+      const k = s.k, o = k.o, b = o.body, p = s.p;
+      if (!k.caught && kFeet(o) <= k.cy && b.velocity.y < 0) { k.caught = true; k.vc = -b.velocity.y; k.a = k.vc * k.vc / (2 * p.kd); k.hero.pose('shield'); }
+      if (k.caught && !k.done) {
+        if (b.velocity.y >= 0 || kFeet(o) < k.cy - p.kd - 0.05) { k.done = true; b.type = CANNON.Body.KINEMATIC; b.velocity.set(0, 0, 0); return; }
+        b.force.y += b.mass * (k.a + KG); k.maxG = Math.max(k.maxG, k.a / KG + 1);
+      }
+    },
+    live(s) { const k = s.k, b = k.o.body; return { kv: kfmt(Math.abs(b.velocity.y)) + ' m/s', kh: kfmt(Math.max(0, kFeet(k.o) - k.cy)) + ' m', kG: k.caught ? kfmt(k.maxG) + ' 倍' : '—' }; },
+    calc(p) {
+      const v = Math.sqrt(2 * KG * p.kh), a = v * v / (2 * p.kd), G = a / KG + 1;
+      return {
+        chain: [['状況', `高さ <b>${p.kh} m</b> を落ちてきて、<b>${p.kd} m</b> のあいだで止める`],
+          ['① 受け止める直前の速さ', `<var>v</var> = √(2<var>gh</var>) = √(2×9.8×${p.kh}) = <b>${kfmt(v)} m/s</b>（時速 ${Math.round(v * 3.6)} km）`],
+          ['② 止めるときの加速度', `<var>v</var>² = 2<var>ad</var> より <var>a</var> = <var>v</var>²÷(2<var>d</var>) = ${kfmt(v)}²÷(2×${p.kd}) = <b>${kfmt(a, 0)} m/s²</b>`],
+          ['③ 体にかかる力', `<var>F</var> = <var>m</var>(<var>a</var> + <var>g</var>) → 体重の <b>${kfmt(G)} 倍</b>（<var>h</var>÷<var>d</var> + 1）`]],
+        verdict: G <= 4 ? ['ok', `体重の ${kfmt(G)} 倍。ジェットコースター（3〜4 倍）くらいなので、だいじょうぶ。`]
+          : G <= 9 ? ['ng', `体重の ${kfmt(G)} 倍。戦闘機のパイロットが特別な服を着てやっとたえる大きさ。ふつうの人には、とてもきびしい。`]
+          : ['ng', `体重の ${kfmt(G)} 倍。人の体はたえられない。マンガのように「がしっ」と一瞬で止めると、地面に落ちたのとほとんど同じになる。`],
+        tip: '止める距離 d を長くする（腕で引きながら、いっしょに下へ動いて止める）ほど、力は小さくなる。これが「力積 FΔt = mv」の考え方。',
+      };
+    },
+    eq(s) { const k = s.k; return k.caught ? `<b>止めている（<var>a</var> = <var>v</var>²÷2<var>d</var>）</b><div><var>F</var>/<var>mg</var> = <em>${kfmt(k.maxG)} 倍</em></div>` : `<b>自由落下</b><div><var>v</var> = <var>gt</var> = <em>${kfmt(Math.abs(k.o.body.velocity.y))} m/s</em></div>`; },
+  },
+  // ---------- 2. 必殺パンチで吹っ飛ばす ----------
+  punch: {
+    name: '必殺パンチで遠くまで吹っ飛ばす',
+    story: 'マンガでは、パンチ 1 発で相手が何十 m も吹っ飛ぶ。<b>本当に飛ばすには、こぶしはどれくらいの速さが必要？</b>',
+    sliders: ['kfm', 'kfv', 'e', 'mu'],
+    p0: { e: 0.3, mu: 0.5 },
+    setup(s) {
+      const p = s.p; s.k = { hit: false, x0: 0 };
+      const t = kPenta(s, 1.4, { x: 0, y: 0 }, 60, { name: '相手（60 kg）', pose: 'stand' });
+      const hero = makeChar({ color: ORANGE, scale: 1.4 }); hero.root.position.set(-1.6, 0, 0); hero.root.rotation.y = Math.PI / 2; hero.pose('ready').snap(); R.group.add(hero.root);
+      const f = engAddBody(s, 'heavy', { x: -0.95, y: 1.15, z: 0 }, { r: 0.13, m: p.kfm, name: 'こぶし', color: 0xe0573f });
+      f.body.collisionResponse = false; f.body.type = CANNON.Body.KINEMATIC;
+      s.k.t = t; s.k.f = f; s.k.hero = hero; s.k.x0 = t.body.position.x;
+      engSelect(s, t); kFollow(s, t, 'x'); state.running = false;
+    },
+    step(s, dt) {
+      const k = s.k, p = s.p, f = k.f.body, t = k.t.body;
+      if (!k.hit) {
+        f.position.x += p.kfv * dt; if (!k.started) { k.started = true; k.hero.pose('push'); }
+        if (f.position.x + 0.13 >= t.position.x - k.t.body.shapes[0].halfExtents.x) {
+          const m = p.kfm, M = 60, v = p.kfv, e = p.e;
+          const V = (1 + e) * m * v / (m + M), vf = (m - e * M) * v / (m + M);
+          t.velocity.set(V, 0, 0); k.hit = true; k.V = V; k.vf = vf;
+          f.type = CANNON.Body.DYNAMIC; f.updateMassProperties(); f.velocity.set(vf, 0, 0); k.t.ch.pose('float');
+        }
+      }
+    },
+    live(s) { const k = s.k, t = k.t.body; return { kv: kfmt(t.velocity.length()) + ' m/s', kx: kfmt(t.position.x - k.x0) + ' m', kG: '—' }; },
+    calc(p) {
+      const m = p.kfm, M = 60, v = p.kfv, e = p.e, mu = Math.max(p.mu, 0.05);
+      const V = (1 + e) * m * v / (m + M), x = V * V / (2 * mu * KG), V100 = Math.sqrt(2 * mu * KG * 100), need = V100 * (m + M) / ((1 + e) * m);
+      return {
+        chain: [['状況', `こぶし <b>${m} kg</b>（うでの重さもふくむ）が <b>${v} m/s</b> で、60 kg の相手に当たる。はねかえり係数 ${e}、床の摩擦 μ = ${mu}`],
+          ['① 当たったあとの相手の速さ', `運動量保存とはねかえり係数から <var>V</var> = (1+<var>e</var>)<var>mv</var>÷(<var>m</var>+<var>M</var>) = (1+${e})×${m}×${v}÷${m + M} = <b>${kfmt(V, 2)} m/s</b>`],
+          ['② すべっていく距離', `摩擦で止まるまで <var>x</var> = <var>V</var>²÷(2<var>μg</var>) = ${kfmt(V, 2)}²÷(2×${mu}×9.8) = <b>${kfmt(x, 2)} m</b>`],
+          ['③ 100 m 飛ばすには', `<var>V</var> = √(2<var>μg</var>×100) = ${kfmt(V100)} m/s が必要 → こぶしの速さ <b>${kfmt(need, 0)} m/s</b>（時速 ${Math.round(need * 3.6)} km）`]],
+        verdict: [x >= 100 ? 'ok' : 'ng', `プロボクサーのパンチは約 10 m/s。100 m 飛ばすには、その <b>${kfmt(need / 10, 0)} 倍</b>の速さがいる（${need > 340 ? '音より速い！' : need > 89 ? '新幹線より速い！' : ''}）。しかも、相手にかかる力は、交通事故よりずっと大きい。`],
+        tip: '重いもの（m が大きい）を速く（v が大きい）ぶつけるほど、運動量 mv が大きく、相手は速く飛ぶ。',
+      };
+    },
+    eq(s) { const k = s.k; return k.hit ? `<b>運動量保存（当たったあと）</b><div><var>V</var> = <em>${kfmt(k.V, 2)} m/s</em>　すべった距離 <em>${kfmt(k.t.body.position.x - k.x0)} m</em></div>` : '<b>こぶしが向かっている</b>'; },
+  },
+  // ---------- 3. 巨人のジャンプ ----------
+  giant: {
+    name: '巨人は高くジャンプできる？',
+    story: 'もし人がそのまま <b>10 倍</b>の大きさの巨人になったら、ビルをひとっとびできる？ <b>大きさが k 倍になると、体重・力・ジャンプの高さはどうなる？</b>',
+    sliders: ['ks'],
+    setup(s) {
+      const p = s.p, k = p.ks; s.k = { list: [] };
+      const a = kPenta(s, 1.4, { x: 1.2, y: 0 }, 60, { name: 'ふつうのペンタ', pose: 'ready' });
+      const b = kPenta(s, 1.4 * k, { x: -0.8 - 0.42 * k, y: 0 }, 60 * k * k * k, { name: `${k} 倍の巨人ペンタ`, color: ORANGE, pose: 'ready' });
+      s.k.list = [a, b]; [a, b].forEach(o => { o.land = 0; o.top = 0; o.lab = addLabel('', () => V3(o.body.position.x, o.body.position.y + o.hy + 0.3, 0), 'kn'); });
+      engSelect(s, b);
+    },
+    step(s) {
+      const v0 = Math.sqrt(2 * KG * 0.5);
+      s.k.list.forEach(o => {
+        const b = o.body, feet = kFeet(o);
+        if (o.base === undefined) o.base = feet;
+        o.top = Math.max(o.top, feet - o.base);
+        if (Math.abs(b.velocity.y) < 0.05 && feet - o.base < 0.05) { if (!o.land) o.land = s.t; if (s.t - o.land > 0.8) { b.position.y += 0.03; o.base = feet + 0.03; b.velocity.y = v0; o.land = 0; o.top = 0; o.ch.pose('cheer'); } else o.ch.pose('ready'); }
+        o.lab.set(`ジャンプ ${kfmt(o.top, 2)} m`);
+      });
+    },
+    live(s) { const o = s.k.list[1]; return { kv: kfmt(Math.abs(o.body.velocity.y)) + ' m/s', kh: kfmt(Math.max(0, kFeet(o) - (o.base || 0)), 2) + ' m', kG: '—' }; },
+    calc(p) {
+      const k = p.ks;
+      return {
+        chain: [['状況', `身長 1.7 m、体重 60 kg の人を、形はそのまま <b>${k} 倍</b>（身長 ${kfmt(1.7 * k)} m）にする`],
+          ['① 体重は', `体積が 長さ×長さ×長さ なので <b>${k}³ = ${k * k * k} 倍</b>（${kfmt(60 * k * k * k / 1000, 1)} トン）`],
+          ['② 足の筋肉の力は', `筋肉の力は太さ（断面積 = 長さ×長さ）で決まるので <b>${k}² = ${k * k} 倍</b>しかない`],
+          ['③ ジャンプの高さは', `ふみこむ仕事 = 力×きょり ∝ ${k}²×${k} = ${k}³、体重も ${k}³ 倍 → <var>mgh</var> の <var>h</var> は<b>同じ 約 0.5 m</b>`]],
+        verdict: ['ng', `${k} 倍の巨人もジャンプは約 0.5 m。自分の背の 1/${Math.round(1.7 * k / 0.5)} しかとべない。しかも骨にかかる重さ（1 cm² あたり）はふつうの人の <b>${k} 倍</b>になり、歩くだけで骨が折れそうになる。`],
+        tip: 'ノミが体長の 100 倍もとべるのに、ゾウがジャンプできないのは、この「大きさの法則」のせい。小さい生き物ほど、体のわりに力持ち。',
+      };
+    },
+    eq() { return '<b>どちらも同じ速さで ふみきる</b><div><var>h</var> = <var>v</var>²÷2<var>g</var> = <em>0.5 m</em></div>'; },
+  },
+  // ---------- 4. 月や小惑星でジャンプ ----------
+  planet: {
+    name: '月や小惑星でジャンプすると？',
+    story: '地球で 50 cm とべる人が、月や小さな小惑星でジャンプすると？ <b>宇宙までとんで行ってしまう？</b>',
+    sliders: [],
+    setup(s) {
+      s.k = {};
+      const o = kPenta(s, 1.4, { x: 0, y: 0 }, 60, { name: 'ペンタ', pose: 'ready' });
+      s.k.o = o; o.top = 0; engSelect(s, o); kFollow(s, o, 'y'); state.running = false;
+      for (let i = 0; i < 14; i++) { const r = rock(0.3 + Math.random() * 0.6, 0.2 + Math.random() * 0.4, 0.3 + Math.random() * 0.6, 0x9a9488); r.position.set((Math.random() - 0.5) * 12, 0.05, (Math.random() - 0.5) * 12); if (Math.hypot(r.position.x, r.position.z) > 1.5) R.group.add(r); }
+    },
+    step(s) {
+      const o = s.k.o, b = o.body;
+      if (!s.k.go) { s.k.go = true; s.k.base = kFeet(o); b.velocity.y = Math.sqrt(2 * KG * 0.5); s.k.t0 = s.t; o.ch.pose('cheer'); }
+      o.top = Math.max(o.top, kFeet(o) - s.k.base);
+      if (!s.k.land && s.t - s.k.t0 > 0.1 && kFeet(o) <= s.k.base + 0.002) { s.k.land = s.t - s.k.t0; o.ch.pose('ready'); }
+    },
+    live(s) { const o = s.k.o; return { kv: kfmt(Math.abs(o.body.velocity.y), 2) + ' m/s', kh: kfmt(Math.max(0, kFeet(o) - (s.k.base || 0)), 2) + ' m', kG: s.k.land ? kfmt(s.k.land) + ' 秒' : '—' }; },
+    calc(p) {
+      const v = Math.sqrt(2 * KG * 0.5), g = p.g || 0.0001, h = v * v / (2 * g), T = 2 * v / g;
+      const name = (KUSO_G.find(x => x[0] === p.g) || [0, ''])[1];
+      return {
+        chain: [['状況', `地球で 0.5 m とべるジャンプ（ふみきる速さ <var>v</var> = √(2×9.8×0.5) = ${kfmt(v, 2)} m/s）を、<b>${name}</b>（<var>g</var> = ${p.g} m/s²）でする`],
+          ['① とべる高さ', `<var>h</var> = <var>v</var>²÷(2<var>g</var>) = ${kfmt(v, 2)}²÷(2×${p.g}) = <b>${kfmt(h, h < 10 ? 2 : 0)} m</b>`],
+          ['② 空中にいる時間', `<var>t</var> = 2<var>v</var>÷<var>g</var> = 2×${kfmt(v, 2)}÷${p.g} = <b>${kfmt(T, 1)} 秒</b>${T > 60 ? `（${kfmt(T / 60, 1)} 分）` : ''}`]],
+        verdict: p.g < 0.5 ? ['ok', `${kfmt(h, 0)} m もとび上がり、${kfmt(T / 60, 1)} 分も空中にいる！ ただし、宇宙へ飛んでいくには「脱出速度」より速くとぶ必要がある。直径 1 km くらいの小惑星なら脱出速度は約 0.5 m/s なので、本当に宇宙へ飛んでいってしまう。`]
+          : ['ok', `${name}では ${kfmt(h, 2)} m。重力が 1/${kfmt(9.8 / p.g, 1)} なので、高さも空中の時間も ${kfmt(9.8 / p.g, 1)} 倍になる。`],
+        tip: 'ふみきる速さは同じでも、重力 g が小さいほど、高く・長くとべる（h = v²/2g、t = 2v/g）。',
+      };
+    },
+    eq(s) { const o = s.k.o; return `<b>鉛直投げ上げ（g = ${s.p.g}）</b><div>高さ <em>${kfmt(Math.max(0, kFeet(o)), 2)} m</em>　最高 ${kfmt(o.top, 2)} m</div>`; },
+  },
+  // ---------- 5. ジェットパックで空を飛ぶ ----------
+  jet: {
+    name: 'ジェットパックで空を飛ぶ',
+    story: '背中のジェットで空を飛ぶヒーロー。<b>体重 60 kg ＋ 装置 20 kg を浮かせるには、どれくらいの力（推力）が必要？</b>',
+    sliders: ['kt'],
+    setup(s) {
+      s.k = {};
+      const o = kPenta(s, 1.4, { x: 0, y: 0 }, 80, { name: 'ペンタ＋ジェット 80 kg', pose: 'float' });
+      const pk = new THREE.Group(); [-0.16, 0.16].forEach(x => { const c = cyl(0.11, 0.11, 0.55, metal(0x8d949c, 0.5), 16); c.position.set(x, 0.05, -0.32); pk.add(c); });
+      const fl = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1, 16), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.85 }));
+      fl.rotation.x = Math.PI; fl.position.set(0, -0.6, -0.32); pk.add(fl); o.mesh.add(pk); s.k.fl = fl; s.k.o = o;
+      engSelect(s, o); kFollow(s, o, 'y'); state.running = false;
+    },
+    step(s) { const p = s.p, b = s.k.o.body; b.force.y += p.kt; const L = Math.max(0.05, p.kt / 900); s.k.fl.scale.set(1, L, 1); s.k.fl.position.y = -0.3 - L / 2; },
+    live(s) { const o = s.k.o; return { kv: kfmt(o.body.velocity.length()) + ' m/s', kh: kfmt(Math.max(0, kFeet(o))) + ' m', kG: kfmt(s.p.kt / (80 * KG), 2) + ' 倍' }; },
+    calc(p) {
+      const m = 80, W = m * KG, a = (p.kt - W) / m;
+      return {
+        chain: [['状況', `全部で 80 kg のペンタに、上向きの推力 <b>${p.kt} N</b>`],
+          ['① 下向きの重力', `<var>mg</var> = 80×9.8 = <b>${kfmt(W, 0)} N</b>`],
+          ['② 運動方程式', `<var>ma</var> = <var>F</var> − <var>mg</var> → <var>a</var> = (${p.kt} − ${kfmt(W, 0)})÷80 = <b>${kfmt(a, 2)} m/s²</b>`],
+          ['③ 5 秒後の高さ', a > 0 ? `<var>y</var> = ½<var>at</var>² = ½×${kfmt(a, 2)}×5² = <b>${kfmt(0.5 * a * 25)} m</b>` : '浮き上がらない（推力が重力より小さい）']],
+        verdict: p.kt < W - 0.5 ? ['ng', `推力 ${p.kt} N は重力 ${kfmt(W, 0)} N より小さいので、浮かない。`]
+          : Math.abs(p.kt - W) <= 0.5 ? ['ok', '推力と重力がつり合って、浮いたまま止まっていられる（ホバリング）。']
+          : ['ok', `推力が重力より大きいので、上向きに加速する。本物のジェットパックは、80 kg を浮かすだけで 1 分に数 L の燃料を使う。`],
+        tip: '浮くための条件は「推力 ＞ 重力 mg」。ロケットも、ヘリコプターも同じ。',
+      };
+    },
+    eq(s) { const p = s.p; return `<b>運動方程式 <var>ma</var> = <var>F</var> − <var>mg</var></b><div><var>a</var> = (${p.kt} − ${kfmt(80 * KG, 0)})÷80 = <em>${kfmt((p.kt - 80 * KG) / 80, 2)} m/s²</em></div>`; },
+  },
+};
+const KUSO_G = [[9.8, '地球'], [3.7, '火星'], [1.6, '月'], [0.06, '小さな小惑星']];
+const KUSO_PARAMS = [
+  { k: 'kh', label: '落ちる高さ <var>h</var>', min: 5, max: 100, step: 5, v: 30, unit: 'm', reset: true },
+  { k: 'kd', label: '止める距離 <var>d</var>', min: 0.05, max: 3, step: 0.05, v: 0.3, unit: 'm', reset: true },
+  { k: 'kfm', label: 'こぶしの質量 <var>m</var>', min: 2, max: 20, step: 1, v: 5, unit: 'kg', reset: true },
+  { k: 'kfv', label: 'こぶしの速さ <var>v</var>', min: 5, max: 300, step: 5, v: 10, unit: 'm/s', reset: true },
+  { k: 'ks', label: '大きさ <var>k</var>', min: 1, max: 20, step: 1, v: 10, unit: '倍', reset: true },
+  { k: 'kt', label: 'ジェットの推力 <var>F</var>', min: 0, max: 2000, step: 10, v: 900, unit: 'N' },
+];
+function kusoHTML(s) {
+  const p = s.p, K = KUSO[p.preset], R2 = K.calc(p);
+  return `<div class="ctl"><div class="purpose"><b>空想科学：${esc(K.name)}</b>${K.story}</div>
+    ${p.preset === 'planet' ? ui.seg(s, 'g', 'どこでとぶ？', KUSO_G) : ''}
+    ${ui.sliders(s, K.sliders)}
+    ${ui.btn('kgo', '▶ 実験する', true)}
+    ${ui.meter([['kv', '速さ'], [p.preset === 'punch' ? 'kx' : 'kh', p.preset === 'punch' ? 'すべった距離' : '高さ'], ['kG', p.preset === 'catch' ? '体重の何倍の力' : p.preset === 'planet' ? '空中にいた時間' : p.preset === 'jet' ? '推力（体重の）' : '—']])}
+    <h3 class="sub">物理で確かめると</h3>
+    <ol class="ta-chain">${R2.chain.map(([h, t]) => `<li><b>${h}</b>${t}</li>`).join('')}</ol>
+    <div class="verdict ${R2.verdict[0]}">${R2.verdict[1]}</div>
+    <p class="note">${R2.tip}</p></div>`;
+}
 // ======================= 物理エンジンモード（cannon.js） =======================
 // 物を置く・ドラッグして投げる・重力や反発係数を変える。えらんだ物の速さ・エネルギー・運動量を、式とグラフで出す。
 // 何もない所をタップ → いま選んでいる物を置く（上から落とす）。物をドラッグ → はなした速さで投げる。
@@ -4245,7 +4475,7 @@ function engAddBody(s, kind, pos, opt) {
   if (kind === 'box' || kind === 'domino' || kind === 'block') {
     const hx = opt.hx || 0.25, hy = opt.hy || 0.25, hz = opt.hz || 0.25;
     shape = new C.Box(new C.Vec3(hx, hy, hz)); size = hy;
-    mesh = roundBox(hx * 2, hy * 2, hz * 2, Math.min(hx, hy, hz) * 0.15, solid(opt.color || (kind === 'domino' ? 0xf2f0e8 : 0xc58a4a), { shininess: 35 }));
+    mesh = opt.mesh || roundBox(hx * 2, hy * 2, hz * 2, Math.min(hx, hy, hz) * 0.15, solid(opt.color || (kind === 'domino' ? 0xf2f0e8 : 0xc58a4a), { shininess: 35 }));
     mass = opt.m || (kind === 'domino' ? 0.3 : 2);
   } else {
     const r = opt.r || (kind === 'heavy' ? 0.3 : 0.22);
@@ -4258,8 +4488,9 @@ function engAddBody(s, kind, pos, opt) {
   body._area = kind === 'box' || kind === 'domino' || kind === 'block' ? (opt.hx || 0.25) * 2 * (opt.hz || 0.25) * 2 : Math.PI * (opt.r || (kind === 'heavy' ? 0.3 : 0.22)) ** 2;
   body.position.set(pos.x, pos.y, pos.z);
   if (opt.v) body.velocity.set(opt.v.x, opt.v.y, opt.v.z);
+  if (opt.fixed) { body.fixedRotation = true; body.updateMassProperties(); }
   s.world.addBody(body);
-  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.traverse(x => { if (x.isMesh) x.castShadow = x.receiveShadow = true; });
   R.group.add(mesh);
   const o = { kind, body, mesh, size, m: mass, name: opt.name || { ball: 'ボール', heavy: '鉄球', box: '箱', domino: 'ドミノ', block: 'おもり' }[kind] };
   s.objs.push(o);
@@ -4324,7 +4555,7 @@ sim({
     { k: 'th', label: '坂の角度 <var>θ</var>', min: 5, max: 50, step: 1, v: 30, unit: '°', reset: true },
     { k: 'v0', label: '投げる速さ <var>v</var><sub>0</sub>', min: 2, max: 14, step: 0.5, v: 8, unit: 'm/s' },
     { k: 'ang', label: '投げる角度', min: 0, max: 90, step: 1, v: 45, unit: '°' },
-  ],
+  ].concat(KUSO_PARAMS),
   p0: { g: 9.8, tool: 'ball', air: false, vec: true, trail: true, preset: 'free' },
   legend: [['v', '速度（えらんだ物）']],
   h: 1 / 120,
@@ -4346,12 +4577,13 @@ sim({
     const floorQ = new C.Quaternion(); floorQ.setFromAxisAngle(new C.Vec3(1, 0, 0), -Math.PI / 2);
     engStatic(s, new C.Plane(), { x: 0, y: 0, z: 0 }, floorQ);
     const A = ENG_ARENA, rail = solid(0x2f6fb0, { shininess: 40 });
-    [[0, A, 0], [0, -A, Math.PI], [A, 0, -Math.PI / 2], [-A, 0, Math.PI / 2]].forEach(([x, z, ry]) => {
+    s.follow = null;
+    if (!KUSO[p.preset]) [[0, A, 0], [0, -A, Math.PI], [A, 0, -Math.PI / 2], [-A, 0, Math.PI / 2]].forEach(([x, z, ry]) => {
       const q = new C.Quaternion(); q.setFromAxisAngle(new C.Vec3(0, 1, 0), ry + Math.PI);
       engStatic(s, new C.Box(new C.Vec3(A, 0.6, 0.05)), { x, y: 0.6, z }, q);
       const m = box(Math.abs(x) ? 0.1 : A * 2 + 0.1, 0.18, Math.abs(z) ? 0.1 : A * 2 + 0.1, rail); m.position.set(x, 0.09, z); g.add(m);
     });
-    g.add(contactShadow(A * 2 + 1, A * 2 + 1, 0.15));
+    if (!KUSO[p.preset]) g.add(contactShadow(A * 2 + 1, A * 2 + 1, 0.15));
     engPreset(s);
     s.selArrow = makeArrow(COL.vel, 0.03); g.add(s.selArrow.g);
     s.selLbl = addLabel('', () => s.sel ? V3(s.sel.body.position.x, s.sel.body.position.y + s.sel.size + 0.2, s.sel.body.position.z) : null, 'v');
@@ -4365,18 +4597,21 @@ sim({
     s.world.gravity.set(0, -p.g, 0);
     s.cms.forEach(cm => { cm.friction = p.mu * cm.k; cm.restitution = p.e; });
     if (s.spring) s.spring.applyForce();
+    if (KUSO[p.preset] && s.k) KUSO[p.preset].step(s, dt);
     engFriction(s, dt);
     // 空気抵抗 F = ½ρC·S·v²（向きは速度と逆）。同じ大きさなら、軽い物ほど速さが落ちる
     if (p.air) s.objs.forEach(o => { const b = o.body, v = b.velocity, sp = v.length(); if (!sp || b.type !== CANNON.Body.DYNAMIC) return; const k = 0.5 * 1.2 * 0.5 * b._area * sp; b.force.x -= k * v.x; b.force.y -= k * v.y; b.force.z -= k * v.z; });
     s.world.step(dt);
     // 遠くへ飛んでいった物は消す
-    for (const ob of s.objs.slice()) { const q = ob.body.position; if (Math.abs(q.x) > 20 || Math.abs(q.z) > 20 || q.y < -5) { s.objs.splice(s.objs.indexOf(ob), 1); engRemove(s, ob); } }
+    if (!KUSO[p.preset]) for (const ob of s.objs.slice()) { const q = ob.body.position; if (Math.abs(q.x) > 20 || Math.abs(q.z) > 20 || q.y < -5) { s.objs.splice(s.objs.indexOf(ob), 1); engRemove(s, ob); } }
     const o = s.sel;
     if (o) { const b = o.body, v = b.velocity.length(), h = Math.max(0, b.position.y - o.size); s.rec.add(s.t - s.t0, 0.5 * o.m * v * v, o.m * p.g * h, 0.5 * o.m * v * v + o.m * p.g * h, b.position.y); }
   },
   draw(s) {
     if (!s.world) return;
     s.objs.forEach(o => { o.mesh.position.copy(o.body.position); o.mesh.quaternion.copy(o.body.quaternion); });
+    // カメラが物について行く（向きと距離はそのまま）
+    if (s.follow) { const f = s.follow, bp = f.o.body.position, tg = R.controls.target, d = V3(); if (f.ax === 'x') d.x = bp.x - tg.x; else d.y = Math.max(bp.y, 1) - tg.y; tg.add(d); R.camera.position.add(d); }
     if (s.springMesh && s.spring) { const a = s.springTop, b = s.spring.bodyB.position; const L = a.y - b.y - 0.25; s.springMesh.scale.y = Math.max(0.05, L); s.springMesh.position.set(b.x, b.y + 0.25, b.z); }
     const o = s.sel;
     if (o) {
@@ -4389,6 +4624,7 @@ sim({
   },
   live(s) {
     const o = s.sel, p = s.p, out = { n: String(s.objs.length) };
+    if (KUSO[p.preset] && s.k) return KUSO[p.preset].live(s);
     if (!o) { Object.assign(out, { name: '—（物をタップしてえらぶ）', m: '—', v: '—', h: '—', K: '—', U: '—', E: '—', P: '—' }); out.graph = ''; return out; }
     const b = o.body, v = b.velocity.length(), h = Math.max(0, b.position.y - o.size), K = 0.5 * o.m * v * v, U = o.m * p.g * h;
     Object.assign(out, { name: o.name, m: fmt(o.m, 1) + ' kg', v: fmt(v, 2) + ' m/s', h: fmt(h, 2) + ' m', K: fmt(K, 1) + ' J', U: fmt(U, 1) + ' J', E: fmt(K + U, 1) + ' J', P: fmt(o.m * v, 1) + ' kg·m/s' });
@@ -4400,6 +4636,7 @@ sim({
   },
   html(s) {
     if (!engOK()) return '<div class="verdict ng">物理エンジンの部品（cannon.js）を読み込めなかった。インターネットにつながっているか確かめて、開き直してください。</div>';
+    if (KUSO[s.p.preset]) return kusoHTML(s);
     const p = s.p, pr = ENG_PRESETS.find(x => x[0] === p.preset) || ENG_PRESETS[0];
     const sl = ['e', 'mu'].concat(p.preset === 'ramp' ? ['th'] : []).concat(p.preset === 'throw' ? ['v0', 'ang'] : []);
     return `<div class="ctl"><div class="purpose"><b>${esc(pr[1])}</b>${pr[2]}</div>
@@ -4417,24 +4654,33 @@ sim({
   act(s, a) {
     if (a === 'clear') { s.objs.slice().forEach(o => engRemove(s, o)); s.objs = []; engSelect(s, null); if (s.spring) { s.spring = null; if (s.springMesh) s.springMesh.visible = false; } }
     else if (a === 'reset') { restart(); state.running = true; updatePlay(); }
+    else if (a === 'kgo') { loadSim('engine'); state.running = true; updatePlay(); }
     else if (a === 'throw') {
       const p = s.p, an = p.ang * DEG, o = engAddBody(s, 'ball', { x: -ENG_ARENA + 0.8, y: 0.6, z: 0 }, { v: { x: p.v0 * Math.cos(an), y: p.v0 * Math.sin(an), z: 0 }, color: 0xe0573f, name: '投げた球' });
       engSelect(s, o); state.running = true; updatePlay();
     }
   },
 
+  onParam(s, k) { if (KUSO[s.p.preset] && k === 'g') { loadSim('engine'); renderCard(); } },
   goal: '',
   how: `<p class="txt">物理エンジンは、とても短い時間（1/120 秒）ごとに「力 → 加速度 → 速さ → 位置」を計算し、ぶつかったら反発係数と摩擦で速さを変える。運動方程式 <var>ma</var> = <var>F</var> をくり返し解いているのと同じ。</p>`,
   points: [['o', '重力加速度 g は物の重さによらない'], ['o', 'e = 1 なら運動エネルギーが保たれ、e < 1 だと熱や音になって減る'], ['o', '運動量の合計は、ぶつかっても変わらない（外から力がはたらかなければ）']],
   exam: '',
-  view() { return [[0, 0.9, 0], ENG_ARENA * 0.62, [0.35, 0.5, 1]]; },
+  view(s) {
+    const p = s.p;
+    if (p.preset === 'catch') return [[0, 3 + p.kh, 0], 4.5, [1, 0.05, 0.75]];
+    if (p.preset === 'giant') return [[-0.4 * p.ks, 0.75 * p.ks + 0.4, 0], Math.max(2.6, 1.15 * p.ks + 0.6), [0.25, 0.12, 1]];
+    if (KUSO[p.preset]) return [[0, 1.1, 0], 3.4, [0.35, 0.2, 1]];
+    return [[0, 0.9, 0], ENG_ARENA * 0.62, [0.35, 0.5, 1]];
+  },
 });
 
 // 場面（プリセット）を作る
 function engPreset(s) {
   const p = s.p, C = CANNON, g = R.group, A = ENG_ARENA;
-  s.spring = null; s.springMesh = null;
+  s.spring = null; s.springMesh = null; s.k = null;
   const pr = p.preset;
+  if (KUSO[pr]) { KUSO[pr].setup(s); return; }
   if (pr === 'drop') {
     const a = engAddBody(s, 'heavy', { x: -0.6, y: 4, z: 0 }, { r: 0.3, m: 10, name: '重い球 10 kg' });
     engAddBody(s, 'ball', { x: 0.6, y: 4, z: 0 }, { r: 0.3, m: 1, color: 0xe8e2d0, name: '軽い球 1 kg' });
@@ -4543,6 +4789,7 @@ function engPointer(s, on) {
 
 // 「いまの式」
 EQ.engine = s => {
+  if (KUSO[s.p.preset] && s.k) return { at: null, html: KUSO[s.p.preset].eq(s) };
   const o = s.sel; if (!o) return { at: null, html: '<b>物をタップしてえらぶと、その物の式が出る</b>' };
   const b = o.body, v = b.velocity.length(), h = Math.max(0, b.position.y - o.size), m = o.m, g = s.p.g;
   return { at: null, html: `<b>${esc(o.name)}（m = ${fmt(m, 1)} kg）</b>
@@ -4564,6 +4811,7 @@ function goEngine(preset) {
     if (preset === 'ramp') P.mu = 0.3;
     if (preset === 'tower' || preset === 'domino') P.e = 0.2;
     if (preset === 'spring') P.tool = 'none';
+    if (KUSO[preset]) Object.assign(P, { tool: 'none', e: 0, mu: 0.5 }, KUSO[preset].p0 || {});
   }
   state.id = 'engine'; state.tab = 'try'; state.libCat = null;
   renderLib();
@@ -4573,7 +4821,9 @@ function goEngine(preset) {
 }
 function engLibHTML() {
   const cur = PARAMS.engine ? PARAMS.engine.preset : 'free';
-  return '<div class="items">' + ENG_PRESETS.map(([k, n]) => `<button type="button" class="item" data-engine="${k}" aria-current="${k === cur}"><span class="ic">エ</span><span>${esc(n)}</span></button>`).join('') + '</div><p class="libfoot">物理エンジン（cannon.js）で、物の動きを自由に試せる。</p>';
+  const it = (k, n, ic) => `<button type="button" class="item" data-engine="${k}" aria-current="${k === cur}"><span class="ic">${ic}</span><span>${esc(n)}</span></button>`;
+  return '<div class="items"><p class="grp">物理エンジン</p>' + ENG_PRESETS.map(([k, n]) => it(k, n, 'エ')).join('')
+    + '<p class="grp">空想科学（もしも実験）</p>' + Object.keys(KUSO).map(k => it(k, KUSO[k].name, '空')).join('') + '</div><p class="libfoot">マンガやアニメ、映画でよくある場面を、物理エンジンと式で確かめる。</p>';
 }
 function engCardHTML() {
   const s = state.s; if (!s || s.def.id !== 'engine') return '';
