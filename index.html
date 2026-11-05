@@ -523,6 +523,7 @@ body.present .lib { display: none; }
     <button type="button" data-mode="sim" aria-current="true" title="現象を3Dで動かす">実験</button>
     <button type="button" data-mode="lesson" aria-current="false" title="教科書の順に1画面ずつ進む授業">授業</button>
     <button type="button" data-mode="drill" aria-current="false" title="数字が毎回変わる計算問題">計算</button>
+    <button type="button" data-mode="engine" aria-current="false" title="物理エンジン：物を置いて、投げて、ぶつける">エンジン</button>
     <button type="button" data-mode="quiz" aria-current="false" title="タイムアタックと考え方クイズ">ゲーム</button>
   </nav>
   <a class="back" href="https://nakatadaiki1012-design.github.io/chemistry-simulator/" target="_blank" rel="noopener" title="分子ラボ3D（化学）を開く（新しいタブ）"><span class="l">分子ラボ3D</span><span>化学</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
@@ -566,6 +567,7 @@ body.present .lib { display: none; }
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 <script>
 // ===== 小さな道具 =====
 const $ = id => document.getElementById(id);
@@ -1130,7 +1132,7 @@ function renderLive(force) {
   const s = state.s; if (!s) return;
   $('clock').textContent = clockText(s);
   renderEq(s);
-  const liveOK = state.mode === 'sim' ? state.tab === 'try' : state.mode === 'lesson' && state.lesson && !state.lesson.quiz && state.lesson.tab === 'try';
+  const liveOK = state.mode === 'engine' || (state.mode === 'sim' ? state.tab === 'try' : state.mode === 'lesson' && state.lesson && !state.lesson.quiz && state.lesson.tab === 'try');
   if (!liveOK || !s.def.live) { checkGoal(s); return; }
   const card = $('card');
   const o = s.def.live(s) || {};
@@ -1182,7 +1184,7 @@ const C = { vel: 'var(--vel)', force: 'var(--force)', acc: 'var(--acc)', ke: 'va
 function renderLegend() {
   const s = state.s, el = $('ovTL');
   const lg = s && s.def.legend;
-  el.innerHTML = lg && (state.mode === 'sim' || state.mode === 'lesson' && state.lesson) ? `<div class="legend">${lg.map(([c, n]) => `<span class="${c}"><i></i>${n}</span>`).join('')}</div>` : '';
+  el.innerHTML = lg && (state.mode === 'sim' || state.mode === 'engine' || state.mode === 'lesson' && state.lesson) ? `<div class="legend">${lg.map(([c, n]) => `<span class="${c}"><i></i>${n}</span>`).join('')}</div>` : '';
 }
 
 // ===== 3Dのそばに「いまの式」を出す =====
@@ -4217,6 +4219,366 @@ EQ.photo = s => {
     <div><var>hν</var> = 1240/<var>λ</var> = 1240/${s.p.nm} = ${nf(E)} eV</div>
     <div>${E > W ? `<var>K</var>₀ = <var>hν</var> − <var>W</var> = ${nf(E)} − ${W} = <em>${nf(E - W)} eV</em>` : `<var>hν</var> = ${nf(E)} ＜ <var>W</var> = ${W} → <em>電子は出ない</em>`}</div>` };
 };
+// ======================= 物理エンジンモード（cannon.js） =======================
+// 物を置く・ドラッグして投げる・重力や反発係数を変える。えらんだ物の速さ・エネルギー・運動量を、式とグラフで出す。
+// 何もない所をタップ → いま選んでいる物を置く（上から落とす）。物をドラッグ → はなした速さで投げる。
+const ENG_PRESETS = [
+  ['free', '自由に置く', '何もない所をタップすると物が落ちてくる。物をドラッグして投げてみよう。'],
+  ['drop', '重い球と軽い球', '重い鉄球（10 kg）と軽い球（1 kg）を同じ高さから落とす。<b>どちらが先に着く？</b> ▶ を押して確かめよう。「空気抵抗」を入れるとどうなる？'],
+  ['ramp', '坂をすべる・ころがる', '坂の上の箱と球。<b>摩擦 μ</b> を変えると、箱はすべる？ 止まる？ 坂の角度も変えてみよう（すべり出すのは tanθ ＞ μ）。'],
+  ['throw', '投げる（放物運動）', '「投げる」で球を投げる。速さと角度を変えて、<b>いちばん遠くまで飛ぶ角度</b>をさがそう。重力を「月」にすると？'],
+  ['billiard', 'ビリヤード（運動量）', '止まっている 5 個の球に、1 個をぶつける。<b>反発係数 e = 1</b> と <b>e = 0</b> でくらべよう。運動量の合計は変わる？'],
+  ['domino', 'ドミノ', '球を投げてドミノをたおそう。たおれる速さはどうなる？'],
+  ['tower', '箱の塔', '箱の塔に球を投げてくずそう。重い球と軽い球でくらべよう。'],
+  ['spring', 'ばね振り子', '天井からばねでつるしたおもり。グラフの高さの変化が<b>ゆれ（単振動）</b>になることを確かめよう。'],
+];
+const ENG_TOOLS = [['ball', 'ボール'], ['heavy', '鉄球'], ['box', '箱'], ['none', '置かない']];
+const ENG_G = [[9.8, '地球 9.8'], [1.6, '月 1.6'], [24.8, '木星 24.8'], [0, '無重力 0']];
+const ENG_MAX = 90, ENG_ARENA = 6;
+const engOK = () => typeof CANNON !== 'undefined';
+
+function engAddBody(s, kind, pos, opt) {
+  if (s.objs.length >= ENG_MAX) { const o = s.objs.shift(); engRemove(s, o); }
+  opt = opt || {};
+  const C = CANNON, p = s.p;
+  let shape, mesh, size, mass;
+  if (kind === 'box' || kind === 'domino' || kind === 'block') {
+    const hx = opt.hx || 0.25, hy = opt.hy || 0.25, hz = opt.hz || 0.25;
+    shape = new C.Box(new C.Vec3(hx, hy, hz)); size = hy;
+    mesh = roundBox(hx * 2, hy * 2, hz * 2, Math.min(hx, hy, hz) * 0.15, solid(opt.color || (kind === 'domino' ? 0xf2f0e8 : 0xc58a4a), { shininess: 35 }));
+    mass = opt.m || (kind === 'domino' ? 0.3 : 2);
+  } else {
+    const r = opt.r || (kind === 'heavy' ? 0.3 : 0.22);
+    shape = new C.Sphere(r); size = r;
+    mesh = ball(r, kind === 'heavy' ? metal(0x6e7680, 0.55) : opt.color ? solid(opt.color, { shininess: 80 }) : soccerMat(), 28);
+    mass = opt.m || (kind === 'heavy' ? 10 : 1);
+  }
+  const body = new C.Body({ mass, material: shape instanceof C.Box ? s.matBox : s.matBall, linearDamping: 0.01, angularDamping: 0.05 });
+  body.addShape(shape);
+  body._area = kind === 'box' || kind === 'domino' || kind === 'block' ? (opt.hx || 0.25) * 2 * (opt.hz || 0.25) * 2 : Math.PI * (opt.r || (kind === 'heavy' ? 0.3 : 0.22)) ** 2;
+  body.position.set(pos.x, pos.y, pos.z);
+  if (opt.v) body.velocity.set(opt.v.x, opt.v.y, opt.v.z);
+  s.world.addBody(body);
+  mesh.castShadow = mesh.receiveShadow = true;
+  R.group.add(mesh);
+  const o = { kind, body, mesh, size, m: mass, name: opt.name || { ball: 'ボール', heavy: '鉄球', box: '箱', domino: 'ドミノ', block: 'おもり' }[kind] };
+  s.objs.push(o);
+  mesh.position.copy(body.position);
+  return o;
+}
+function engRemove(s, o) {
+  s.world.remove(o.body); R.group.remove(o.mesh);
+  o.mesh.traverse(x => { if (x.geometry) x.geometry.dispose(); });
+  if (s.sel === o) engSelect(s, null);
+}
+function engSelect(s, o) {
+  s.sel = o; s.rec.clear(); s.t0 = s.t; if (s.trail) s.trail.clear();
+  s.objs.forEach(x => { const m = x.mesh.material; if (m && m.emissive) m.emissive.setHex(x === o ? 0x553300 : 0x000000); });
+}
+// 箱のクーロン摩擦：前のステップの接点から「支えている面」の向き n を出し、
+// 止まっていて mg sinθ ≦ μN ならその場に止める（静止摩擦）、それ以外は μN を動きと逆向きにかける（動摩擦）
+function engFriction(s, dt) {
+  const mu = s.p.mu, g = s.p.g, sup = new Map();
+  s.world.contacts.forEach(c => {
+    let b, o, nx = c.ni.x, ny = c.ni.y, nz = c.ni.z;
+    if (c.bj.shapes[0] instanceof CANNON.Box && c.bj.mass > 0) { b = c.bj; o = c.bi; } else if (c.bi.shapes[0] instanceof CANNON.Box && c.bi.mass > 0) { b = c.bi; o = c.bj; nx = -nx; ny = -ny; nz = -nz; } else return;
+    if (ny < 0.2) return; // 横の面（かべ）は支えていない
+    const e = sup.get(b) || { x: 0, y: 0, z: 0, o, k: 0 }; e.x += nx; e.y += ny; e.z += nz; e.k++; sup.set(b, e);
+  });
+  // 反発で一瞬はなれても（小さくはねても）、少しのあいだは同じ面に乗っているとみなす
+  s.objs.forEach(ob => {
+    const b = ob.body;
+    if (sup.has(b)) { const e = sup.get(b); b._sup = { x: e.x, y: e.y, z: e.z, o: e.o, k: e.k, age: 0 }; }
+    else if (b._sup && ++b._sup.age <= 6) sup.set(b, b._sup);
+    else b._sup = null;
+  });
+  sup.forEach((e, b) => {
+    if (b.type !== CANNON.Body.DYNAMIC || !mu || !g || !(b.shapes[0] instanceof CANNON.Box)) return;
+    const L = Math.hypot(e.x, e.y, e.z), nx = e.x / L, ny = e.y / L, nz = e.z / L, m = b.mass;
+    const N = m * g * ny;                                  // 垂直抗力 N = mg cosθ
+    const gt = [g * ny * nx, -g + g * ny * ny, g * ny * nz]; // 重力の斜面にそった成分
+    const gtl = Math.hypot(gt[0], gt[1], gt[2]);
+    const ov = e.o.velocity, v = b.velocity, rv = [v.x - ov.x, v.y - ov.y, v.z - ov.z], rn = rv[0] * nx + rv[1] * ny + rv[2] * nz;
+    const vt = [rv[0] - rn * nx, rv[1] - rn * ny, rv[2] - rn * nz], vtl = Math.hypot(vt[0], vt[1], vt[2]);
+    if (vtl < 0.03 && m * gtl <= mu * N) { // 静止摩擦：すべらない
+      v.x -= vt[0]; v.y -= vt[1]; v.z -= vt[2];
+      b.force.x -= m * gt[0]; b.force.y -= m * gt[1]; b.force.z -= m * gt[2];
+      return;
+    }
+    const d = vtl > 1e-3 ? vt.map(x => x / vtl) : gt.map(x => x / (gtl || 1)), F = mu * N;
+    if (vtl > 1e-3 && F / m * dt >= vtl) { v.x -= vt[0]; v.y -= vt[1]; v.z -= vt[2]; return; } // この一瞬で止まる
+    b.force.x -= F * d[0]; b.force.y -= F * d[1]; b.force.z -= F * d[2];
+  });
+}
+// 静かな床・坂・天井の物（動かない）
+function engStatic(s, shape, pos, quat, mat) {
+  const b = new CANNON.Body({ mass: 0, material: mat || s.mat }); b.addShape(shape); b.position.set(pos.x, pos.y, pos.z); if (quat) b.quaternion.copy(quat); s.world.addBody(b); return b;
+}
+
+sim({
+  id: 'engine', cat: 'エンジン', icon: 'エ', name: '物理エンジン',
+  lead: '物を置いて、投げて、ぶつけてみる。重力・反発係数・摩擦を変えると動きが変わる。',
+  params: [
+    { k: 'e', label: '反発係数 <var>e</var>', min: 0, max: 1, step: 0.05, v: 0.6 },
+    { k: 'mu', label: '摩擦係数 <var>μ</var>', min: 0, max: 1, step: 0.05, v: 0.3 },
+    { k: 'th', label: '坂の角度 <var>θ</var>', min: 5, max: 50, step: 1, v: 30, unit: '°', reset: true },
+    { k: 'v0', label: '投げる速さ <var>v</var><sub>0</sub>', min: 2, max: 14, step: 0.5, v: 8, unit: 'm/s' },
+    { k: 'ang', label: '投げる角度', min: 0, max: 90, step: 1, v: 45, unit: '°' },
+  ],
+  p0: { g: 9.8, tool: 'ball', air: false, vec: true, trail: true, preset: 'free' },
+  legend: [['v', '速度（えらんだ物）']],
+  h: 1 / 120,
+  init(s) {
+    const p = s.p, g = R.group;
+    s.objs = []; s.sel = null; s.rec = recorder(0.04, 1500); s.t0 = 0;
+    if (!engOK()) { s.world = null; return; }
+    const C = CANNON;
+    const w = s.world = new C.World();
+    w.gravity.set(0, -p.g, 0);
+    w.broadphase = new C.NaiveBroadphase();
+    w.solver.iterations = 12;
+    // 摩擦：cannon.js 0.6 の摩擦は箱では強すぎて教科書どおりにならない。
+    // 箱は cannon の摩擦を 0 にして、engFriction でクーロン摩擦（最大 μN、すべると μN、N = mg cosθ）を自分でかける。球は cannon の摩擦で転がす
+    s.mat = new C.Material('floor'); s.matRamp = s.mat; s.matBall = new C.Material('ball'); s.matBox = new C.Material('box');
+    s.cms = [[s.matBall, s.mat, 1], [s.matBox, s.mat, 0], [s.matBall, s.matBall, 1], [s.matBox, s.matBox, 0], [s.matBall, s.matBox, 0]]
+      .map(([a, b, k]) => { const cm = new C.ContactMaterial(a, b, { friction: p.mu * k, restitution: p.e }); cm.k = k; w.addContactMaterial(cm); return cm; });
+    // 床とさく（床は見えている 3D の床）
+    const floorQ = new C.Quaternion(); floorQ.setFromAxisAngle(new C.Vec3(1, 0, 0), -Math.PI / 2);
+    engStatic(s, new C.Plane(), { x: 0, y: 0, z: 0 }, floorQ);
+    const A = ENG_ARENA, rail = solid(0x2f6fb0, { shininess: 40 });
+    [[0, A, 0], [0, -A, Math.PI], [A, 0, -Math.PI / 2], [-A, 0, Math.PI / 2]].forEach(([x, z, ry]) => {
+      const q = new C.Quaternion(); q.setFromAxisAngle(new C.Vec3(0, 1, 0), ry + Math.PI);
+      engStatic(s, new C.Box(new C.Vec3(A, 0.6, 0.05)), { x, y: 0.6, z }, q);
+      const m = box(Math.abs(x) ? 0.1 : A * 2 + 0.1, 0.18, Math.abs(z) ? 0.1 : A * 2 + 0.1, rail); m.position.set(x, 0.09, z); g.add(m);
+    });
+    g.add(contactShadow(A * 2 + 1, A * 2 + 1, 0.15));
+    engPreset(s);
+    s.selArrow = makeArrow(COL.vel, 0.03); g.add(s.selArrow.g);
+    s.selLbl = addLabel('', () => s.sel ? V3(s.sel.body.position.x, s.sel.body.position.y + s.sel.size + 0.2, s.sel.body.position.z) : null, 'v');
+    s.trail = makeTrail(0xe07a2f, 1500, 0.8); g.add(s.trail.line);
+    engPointer(s, true);
+  },
+  leave(s) { engPointer(s, false); },
+  step(s, dt) {
+    if (!s.world) return;
+    const p = s.p;
+    s.world.gravity.set(0, -p.g, 0);
+    s.cms.forEach(cm => { cm.friction = p.mu * cm.k; cm.restitution = p.e; });
+    if (s.spring) s.spring.applyForce();
+    engFriction(s, dt);
+    // 空気抵抗 F = ½ρC·S·v²（向きは速度と逆）。同じ大きさなら、軽い物ほど速さが落ちる
+    if (p.air) s.objs.forEach(o => { const b = o.body, v = b.velocity, sp = v.length(); if (!sp || b.type !== CANNON.Body.DYNAMIC) return; const k = 0.5 * 1.2 * 0.5 * b._area * sp; b.force.x -= k * v.x; b.force.y -= k * v.y; b.force.z -= k * v.z; });
+    s.world.step(dt);
+    // 遠くへ飛んでいった物は消す
+    for (const ob of s.objs.slice()) { const q = ob.body.position; if (Math.abs(q.x) > 20 || Math.abs(q.z) > 20 || q.y < -5) { s.objs.splice(s.objs.indexOf(ob), 1); engRemove(s, ob); } }
+    const o = s.sel;
+    if (o) { const b = o.body, v = b.velocity.length(), h = Math.max(0, b.position.y - o.size); s.rec.add(s.t - s.t0, 0.5 * o.m * v * v, o.m * p.g * h, 0.5 * o.m * v * v + o.m * p.g * h, b.position.y); }
+  },
+  draw(s) {
+    if (!s.world) return;
+    s.objs.forEach(o => { o.mesh.position.copy(o.body.position); o.mesh.quaternion.copy(o.body.quaternion); });
+    if (s.springMesh && s.spring) { const a = s.springTop, b = s.spring.bodyB.position; const L = a.y - b.y - 0.25; s.springMesh.scale.y = Math.max(0.05, L); s.springMesh.position.set(b.x, b.y + 0.25, b.z); }
+    const o = s.sel;
+    if (o) {
+      const b = o.body, vv = V3(b.velocity.x, b.velocity.y, b.velocity.z), v = vv.length();
+      s.selArrow.set(V3(b.position.x, b.position.y, b.position.z), vv, 0.18);
+      s.selArrow.g.visible = s.selArrow.g.visible && s.p.vec && v > 0.05;
+      s.selLbl.el.hidden = false; s.selLbl.set(`${o.name} ${fmt(v, 1)} m/s`);
+      if (s.p.trail && state.running && !s.drag) s.trail.push(V3(b.position.x, b.position.y, b.position.z));
+    } else { s.selArrow.g.visible = false; s.selLbl.el.hidden = true; }
+  },
+  live(s) {
+    const o = s.sel, p = s.p, out = { n: String(s.objs.length) };
+    if (!o) { Object.assign(out, { name: '—（物をタップしてえらぶ）', m: '—', v: '—', h: '—', K: '—', U: '—', E: '—', P: '—' }); out.graph = ''; return out; }
+    const b = o.body, v = b.velocity.length(), h = Math.max(0, b.position.y - o.size), K = 0.5 * o.m * v * v, U = o.m * p.g * h;
+    Object.assign(out, { name: o.name, m: fmt(o.m, 1) + ' kg', v: fmt(v, 2) + ' m/s', h: fmt(h, 2) + ' m', K: fmt(K, 1) + ' J', U: fmt(U, 1) + ' J', E: fmt(K + U, 1) + ' J', P: fmt(o.m * v, 1) + ' kg·m/s' });
+    const pts = s.rec.pts, T = Math.max(3, pts.length ? pts[pts.length - 1][0] * 1.05 : 3), emax = Math.max(1, ...pts.map(q => q[3]));
+    out.graph = p.preset === 'spring'
+      ? plot({ x: [0, T], y: [Math.min(...pts.map(q => q[4]), 0.5) - 0.1, Math.max(...pts.map(q => q[4]), 3) + 0.1], xl: 't [s]', yl: '高さ [m]', series: [{ pts: s.rec.col(4), c: C.accent }] })
+      : plot({ x: [0, T], y: [0, emax * 1.15], xl: 't [s]', yl: 'エネルギー [J]', series: [{ pts: s.rec.col(1), c: C.ke }, { pts: s.rec.col(2), c: C.pe }, { pts: s.rec.col(3), c: C.ink, w: 1.5 }] });
+    return out;
+  },
+  html(s) {
+    if (!engOK()) return '<div class="verdict ng">物理エンジンの部品（cannon.js）を読み込めなかった。インターネットにつながっているか確かめて、開き直してください。</div>';
+    const p = s.p, pr = ENG_PRESETS.find(x => x[0] === p.preset) || ENG_PRESETS[0];
+    const sl = ['e', 'mu'].concat(p.preset === 'ramp' ? ['th'] : []).concat(p.preset === 'throw' ? ['v0', 'ang'] : []);
+    return `<div class="ctl"><div class="purpose"><b>${esc(pr[1])}</b>${pr[2]}</div>
+      ${p.preset === 'throw' ? ui.btn('throw', '投げる', true) : ''}
+      ${ui.seg(s, 'tool', 'タップで置く', ENG_TOOLS)}
+      ${ui.seg(s, 'g', '重力 <var>g</var>', ENG_G)}
+      ${ui.sliders(s, sl)}
+      ${ui.chk(s, [['air', '空気抵抗'], ['vec', '速度の矢印'], ['trail', '軌跡']])}
+      <div class="row">${ui.btn('clear', '全部消す')}${ui.btn('reset', 'はじめの形にもどす')}</div>
+      <h3 class="sub">えらんだ物（物をタップするとえらべる）</h3>
+      ${ui.meter([['name', '物'], ['m', '質量 m'], ['v', '速さ v'], ['h', '高さ h'], ['K', '運動エネルギー ½mv²'], ['U', '位置エネルギー mgh'], ['E', '合計 K + U'], ['P', '運動量 mv'], ['n', '物の数']])}
+      ${ui.graph(p.preset === 'spring' ? '高さ–時間グラフ（ゆれ）' : 'エネルギー–時間グラフ', p.preset === 'spring' ? [] : [['運動 K', C.ke], ['位置 U', C.pe], ['合計', C.ink]])}
+      <p class="note">何もない所をタップ → 物を置く。物をドラッグして はなす → 投げる。物をタップ → えらぶ。1 本指のドラッグ（何もない所）で回す。転がる球は、回転のエネルギーにも分かれるので、K + U が少し減って見える。</p></div>`;
+  },
+  act(s, a) {
+    if (a === 'clear') { s.objs.slice().forEach(o => engRemove(s, o)); s.objs = []; engSelect(s, null); if (s.spring) { s.spring = null; if (s.springMesh) s.springMesh.visible = false; } }
+    else if (a === 'reset') { restart(); state.running = true; updatePlay(); }
+    else if (a === 'throw') {
+      const p = s.p, an = p.ang * DEG, o = engAddBody(s, 'ball', { x: -ENG_ARENA + 0.8, y: 0.6, z: 0 }, { v: { x: p.v0 * Math.cos(an), y: p.v0 * Math.sin(an), z: 0 }, color: 0xe0573f, name: '投げた球' });
+      engSelect(s, o); state.running = true; updatePlay();
+    }
+  },
+
+  goal: '',
+  how: `<p class="txt">物理エンジンは、とても短い時間（1/120 秒）ごとに「力 → 加速度 → 速さ → 位置」を計算し、ぶつかったら反発係数と摩擦で速さを変える。運動方程式 <var>ma</var> = <var>F</var> をくり返し解いているのと同じ。</p>`,
+  points: [['o', '重力加速度 g は物の重さによらない'], ['o', 'e = 1 なら運動エネルギーが保たれ、e < 1 だと熱や音になって減る'], ['o', '運動量の合計は、ぶつかっても変わらない（外から力がはたらかなければ）']],
+  exam: '',
+  view() { return [[0, 0.9, 0], ENG_ARENA * 0.62, [0.35, 0.5, 1]]; },
+});
+
+// 場面（プリセット）を作る
+function engPreset(s) {
+  const p = s.p, C = CANNON, g = R.group, A = ENG_ARENA;
+  s.spring = null; s.springMesh = null;
+  const pr = p.preset;
+  if (pr === 'drop') {
+    const a = engAddBody(s, 'heavy', { x: -0.6, y: 4, z: 0 }, { r: 0.3, m: 10, name: '重い球 10 kg' });
+    engAddBody(s, 'ball', { x: 0.6, y: 4, z: 0 }, { r: 0.3, m: 1, color: 0xe8e2d0, name: '軽い球 1 kg' });
+    const tw = box(0.1, 4.3, 0.1, solid(0x8d949c)); tw.position.set(0, 2.15, -0.5); g.add(tw);
+    engSelect(s, a); state.running = false;
+  } else if (pr === 'ramp') {
+    const th = p.th * DEG, L = 5, Hh = L * Math.sin(th), W = L * Math.cos(th);
+    const q = new C.Quaternion(); q.setFromAxisAngle(new C.Vec3(0, 0, 1), -th);
+    engStatic(s, new C.Box(new C.Vec3(L / 2, 0.05, 1)), { x: -W / 2, y: Hh / 2, z: 0 }, q, s.matRamp);
+    const m = box(L, 0.1, 2, solid(0xf2c14e, { shininess: 60 })); m.position.set(-W / 2, Hh / 2, 0); m.rotation.z = -th; g.add(m);
+    const sup = cyl(0.06, 0.06, Hh, solid(0x2f8f6a), 10); sup.position.set(-W + 0.1, Hh / 2, 0); g.add(sup);
+    // 坂の上のはしから 0.45 m 下った所（坂の中心線）。面は中心線から 0.05 上
+    const up = V3(Math.sin(th), Math.cos(th), 0), top = V3(-W, Hh, 0).addScaledVector(V3(Math.cos(th), -Math.sin(th), 0), 0.45).addScaledVector(up, 0.05);
+    const bx = engAddBody(s, 'box', top.clone().addScaledVector(up, 0.2505).add(V3(0, 0, -0.45)), { hx: 0.25, hy: 0.25, hz: 0.25, name: '箱' });
+    bx.body.quaternion.copy(q);
+    engAddBody(s, 'ball', top.clone().addScaledVector(up, 0.2505).add(V3(0, 0, 0.45)), { r: 0.25, color: 0xe0573f, name: '球' });
+    engSelect(s, bx);
+  } else if (pr === 'throw') {
+    state.running = true;
+  } else if (pr === 'billiard') {
+    for (let i = 0; i < 5; i++) engAddBody(s, 'ball', { x: 0.5 + i * 0.4401, y: 0.2, z: 0 }, { r: 0.2, m: 1, color: [0xf2c14e, 0x2f6fb0, 0xe0573f, 0x6a4c93, 0xe07a2f][i], name: `球 ${i + 1}` });
+    const cue = engAddBody(s, 'ball', { x: -3.5, y: 0.2, z: 0 }, { r: 0.2, m: 1, color: 0xf5f3ec, name: '白い球', v: { x: 5, y: 0, z: 0 } });
+    engSelect(s, cue); state.running = false;
+  } else if (pr === 'domino') {
+    for (let i = 0; i < 16; i++) { const a = i * 0.32 - 0.6, x = -2.5 + Math.cos(a * 0.5) * i * 0.45, z = Math.sin(i * 0.38) * 1.2; const o = engAddBody(s, 'domino', { x, y: 0.4, z }, { hx: 0.05, hy: 0.4, hz: 0.2, name: 'ドミノ' }); o.body.quaternion.setFromAxisAngle(new C.Vec3(0, 1, 0), Math.atan2(Math.cos(i * 0.38) * 0.38 * 1.2, 0.45)); }
+    const b = engAddBody(s, 'ball', { x: -4.6, y: 0.25, z: 0 }, { r: 0.22, color: 0xe0573f, name: '球', v: { x: 3, y: 0, z: 0 } });
+    engSelect(s, b); state.running = false;
+  } else if (pr === 'tower') {
+    for (let y = 0; y < 6; y++) for (let k = 0; k < 2; k++) engAddBody(s, 'box', { x: 1.5 + (k - 0.5) * 0.52, y: 0.25 + y * 0.5, z: 0 }, { name: '箱', color: [0xc58a4a, 0xd9a35a][(y + k) % 2] });
+    const b = engAddBody(s, 'heavy', { x: -3.5, y: 1, z: 0 }, { r: 0.3, name: '鉄球', v: { x: 7, y: 2.5, z: 0 } });
+    engSelect(s, b); state.running = false;
+  } else if (pr === 'spring') {
+    const topY = 4.2; s.springTop = V3(0, topY, 0);
+    const anchor = engStatic(s, new C.Sphere(0.05), { x: 0, y: topY, z: 0 });
+    const bar = box(2, 0.12, 0.3, solid(0x59606a)); bar.position.set(0, topY + 0.06, 0); g.add(bar);
+    [-0.9, 0.9].forEach(x => { const c = cyl(0.05, 0.05, topY, solid(0x59606a), 10); c.position.set(x, topY / 2, 0); g.add(c); });
+    const o = engAddBody(s, 'block', { x: 0, y: 1.6, z: 0 }, { hx: 0.25, hy: 0.25, hz: 0.25, m: 1, color: 0xb08a3a, name: 'おもり 1 kg' });
+    o.body.angularDamping = 0.9;
+    s.spring = new C.Spring(anchor, o.body, { restLength: 1.6, stiffness: 25, damping: 0.05, localAnchorB: new C.Vec3(0, 0.25, 0) });
+    s.springMesh = new THREE.Mesh(springGeo(14, 0.12, 0.012), metal(0xc0c6cc, 0.6)); g.add(s.springMesh);
+    engSelect(s, o);
+  }
+}
+
+// ---- 指・マウスの操作：置く／えらぶ／ドラッグして投げる ----
+const _eray = new THREE.Raycaster(), _ev2 = new THREE.Vector2();
+function engRay(ev) {
+  const r = R.renderer.domElement.getBoundingClientRect();
+  _ev2.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+  _eray.setFromCamera(_ev2, R.camera); return _eray;
+}
+function engPointer(s, on) {
+  const el = $('stage');
+  if (!on) { if (s.ph) { el.removeEventListener('pointerdown', s.ph.down, true); window.removeEventListener('pointermove', s.ph.move, true); window.removeEventListener('pointerup', s.ph.up, true); s.ph = null; R.controls.enabled = true; } return; }
+  const ph = s.ph = {};
+  ph.down = ev => {
+    if (state.s !== s || !s.world) return;
+    const ray = engRay(ev), hit = ray.intersectObjects(s.objs.map(o => o.mesh), true)[0];
+    ph.start = { x: ev.clientX, y: ev.clientY, t: performance.now() };
+    if (hit) {
+      const o = s.objs.find(x => x.mesh === hit.object || x.mesh === hit.object.parent);
+      if (!o) return;
+      R.controls.enabled = false;
+      engSelect(s, o);
+      const cam = V3(); R.camera.getWorldDirection(cam);
+      s.drag = { o, plane: new THREE.Plane().setFromNormalAndCoplanarPoint(cam.negate(), hit.point), off: V3(o.body.position.x, o.body.position.y, o.body.position.z).sub(hit.point), samples: [] };
+      o.body.type = CANNON.Body.KINEMATIC; o.body.velocity.set(0, 0, 0); o.body.angularVelocity.set(0, 0, 0);
+      ev.stopPropagation();
+    }
+  };
+  ph.move = ev => {
+    const d = s.drag; if (!d) return;
+    const p = engRay(ev).ray.intersectPlane(d.plane, V3()); if (!p) return;
+    p.add(d.off); p.y = Math.max(p.y, d.o.size + 0.01); p.x = clamp(p.x, -ENG_ARENA + 0.3, ENG_ARENA - 0.3); p.z = clamp(p.z, -ENG_ARENA + 0.3, ENG_ARENA - 0.3);
+    d.o.body.position.set(p.x, p.y, p.z); d.o.body.previousPosition.set(p.x, p.y, p.z);
+    d.samples.push([performance.now(), p.clone()]); if (d.samples.length > 6) d.samples.shift();
+    d.o.mesh.position.copy(p);
+  };
+  ph.up = ev => {
+    const d = s.drag;
+    if (d) {
+      const b = d.o.body; b.type = CANNON.Body.DYNAMIC; b.updateMassProperties(); b.wakeUp();
+      const sm = d.samples;
+      const last = sm.length ? sm[sm.length - 1][0] : 0, k0 = Math.min(sm.length - 2, Math.max(0, sm.findIndex(x => last - x[0] <= 120)));
+      if (sm.length >= 2) { const [t0, p0] = sm[k0], [t1, p1] = sm[sm.length - 1], dt = Math.max(0.016, (t1 - t0) / 1000); const v = p1.clone().sub(p0).divideScalar(dt); if (v.length() > 12) v.setLength(12); b.velocity.set(v.x, v.y, v.z); }
+      s.drag = null; R.controls.enabled = true; s.rec.clear(); s.t0 = s.t; s.trail.clear();
+      if (!state.running) { state.running = true; updatePlay(); }
+      renderLive(true); return;
+    }
+    // 何もない所を軽くタップ → 置く
+    const st = ph.start; ph.start = null;
+    if (!st || state.s !== s || !s.world || s.p.tool === 'none') return;
+    if (Math.hypot(ev.clientX - st.x, ev.clientY - st.y) > 8 || performance.now() - st.t > 400) return;
+    if (!ev.target.closest || !ev.target.closest('#stage')) return;
+    const p = engRay(ev).ray.intersectPlane(new THREE.Plane(V3(0, 1, 0), 0), V3()); if (!p) return;
+    if (Math.abs(p.x) > ENG_ARENA - 0.3 || Math.abs(p.z) > ENG_ARENA - 0.3) return;
+    const o = engAddBody(s, s.p.tool, { x: p.x, y: 3, z: p.z }, {});
+    engSelect(s, o);
+    if (!state.running) { state.running = true; updatePlay(); }
+    renderLive(true);
+  };
+  el.addEventListener('pointerdown', ph.down, true);
+  window.addEventListener('pointermove', ph.move, true);
+  window.addEventListener('pointerup', ph.up, true);
+}
+
+// 「いまの式」
+EQ.engine = s => {
+  const o = s.sel; if (!o) return { at: null, html: '<b>物をタップしてえらぶと、その物の式が出る</b>' };
+  const b = o.body, v = b.velocity.length(), h = Math.max(0, b.position.y - o.size), m = o.m, g = s.p.g;
+  return { at: null, html: `<b>${esc(o.name)}（m = ${fmt(m, 1)} kg）</b>
+    <div><var>K</var> = ½<var>mv</var>² = ½×${fmt(m, 1)}×${fmt(v, 2)}² = <em>${fmt(0.5 * m * v * v, 1)} J</em></div>
+    <div><var>U</var> = <var>mgh</var> = ${fmt(m, 1)}×${g}×${fmt(h, 2)} = <em>${fmt(m * g * h, 1)} J</em></div>
+    <div><var>p</var> = <var>mv</var> = <em>${fmt(m * v, 1)} kg·m/s</em></div>` };
+};
+
+// ---- モード ----
+function goEngine(preset) {
+  setModeUI('engine');
+  const prev = state.s;
+  if (prev && prev.def.id !== 'engine' && prev.def.leave) prev.def.leave(prev);
+  if (!PARAMS.engine) PARAMS.engine = defaults(simOf('engine'));
+  if (preset) {
+    const P = PARAMS.engine, d = defaults(simOf('engine'));
+    Object.assign(P, { preset, g: 9.8, air: false, e: d.e, mu: d.mu, tool: 'ball' });
+    if (preset === 'billiard') P.e = 1;
+    if (preset === 'ramp') P.mu = 0.3;
+    if (preset === 'tower' || preset === 'domino') P.e = 0.2;
+    if (preset === 'spring') P.tool = 'none';
+  }
+  state.id = 'engine'; state.tab = 'try'; state.libCat = null;
+  renderLib();
+  if (R) loadSim('engine');
+  renderCard();
+  try { history.replaceState(null, '', '#engine'); } catch (e) { /* 無視 */ }
+}
+function engLibHTML() {
+  const cur = PARAMS.engine ? PARAMS.engine.preset : 'free';
+  return '<div class="items">' + ENG_PRESETS.map(([k, n]) => `<button type="button" class="item" data-engine="${k}" aria-current="${k === cur}"><span class="ic">エ</span><span>${esc(n)}</span></button>`).join('') + '</div><p class="libfoot">物理エンジン（cannon.js）で、物の動きを自由に試せる。</p>';
+}
+function engCardHTML() {
+  const s = state.s; if (!s || s.def.id !== 'engine') return '';
+  return `<div class="card-head"><div><div class="eyebrow">物理エンジン</div><h2 class="name">物理エンジン</h2><p class="lead">${esc(s.def.lead)}</p></div></div><div class="body">${s.def.html(s)}</div>`;
+}
 // ======================= 問題を「図にする」：文章題 → 式 → 3D =======================
 // 色の約束：オレンジ = 問題に書いてある数字（わかっている量）、青 = 求めるもの（？）
 // 問題のページでは、3D をその問題の数字で作り、止めたまま「数字の名札」だけを出す（図にする）。
@@ -7176,6 +7538,7 @@ function renderLib() {
   const lib = $('lib');
   const item = (attr, id, ic, name, extra, cur) => `<button type="button" class="item" ${attr}="${id}" aria-current="${!!cur}"><span class="ic">${ic}</span><span>${esc(name)}</span>${extra || ''}</button>`;
   const catOfSim = id => (simOf(id) || SIMS[0]).cat;
+  if (state.mode === 'engine') { lib.innerHTML = engLibHTML(); return; }
   if (state.mode === 'lesson') {
     const c = state.lessonCourse || 'kiso', curL = state.lesson && state.lesson.l.id;
     lib.innerHTML = `<div class="cats">${COURSES.map(([k, n]) => { const l = LESSONS.filter(x => x.course === k); return `<button type="button" class="cat" data-lcourse="${k}" aria-pressed="${k === c}">${n}<small>${l.filter(x => lessonPass.has(x.id)).length}/${l.length}</small></button>`; }).join('')}</div>`
@@ -7185,7 +7548,7 @@ function renderLib() {
     const cur = state.libCat || catOfSim(state.id);
     lib.innerHTML = `<div class="cats">${CATS.map(([c]) => { const l = SIMS.filter(x => x.cat === c); return `<button type="button" class="cat" data-cat="${c}" aria-pressed="${c === cur}">${c}<small>${l.filter(x => done.has(x.id)).length}/${l.length}</small></button>`; }).join('')}</div>`
       + `<div class="items">${SIMS.filter(x => x.cat === cur).map(x => item('data-sim', x.id, x.icon, x.name, done.has(x.id) ? '<span class="done">✓</span>' : '', x.id === state.id)).join('')}</div>`
-      + `<p class="libfoot">「やってみよう」クリア ${SIMS.filter(x => done.has(x.id)).length} / ${SIMS.length}<br>ドラッグで回転、ホイール・ピンチで拡大。</p>`;
+      + `<p class="libfoot">「やってみよう」クリア ${SIMS.filter(x => x.cat !== 'エンジン').filter(x => done.has(x.id)).length} / ${SIMS.filter(x => x.cat !== 'エンジン').length}<br>ドラッグで回転、ホイール・ピンチで拡大。</p>`;
   } else if (state.mode === 'drill') {
     const curId = state.drill && state.drill.id;
     const cur = state.libCat || (curId ? catOfSim(DRILLS.find(d => d.id === curId).sim) : '力学');
@@ -7218,6 +7581,7 @@ function renderCard() {
   if (state.mode === 'sim') h = state.s ? simCardHTML() : '';
   else if (state.mode === 'lesson') h = state.lesson ? lessonCardHTML() : lessonMenuHTML();
   else if (state.mode === 'drill') h = drillCardHTML();
+  else if (state.mode === 'engine') h = engCardHTML();
   else h = state.ta ? taCardHTML() : state.quiz ? quizCardHTML() : quizMenuHTML();
   document.body.classList.toggle('game', state.mode === 'quiz' && !!state.ta && !state.ta.end);
   const body = card.querySelector('.body'), y = body ? body.scrollTop : 0;
@@ -7243,7 +7607,8 @@ function goDrill(id) {
   try { history.replaceState(null, '', '#' + id); } catch (e) { /* 無視 */ }
 }
 function setMode(mode) {
-  if (mode === 'sim') go(state.id || 'fall');
+  if (mode === 'sim') go(state.id && state.id !== 'engine' ? state.id : 'fall');
+  else if (mode === 'engine') goEngine();
   else if (mode === 'lesson') { setModeUI('lesson'); state.libCat = null; if (!state.lessonCourse) state.lessonCourse = 'kiso'; renderLib(); renderCard(); }
   else if (mode === 'drill') goDrill((state.drill && state.drill.id) || (DRILLS.find(d => d.sim === state.id) || DRILLS[0]).id);
   else { setModeUI('quiz'); taStop(); state.ta = null; state.quiz = null; state.libCat = null; renderLib(); renderCard(); }
@@ -7254,6 +7619,7 @@ const parseV = v => (v === 'true' ? true : v === 'false' ? false : v !== '' && !
 document.addEventListener('click', ev => {
   const t = ev.target, s = state.s;
   const sb = t.closest('#scenebar [data-scene]'); if (sb) { setScene(sb.dataset.scene); return; }
+  const en = t.closest('[data-engine]'); if (en) { goEngine(en.dataset.engine); return; }
   if (taClick(t)) return;
   if (t.closest('#btnScene')) { const o = $('scenebar').classList.toggle('open'); $('btnScene').setAttribute('aria-expanded', String(o)); return; }
   if (!t.closest('#scenebar') && $('scenebar').classList.contains('open')) { $('scenebar').classList.remove('open'); $('btnScene').setAttribute('aria-expanded', 'false'); }
@@ -7337,7 +7703,8 @@ $('btnFull').addEventListener('click', () => {
   let h = '';
   try { h = decodeURIComponent(location.hash.slice(1)); } catch (e) { /* 無視 */ }
   if (!ok) { state.id = 'fall'; state.s = null; renderLib(); $('card').innerHTML = `<div class="card-head"><div><h2 class="name">物理ラボ3D</h2><p class="lead">3D を表示できる環境で開いてください。計算とクイズは使えます。</p></div></div>`; return; }
-  if (LESSONS.some(l => l.id === h)) lessonOpen(h);
+  if (h === 'engine') goEngine();
+  else if (LESSONS.some(l => l.id === h)) lessonOpen(h);
   else if (DRILLS.some(d => d.id === h)) goDrill(h);
   else if (!h && !done.size && !lessonDone.size) { go('fall'); setMode('lesson'); } // はじめての人は授業の一覧から
   else go(SIMS.some(x => x.id === h) ? h : 'fall');
